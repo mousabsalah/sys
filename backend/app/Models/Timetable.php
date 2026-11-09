@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Timetable extends Model
 {
@@ -11,22 +12,22 @@ class Timetable extends Model
         'day_of_week', 'start_time', 'end_time', 'academic_term',
     ];
 
-    public function course()
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
-    public function faculty()
+    public function faculty(): BelongsTo
     {
         return $this->belongsTo(Faculty::class, 'faculty_id');
     }
 
-    public function group()
+    public function group(): BelongsTo
     {
         return $this->belongsTo(Group::class, 'group_id');
     }
 
-    public function hall()
+    public function hall(): BelongsTo
     {
         return $this->belongsTo(Hall::class);
     }

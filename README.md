@@ -92,14 +92,20 @@
 
 | المرحلة | الحالة | الملاحظات |
 |---|---|---|
-| 1 — التأسيس (Laravel 12 + React) | ✅ مكتملة | Laravel 12.71 `backend/` (SQLite مؤقتًا لـ scaffold ← متصلة بـ MariaDB للمنظومة الفعلية)؛ React TS/Vite لـ RTL مع هوية AUST + شاشة دخول مبدئية؛ `.env` مكتمل لكليهما |
+| 1 — التأسيس (Laravel 12 + React) | ✅ مكتملة | Laravel 12.71 `backend/` (scaffold على SQLite ثم تواصلت بـ MariaDB للمنظومة الفعلية)؛ React TS/Vite RTL مع هوية AUST + شاشة دخول مبدئية؛ `.env` مكتمل لكليهما |
 | 2 — النواة (migrations/Models/seeders) | ✅ مكتملة | 17 كيانًا مدفوعًا على MariaDB `aust_graduation`؛ 3 كليات/6 أقسام/2 برامج/8 دفعات (2 شعب لكل دفعة)/42 فترة/20 قاعة/30 مقرر/12 عضو/5 حسابات عينة |
-| 3 — الجداول + التعارض (Go syst-engine + P2) |⏳ التالي | — |
+| 3 — الجداول + التعارض (Go syst-engine + P2) | ⏳ التالي | `engine/` Go → `POST /check` |
 | 4 — الحجوزات + الحارس | ⏳ | — |
 | 5 — اللوحة + التقارير | ⏳ | — |
 | 6 — واجهة React RTL (الثمانية شاشات) | ⏳ | — |
 | 7 — CP-SAT اقتراح تلقائي | ⏳ (post-v1) | — |
 | 8 — التشطيب + الفصول + الـdemo | ⏳ | — |
+
+## جودة الكود (2026-11-10)
+- **Laravel Pint** (`vendor/bin/pint app`) — فروع تنسيق للكود الموجود.
+- **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/`.
+- **oxlint** (React/Vite) — 0 مشاكل على `frontend/`.
+- السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` (قادم لـ syst-engine).
 
 ## القاعدة التشغيلية
 

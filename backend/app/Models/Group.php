@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Group extends Model
 {
@@ -10,7 +11,7 @@ class Group extends Model
 
     protected $casts = ['student_count' => 'integer'];
 
-    public function batch()
+    public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class);
     }

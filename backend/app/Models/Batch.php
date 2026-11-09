@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Batch extends Model
@@ -11,17 +13,17 @@ class Batch extends Model
 
     protected $fillable = ['name', 'student_count', 'department_id', 'program_id'];
 
-    public function department()
+    public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
-    public function program()
+    public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
     }
 
-    public function groups()
+    public function groups(): HasMany
     {
         return $this->hasMany(Group::class, 'batch_id');
     }

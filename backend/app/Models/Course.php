@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Course extends Model
@@ -13,7 +14,7 @@ class Course extends Model
 
     protected $casts = ['credit_hours' => 'integer'];
 
-    public function facultyMembers()
+    public function facultyMembers(): BelongsToMany
     {
         return $this->belongsToMany(Faculty::class, 'course_faculty', 'course_id', 'faculty_id');
     }
