@@ -94,10 +94,10 @@
 |---|---|---|
 | 1 — التأسيس (Laravel 12 + React) | ✅ مكتملة | Laravel 12.71 `backend/` (scaffold على SQLite ثم تواصلت بـ MariaDB للمنظومة الفعلية)؛ React TS/Vite RTL مع هوية AUST + شاشة دخول مبدئية؛ `.env` مكتمل لكليهما |
 | 2 — النواة (migrations/Models/seeders) | ✅ مكتملة | 17 كيانًا مدفوعًا على MariaDB `aust_graduation`؛ 3 كليات/6 أقسام/2 برامج/8 دفعات (2 شعب لكل دفعة)/42 فترة/20 قاعة/30 مقرر/12 عضو/5 حسابات عينة |
-| 3 — الجداول + التعارض (Go syst-engine + P2) | 🚧 جذر مبني | `engine/` Go (8080) → `POST /check`؛ Laravel CheckerClient + `api/syst-engine/health` + `api/syst-engine/check`; تم اختبار end-to-end Laravel↔Go (حمولة عربية + conflict verdict) + README QA |
-| 4 — الحجوزات + الحارس | ⏳ | — |
-| 5 — اللوحة + التقارير | ⏳ | — |
-| 6 — واجهة React RTL (الثمانية شاشات) | ⏳ | — |
+| 3 — الجداول + التعارض (Go syst-engine + P2) | ✅ مكتملة | `engine/` Go (8080) → `POST /check`؛ Laravel يجمع payload من DB ويرسله — verdict عربي hard/soft؛ endpoints: `POST /api/timetables/check` + `POST /api/timetables`؛ transaction + `SELECT FOR UPDATE` + R13؛ Sanctum token end-to-end ✓ |
+| 4 — الحجوزات + الحارس + API | ✅ مكتملة v1 | `POST /api/bookings` + `POST /api/status/now` + `POST /api/halls/{id}/lock|unlock` + `GET /api/locks` + `GET /api/dashboard` + `GET /api/reports/utilization` — Sanctum + role middleware ✓ |
+| 5 — اللوحة + التقارير | ✅ مكتمل v1 | KPIs اللوحة مثبتة على backend؛ تقارير نسبة استخدام القاعات مع شريط تقدّم برتقالي + تصدير CSV ✓ (Real data!) |
+| 6 — واجهة React RTL | ✅ مكتملة v1 | تسجيل دخول + لوحة + قائمة جداول + إنشاء جدول مع تحقق Go + حجوزات + تقارير CSV — RTL/هوية AUST؛ `npm run build` نظيف ✓ |
 | 7 — CP-SAT اقتراح تلقائي | ⏳ (post-v1) | — |
 | 8 — التشطيب + الفصول + الـdemo | ⏳ | — |
 

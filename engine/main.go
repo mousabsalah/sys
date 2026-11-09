@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 // ── syst-engine: سروال Go صغير لمنطق التعارض
@@ -61,17 +62,55 @@ func overlaps(aStart, aEnd, bStart, bEnd string) bool {
 }
 
 func samePeriod(a Payload, b ExistingSlot) bool {
-	// للتواريخ الفعلية (الامتحانات) نقارن ExamDate، وإلا نقارن اليوم الأسبوعي.
+	// للتواريخ الفعلية (الامتحانات/الحجوزات) نقارن ExamDate، وإلا اليوم الأسبوعي.
 	if a.ExamDate != "" && b.ExamDate != "" {
 		return a.ExamDate == b.ExamDate && overlaps(a.StartTime, a.EndTime, b.StartTime, b.EndTime)
 	}
-	return a.DayOfWeek != "" && a.DayOfWeek == b.DayOfWeek && overlaps(a.StartTime, a.EndTime, b.StartTime, b.EndTime)
+	dayA := a.DayOfWeek
+	if dayA == "" && a.ExamDate != "" {
+		dayA = resolveDayOfWeekFromDateString(a.ExamDate)
+	}
+	dayB := b.DayOfWeek
+	if dayB == "" && b.ExamDate != "" {
+		dayB = resolveDayOfWeekFromDateString(b.ExamDate)
+	}
+	return dayA != "" && dayA == dayB && overlaps(a.StartTime, a.EndTime, b.StartTime, b.EndTime)
+}
+
+func resolveDayOfWeekFromDateString(s string) string {
+	if len(s) < 10 {
+		return ""
+	}
+	// 2026-01-09 (yyyy-mm-dd) — نقم القيم ونستعمل time.Parse
+	// قائمة أيام الأسبوع العربية بالترتيب من الاثنين
+	weekdays := map[time.Weekday]string{
+		time.Saturday: "السبت",
+		time.Sunday:   "الأحد",
+		time.Monday:   "الاثنين",
+		time.Tuesday:  "الثلاثاء",
+		time.Wednesday:"الأربعاء",
+		time.Thursday: "الخميس",
+		time.Friday:   "الجمعة",
+	}
+	t, err := time.Parse("2006-01-02", s[:10])
+	if err != nil {
+		return ""
+	}
+	return weekdays[t.Weekday()]
 }
 
 func check(p Payload) CheckResult {
 	violations := []Violation{}
 	add := func(code, msg, severity string) {
 		violations = append(violations, Violation{Code: code, MessageArabic: msg, Severity: severity})
+	}
+
+	// تحقق أساسي بالنوع
+	if p.Type == "exam" && p.ExamDate == "" {
+		add("MISSING_EXAM_DATE", "تاريخ الامتحان مطلوب للنوع exam", "hard")
+	}
+	if p.Type != "exam" && p.DayOfWeek == "" && p.ExamDate == "" {
+		add("MISSING_DAY_OF_WEEK", "اليوم الأسبوعي أو التاريخ مطلوب للنوع lecture|booking", "hard")
 	}
 
 	// حالة القاعة (متاحة/صيانة/مغلقة)
@@ -91,6 +130,10 @@ func check(p Payload) CheckResult {
 
 	// تعارضات مع الموجود (محاضرة/امتحان/حجز)
 	for _, e := range p.Existing {
+		// COURSE_DUPLICATE: امتحان نفس المقرر لنفس الشعبة في نفس التاريخ — دون أن تتطلب فترة زمنية
+		if p.Type == "exam" && e.Kind == "exam" && e.CourseID == p.CourseID && e.CourseID > 0 && e.GroupID == p.GroupID && e.GroupID > 0 && e.ExamDate != "" && p.ExamDate != "" && e.ExamDate == p.ExamDate {
+			add("COURSE_EXAM_DUPLICATE", "لا يمكن امتحانان لنفس المقرر في نفس الشعبة في نفس اليوم", "hard")
+		}
 		if !samePeriod(p, e) {
 			continue
 		}
