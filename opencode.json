@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "ortools": {
+        "type": "local",
+        "command": ["python", "-m", "mcp_ortools.server"]
+      },
+      "semgrep": {
+        "type": "local",
+        "command": ["uvx", "--python", "3.12", "--with", "pydantic==2.11.4", "semgrep-mcp"]
+      }
+    }
+  }
+}

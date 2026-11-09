@@ -11,7 +11,7 @@ app/storage/
 public/storage
 public/hot
 
-# Laravel 5 & Lumen specific with changed public path
+# public hot path cases
 public_html/storage
 public_html/hot
 
@@ -29,3 +29,10 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+
+# SYST project-specific
+.agents/skills/
+*.log
+.DS_Store
+Thumbs.db
+!.env.example

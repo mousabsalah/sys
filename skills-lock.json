@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "skills": {
+    "assignment-problems": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/assignment-problems/SKILL.md",
+      "computedHash": "6ba605dd3f25990aa0ce3350c8b7eb95edc8e69a677f994450526d6db71ce7e0"
+    },
+    "constraint-handling-techniques": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/constraint-handling-techniques/SKILL.md",
+      "computedHash": "e5c5afe4a63529d5cc0a4d40e20b2c24c5d22660a4c1125c1f97fa8c10cfe871"
+    },
+    "golang-code-style": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-code-style/SKILL.md",
+      "computedHash": "22a3619eac6483791d5712d66fb7c5a58c72885d08d35a0ff387203eb925626b"
+    },
+    "golang-error-handling": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-error-handling/SKILL.md",
+      "computedHash": "70b03b07e53337211b721207dc2ce3121454de13aad02e808325c25e80ff2312"
+    },
+    "golang-security": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-security/SKILL.md",
+      "computedHash": "29b81afb21c8c63d4d2f8e1673d6bac9a423a283158e816c58b67240a0137ef6"
+    },
+    "golang-testing": {
+      "source": "samber/cc-skills-golang",
+      "sourceType": "github",
+      "skillPath": "skills/golang-testing/SKILL.md",
+      "computedHash": "00d5857979ab02cb7ebcad4a10c991155bd9207fa2fffee55015e1fb31904fd4"
+    },
+    "graph-coloring": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/graph-coloring/SKILL.md",
+      "computedHash": "fa9627e2c57944d8010551c37f846dfbc87e78370014e6350da3db03561449fa"
+    },
+    "instance-generation-and-benchmarks": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/instance-generation-and-benchmarks/SKILL.md",
+      "computedHash": "803c0e9cab06dd064d377e6daa496e7e9b5856a279d37f8e84ca7c54bfc2cb6e"
+    },
+    "integer-programming-techniques": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/integer-programming-techniques/SKILL.md",
+      "computedHash": "92351ef8273c5ad630b40d5b706af96ebefe6ff4c7b17a70ae11c0faed8336cf"
+    },
+    "job-shop-scheduling": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/job-shop-scheduling/SKILL.md",
+      "computedHash": "b1d314b1abedf56faeaa32cd3210e89db7e9c2304f65fcf04b008dbfea6f4dde"
+    },
+    "laravel-patterns": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-patterns/SKILL.md",
+      "computedHash": "58d3d0c9c98dff80c4a4e0d28e7b3ddf8cbb2b941338a4d3780aff53f52f146e"
+    },
+    "laravel-specialist": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-specialist/SKILL.md",
+      "computedHash": "54d63412e4b4024f384edaa7758e9ad7e76a5ff91a134f8042dbf6200b031800"
+    },
+    "laravel-tdd": {
+      "source": "affaan-m/ecc",
+      "sourceType": "github",
+      "skillPath": "skills/laravel-tdd/SKILL.md",
+      "computedHash": "2b30678c04801d14ef4b0f5449430d1a524222061283b0ee88aec5e77b10d3b3"
+    },
+    "large-neighborhood-search": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/large-neighborhood-search/SKILL.md",
+      "computedHash": "e02732066f4cfe6b715fde548fd712da4d32ef830a8d089580a92ead85e3d4f2"
+    },
+    "linearization-techniques": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/linearization-techniques/SKILL.md",
+      "computedHash": "15557348fb439900c17679896336e2461428b61e0d783682d0c65729c286e09f"
+    },
+    "milp-modeling-gurobi": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/milp-modeling-gurobi/SKILL.md",
+      "computedHash": "9f692714292b1f54fb825448cc42f76e2eecefe24793b758ed90675f9b4b4c0d"
+    },
+    "multi-objective-optimization": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/multi-objective-optimization/SKILL.md",
+      "computedHash": "87a06048cc7f4eba189485062332a9abb52524a01a9afd064886280b4c2598df"
+    },
+    "open-source-solvers": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/open-source-solvers/SKILL.md",
+      "computedHash": "4881811eeda88175b698b7a78e179e281122cc3ac62aa656479d4881577f276b"
+    },
+    "optimization-project-structure": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/optimization-project-structure/SKILL.md",
+      "computedHash": "5bb5b5bb07847a19eda89c2960d3eaf62a79dfd172c7742ffb69465b275bc410"
+    },
+    "ortools": {
+      "source": "tondevrel/scientific-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ortools/SKILL.md",
+      "computedHash": "3d1e46dc08d0871312601e925932e708f247e98f0c9b33dd9d449dcb61b900eb"
+    },
+    "problem-formulation": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/problem-formulation/SKILL.md",
+      "computedHash": "04a3eaf729926d39b2c452d04286528d9edd79e11d8fccb93c1c87621025b921"
+    },
+    "set-covering-packing-partitioning": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/set-covering-packing-partitioning/SKILL.md",
+      "computedHash": "0ebeb1338d69e5da705a3f762abd9c1bccb019c4c15961377eca36ae7579c4fc"
+    },
+    "tabu-search": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/tabu-search/SKILL.md",
+      "computedHash": "0c30357ec755df313ef1390a21f1e8246940c50fb18c071a236b804520ccdc83"
+    },
+    "timetabling-and-rostering": {
+      "source": "hajibabaie/combinatorial-optimization-skills",
+      "sourceType": "github",
+      "skillPath": "skills/timetabling-and-rostering/SKILL.md",
+      "computedHash": "73fd81c0e26b5e099e0f7c709000001a2041962ce3ddafcab6f3cf6f1e31c478"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "3f14af7f5690695209c22fbf8c8d133769a86d64892602c09bb13f135e14e857"
+    }
+  }
+}
