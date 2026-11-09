@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
@@ -21,6 +22,15 @@ Route::get('/user', function (Request $request) {
 
 // ── الذكور: تسجيل الدخول/الخروج/ملفي ──
 Route::post('/login', [AuthController::class, 'login']);
+
+// ── الدخول: واجهة المتصفح — طلب GET على /api/login يُرجع توضيح JSON (لا صفحة Symfony 405) ──
+Route::get('/login', function () {
+    return response()->json([
+        'ok' => false,
+        'message_ar' => 'هذا المسار يقبل POST فقط — استخدم واجهة الويب http://127.0.0.1:5173 (مع npm run dev شغّال) لإدخال اسم المستخدم وكلمة المرور.',
+        'hint' => 'واجهة React SPA على منفذ 5173 هي نقطة الدخول للنظام.',
+    ], 405);
+});
 Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
@@ -50,6 +60,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // ── اللوحة والتقارير (غير مغلقة) — حاليًا للديمو؛ يمكن تقييدها لاحقًا ──
 Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/reports/utilization', [ReportController::class, 'utilization']);
+
+// ── لوحة المدير: بيانات رئيسية للقراءة (admin فقط) ──
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::get('/admin/master-data', [AdminController::class, 'masterData']);
+});
 
 // ── syst-engine passthrough (مطوّرون) ──
 Route::get('/syst-engine/health', [EnginePassthrough::class, 'health']);

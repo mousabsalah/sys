@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 
 type Role = 'admin' | 'dept' | 'guard' | 'batch'
-type ViewName = 'login' | 'dashboard' | 'timetables' | 'create-timetable' | 'bookings' | 'reports'
+type ViewName =
+  | 'login'
+  | 'dashboard'
+  | 'timetables'
+  | 'create-timetable'
+  | 'exams'
+  | 'create-exam'
+  | 'bookings'
+  | 'reports'
+  | 'admin'
 
 interface AuthUser {
   id: number
@@ -52,11 +61,8 @@ function LoginView({ onAuthed }: { onAuthed: (u: AuthUser, token: string) => voi
     try {
       const r = await api<LoginResponse>('/api/login', 'POST', { username, password })
       onAuthed(r.user, r.token)
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setError((err as Error).message) }
+    finally { setLoading(false) }
   }
 
   return (
@@ -78,7 +84,7 @@ function LoginView({ onAuthed }: { onAuthed: (u: AuthUser, token: string) => voi
           </div>
           {error && <div className="alert alert-danger py-2 mb-0" role="alert">{error}</div>}
           <button className="aust-btn w-100" disabled={loading}>{loading ? 'جارٍ الدخول…' : 'دخول'}</button>
-          <p className="small text-muted text-center mb-0">الدور يُحدد من الحساب — مدير النظام / قسم أكاديمي / حرس جامعي / دفعة</p>
+          <p className="small text-muted text-center mb-0">الدور يُحدد من الحساب — مدير / قسم / حرس / دفعة</p>
         </form>
       </section>
     </main>
@@ -96,15 +102,18 @@ function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'dept', 'guard', 'batch'] },
     { key: 'timetables', label: 'الجداول', roles: ['admin', 'dept', 'batch'] },
     { key: 'create-timetable', label: 'إعداد الجدول', roles: ['admin', 'dept'] },
+    { key: 'exams', label: 'الامتحانات', roles: ['admin', 'dept', 'batch'] },
+    { key: 'create-exam', label: 'إعداد امتحان', roles: ['admin', 'dept'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'dept', 'guard'] },
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
+    { key: 'admin', label: 'البيانات الإدارية', roles: ['admin'] },
   ]
 
   const visible = items.filter((it) => it.roles.includes(user.role))
 
   return (
     <div className="d-flex min-vh-100" style={{background: 'var(--aust-bg)'}}>
-      <aside className="app-sidebar d-flex flex-column" style={{width: 240}}>
+      <aside className="app-sidebar d-flex flex-column" style={{width: 248}}>
         <div className="app-logo d-flex align-items-center gap-2 p-3">
           <img src="/logo-aust.jpg" alt="AUST" width="44" height="44" className="rounded" />
           <div>
@@ -204,10 +213,12 @@ function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>
         <button className="aust-btn" onClick={onNew}>+ إعداد الجدول</button>
       </div>
       <div className="aust-panel p-3 mb-3 d-flex gap-2">
-        <label className="form-label m-0 align-self-center">الدفعة:</label>
+        <label className="form-label m-0 align-self-center" htmlFor="grp">الدفعة:</label>
         <select id="grp" className="form-select" style={{maxWidth: 200}} value={groupId} onChange={(e) => setGroupId(e.target.value)}>
           <option value="1">الدفعة 1</option>
           <option value="2">الدفعة 2</option>
+          <option value="3">الدفعة 3</option>
+          <option value="4">الدفعة 4</option>
         </select>
       </div>
       {err && <div className="alert alert-danger">{err}</div>}
@@ -230,13 +241,12 @@ function CreateTimetableView({ call, onDone }: { call: ReturnType<typeof useAuth
   const [busy, setBusy] = useState(false)
   const [verdict, setVerdict] = useState<{conflict: boolean; violations: {code: string; message_ar: string; severity: string}[]} | null>(null)
 
-  async function run(e: React.FormEvent) {
+  async function check(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg(null); setVerdict(null)
     try {
-      const r = await call<{ok: boolean; timetable?: unknown; verdict?: typeof verdict}>('/api/timetables/check', 'POST', form)
+      const r = await call<{ok: boolean; verdict?: typeof verdict}>('/api/timetables/check', 'POST', form)
       setVerdict(r.verdict ?? { conflict: !r.ok, violations: [] })
-      if (r.verdict?.conflict) setMsg('تعارض — لم يتم الحفظ')
-      else setMsg('لا يوجد تعارض ✓ — حفظ الجدول')
+      setMsg(r.verdict?.conflict ? 'تعارض — لم يتم الحفظ' : 'لا يوجد تعارض ✓ — متاح الحفظ')
     } catch (err) { setMsg((err as Error).message) }
     finally { setBusy(false) }
   }
@@ -245,8 +255,7 @@ function CreateTimetableView({ call, onDone }: { call: ReturnType<typeof useAuth
     setBusy(true); setMsg(null)
     try {
       const r = await call<{ok: boolean; message_ar?: string}>('/api/timetables', 'POST', form)
-      setMsg(r.ok ? 'تم الحفظ ✓' : (r.message_ar ?? 'تعارض'))
-      setTimeout(onDone, 800)
+      if (r.ok) { setMsg('تم الحفظ ✓'); setTimeout(onDone, 800) } else setMsg(r.message_ar ?? 'تعارض')
     } catch (err) { setMsg((err as Error).message) }
     finally { setBusy(false) }
   }
@@ -254,14 +263,14 @@ function CreateTimetableView({ call, onDone }: { call: ReturnType<typeof useAuth
   return (
     <>
       <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>إعداد الجدول</h1>
-      <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={run}>
+      <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={check}>
         <div><label className="form-label" htmlFor="c">المقرر</label><input id="c" type="number" className="form-control" value={form.course_id} onChange={(e) => setForm({ ...form, course_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="f">عضو هيئة التدريس</label><input id="f" type="number" className="form-control" value={form.faculty_id} onChange={(e) => setForm({ ...form, faculty_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="g">الدفعة/الشعبة</label><input id="g" type="number" className="form-control" value={form.group_id} onChange={(e) => setForm({ ...form, group_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="h">القاعة</label><input id="h" type="number" className="form-control" value={form.hall_id} onChange={(e) => setForm({ ...form, hall_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="d">اليوم</label><select id="d" className="form-select" value={form.day_of_week} onChange={(e) => setForm({ ...form, day_of_week: e.target.value })}><option>السبت</option><option>الأحد</option><option>الاثنين</option><option>الثلاثاء</option><option>الأربعاء</option><option>الخميس</option></select></div>
-        <div><label className="form-label" htmlFor="s">من</label><input id="s" type="time" step="1" className="form-control" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value + ':00' })} /></div>
-        <div><label className="form-label" htmlFor="e2">إلى</label><input id="e2" type="time" step="1" className="form-control" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value + ':00' })} /></div>
+        <div><label className="form-label" htmlFor="s">من</label><input id="s" type="time" step="1" className="form-control" value={form.start_time.slice(0, 5)} onChange={(e) => setForm({ ...form, start_time: e.target.value + ':00' })} /></div>
+        <div><label className="form-label" htmlFor="e2">إلى</label><input id="e2" type="time" step="1" className="form-control" value={form.end_time.slice(0, 5)} onChange={(e) => setForm({ ...form, end_time: e.target.value + ':00' })} /></div>
         <div className="d-flex align-items-end gap-2"><button type="submit" className="aust-btn-outline" disabled={busy}>تحقق من التعارض</button>
           <button type="button" className="aust-btn" onClick={save} disabled={busy}>حفظ في الجدول</button></div>
       </form>
@@ -269,13 +278,91 @@ function CreateTimetableView({ call, onDone }: { call: ReturnType<typeof useAuth
         <div className="aust-panel p-3 mt-3">
           <h2 className="h5" style={{color: '#782B19'}}>نتيجة التحقق</h2>
           {verdict.violations.length === 0 && <div className="text-success fw-bold">لا تعارض ✓</div>}
-          <ul className="mb-0">
-            {verdict.violations.map((v, i) => (
-              <li key={i} className={v.severity === 'hard' ? 'text-danger' : 'text-warning'}><strong>{v.message_ar}</strong> ({v.code})</li>
-            ))}
-          </ul>
+          <ul className="mb-0">{verdict.violations.map((v, i) => (<li key={i} className={v.severity === 'hard' ? 'text-danger' : 'text-warning'}><strong>{v.message_ar}</strong> <code>{v.code}</code></li>))}</ul>
         </div>
       )}
+      {msg && <div className="alert alert-info mt-3">{msg}</div>}
+    </>
+  )
+}
+
+function ExamsView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
+  const [groupId, setGroupId] = useState('1')
+  const [rows, setRows] = useState<{id:number; course_id:number; group_id:number; hall_id:number; exam_date:string; start_time:string; end_time:string; exam_type:string}[]>([])
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    call<{id:number; course_id:number; group_id:number; hall_id:number; exam_date:string; start_time:string; end_time:string; exam_type:string}[]>(`/api/exams?by=group&id=${groupId}`)
+      .then(setRows)
+      .catch((e) => setErr((e as Error).message))
+  }, [groupId, call])
+
+  return (
+    <>
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h1 className="h3 fw-bold mb-0" style={{color: '#0A1D3B'}}>الامتحانات</h1>
+        <button className="aust-btn" onClick={onNew}>+ إعداد امتحان</button>
+      </div>
+      <div className="aust-panel p-3 mb-3 d-flex gap-2">
+        <label className="form-label m-0 align-self-center" htmlFor="ge">الدفعة:</label>
+        <select id="ge" className="form-select" style={{maxWidth: 200}} value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+          <option value="1">الدفعة 1</option>
+          <option value="2">الدفعة 2</option>
+          <option value="3">الدفعة 3</option>
+          <option value="4">الدفعة 4</option>
+        </select>
+      </div>
+      {err && <div className="alert alert-danger">{err}</div>}
+      <table className="table table-sm aust-panel">
+        <thead className="table-light"><tr><th>الشعبة</th><th>المقرر</th><th>التاريخ</th><th>من</th><th>إلى</th><th>القاعة</th><th>النوع</th></tr></thead>
+        <tbody>
+          {rows.length === 0 && <tr><td colSpan={7} className="text-muted">لا توجد امتحانات لهذه الشعبة</td></tr>}
+          {rows.map((r) => (<tr key={r.id}><td>#{r.group_id}</td><td>#{r.course_id}</td><td>{r.exam_date}</td><td>{r.start_time}</td><td>{r.end_time}</td><td>#{r.hall_id}</td><td>{r.exam_type}</td></tr>))}
+        </tbody>
+      </table>
+    </>
+  )
+}
+
+function CreateExamView({ call, onDone }: { call: ReturnType<typeof useAuthedApi>, onDone: () => void }) {
+  const [form, setForm] = useState({ course_id: 1, group_id: 1, hall_id: 1, exam_date: '2026-11-25', start_time: '09:00:00', end_time: '11:00:00', exam_type: 'فاينل', academic_term: '2026/1' })
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [verdict, setVerdict] = useState<{conflict: boolean; violations: {code: string; message_ar: string; severity: string}[]} | null>(null)
+
+  async function check(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setMsg(null); setVerdict(null)
+    try {
+      const r = await call<{ok: boolean; verdict?: typeof verdict}>('/api/exams/check', 'POST', form)
+      setVerdict(r.verdict ?? { conflict: !r.ok, violations: [] })
+      setMsg(r.verdict?.conflict ? 'تعارض — لم يتم الحفظ' : 'لا يوجد تعارض ✓ — متاح الحفظ')
+    } catch (err) { setMsg((err as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  async function save() {
+    setBusy(true); setMsg(null)
+    try {
+      const r = await call<{ok: boolean; message_ar?: string}>('/api/exams', 'POST', form)
+      if (r.ok) { setMsg('تم الحفظ ✓'); setTimeout(onDone, 800) } else setMsg(r.message_ar ?? 'تعارض')
+    } catch (err) { setMsg((err as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <>
+      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>إعداد الامتحان</h1>
+      <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={check}>
+        <div><label className="form-label" htmlFor="ce">المقرر</label><input id="ce" type="number" className="form-control" value={form.course_id} onChange={(e) => setForm({ ...form, course_id: Number(e.target.value) })} /></div>
+        <div><label className="form-label" htmlFor="ge2">الدفعة/الشعبة</label><input id="ge2" type="number" className="form-control" value={form.group_id} onChange={(e) => setForm({ ...form, group_id: Number(e.target.value) })} /></div>
+        <div><label className="form-label" htmlFor="he">القاعة</label><input id="he" type="number" className="form-control" value={form.hall_id} onChange={(e) => setForm({ ...form, hall_id: Number(e.target.value) })} /></div>
+        <div><label className="form-label" htmlFor="de">التاريخ</label><input id="de" type="date" className="form-control" value={form.exam_date} onChange={(e) => setForm({ ...form, exam_date: e.target.value })} /></div>
+        <div><label className="form-label" htmlFor="se">من</label><input id="se" type="time" step="1" className="form-control" value={form.start_time.slice(0, 5)} onChange={(e) => setForm({ ...form, start_time: e.target.value + ':00' })} /></div>
+        <div><label className="form-label" htmlFor="ee">إلى</label><input id="ee" type="time" step="1" className="form-control" value={form.end_time.slice(0, 5)} onChange={(e) => setForm({ ...form, end_time: e.target.value + ':00' })} /></div>
+        <div><label className="form-label" htmlFor="te">نوع الامتحان</label><select id="te" className="form-select" value={form.exam_type} onChange={(e) => setForm({ ...form, exam_type: e.target.value })}><option>اختبار قصير</option><option>ميدترم</option><option>فاينل</option></select></div>
+        <div className="d-flex align-items-end gap-2"><button type="submit" className="aust-btn-outline" disabled={busy}>تحقق</button><button type="button" className="aust-btn" onClick={save} disabled={busy}>حفظ</button></div>
+      </form>
+      {verdict && (<div className="aust-panel p-3 mt-3"><h2 className="h5" style={{color: '#782B19'}}>نتيجة التحقق</h2>{verdict.violations.length === 0 && <div className="text-success fw-bold">لا تعارض ✓</div>}<ul className="mb-0">{verdict.violations.map((v, i) => (<li key={i} className={v.severity === 'hard' ? 'text-danger' : 'text-warning'}><strong>{v.message_ar}</strong> <code>{v.code}</code></li>))}</ul></div>)}
       {msg && <div className="alert alert-info mt-3">{msg}</div>}
     </>
   )
@@ -321,6 +408,52 @@ function ReportsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   )
 }
 
+function MasterDataView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+  type Master = {
+    faculties: {id:number; name:string; code:string; description?:string}[]
+    departments: {id:number; faculty_id:number; name:string; code:string}[]
+    programs: {id:number; name:string; description?:string}[]
+    periods: {id:number; program_id:number; day_of_week:string; start_time:string; end_time:string; label:string; sort_order:number}[]
+    batches: {id:number; name:string; student_count:number; department_id:number; program_id:number; department?:{name:string}; program?:{name:string}}[]
+    groups: {id:number; batch_id:number; track:string; student_count:number; batch?:{name:string}}[]
+    halls: {id:number; name:string; capacity:number; status:string; hall_type:string; equipment?:string}[]
+    courses: {id:number; code:string; name:string; credit_hours:number; required_equipment?:string}[]
+    faculty_members: {id:number; full_name:string; department_id:number; email:string; phone?:string; department?:{name:string}}[]
+    course_assignments: {id:number; course_id:number; faculty_id:number; course?:{code:string; name:string}; faculty?:{full_name:string}}[]
+  }
+  const [data, setData] = useState<Master | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => { call<Master>('/api/admin/master-data').then(setData).catch((e) => setErr((e as Error).message)) }, [call])
+  if (err) return <div className="alert alert-danger">{err}</div>
+  if (!data) return <div>جارٍ التحميل…</div>
+
+  return (
+    <>
+      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>البيانات الرئيسية (Admin)</h1>
+      {[
+        { title: 'الكليات', rows: data.faculties, render: (f: typeof data.faculties[number]) => `${f.id} · ${f.name} (${f.code ?? '—'})` },
+        { title: 'الأقسام', rows: data.departments, render: (d: typeof data.departments[number]) => `${d.id} · ${d.name}` },
+        { title: 'البرامج', rows: data.programs, render: (p: typeof data.programs[number]) => `${p.id} · ${p.name}` },
+        { title: 'الفترات', rows: data.periods, render: (p: typeof data.periods[number]) => `${p.id} · ${p.label} — ${p.day_of_week} ${p.start_time}–${p.end_time}` },
+        { title: 'الدفعات', rows: data.batches, render: (b: typeof data.batches[number]) => `${b.id} · ${b.name} — ${b.student_count} طالب · القسم #${b.department_id}` },
+        { title: 'الشعب (دبلوم/بكلاريوس)', rows: data.groups, render: (g: typeof data.groups[number]) => `${g.id} · دفعة #${g.batch_id} · ${g.track} · ${g.student_count} طالب` },
+        { title: 'القاعات', rows: data.halls, render: (h: typeof data.halls[number]) => `${h.name} · ${h.capacity} مقعد · ${h.status} · ${h.hall_type}` },
+        { title: 'المقررات', rows: data.courses, render: (c: typeof data.courses[number]) => `${c.code} · ${c.name} · ${c.credit_hours} ساعات` },
+        { title: 'أعضاء هيئة التدريس', rows: data.faculty_members, render: (f: typeof data.faculty_members[number]) => `${f.full_name} · ${f.email}` },
+        { title: 'إسناد المقررات للأساتذة', rows: data.course_assignments, render: (a: typeof data.course_assignments[number]) => `${a.course?.code ?? '#' + a.course_id} ↔ ${a.faculty?.full_name ?? '#' + a.faculty_id}` },
+      ].map((section) => (
+        <section key={section.title} className="aust-panel p-3 mb-3">
+          <h2 className="h5" style={{color: '#782B19'}}>{section.title}</h2>
+          <ul className="mb-0 small">
+            {section.rows.length === 0 && <li className="text-muted">—</li>}
+            {section.rows.map((it, i) => <li key={i}>{section.render(it as never)}</li>)}
+          </ul>
+        </section>
+      ))}
+    </>
+  )
+}
+
 export default function App() {
   const [view, setView] = useState<ViewName>('login')
   const [auth, setAuth] = useState<{ user: AuthUser; token: string } | null>(null)
@@ -331,12 +464,15 @@ export default function App() {
   }
 
   return (
-    <Shell user={auth.user} active={view} onNav={setView} onLogout={() => setAuth(null)}>
+    <Shell user={auth.user} active={view} onNav={setView} onLogout={() => { setAuth(null); setView('login') }}>
       {view === 'dashboard' && <DashboardView call={call} />}
       {view === 'timetables' && <TimetablesView call={call} onNew={() => setView('create-timetable')} />}
       {view === 'create-timetable' && <CreateTimetableView call={call} onDone={() => setView('timetables')} />}
+      {view === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
+      {view === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
       {view === 'bookings' && <BookingsView call={call} />}
       {view === 'reports' && <ReportsView call={call} />}
+      {view === 'admin' && <MasterDataView call={call} />}
     </Shell>
   )
 }
