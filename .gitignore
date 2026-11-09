@@ -36,3 +36,8 @@ auth.json
 .DS_Store
 Thumbs.db
 !.env.example
+
+# Local-only (supervisor-marked sensitive: thesis docs + analysis docs)
+docs/
+all/*.pdf
+all/*.docx
