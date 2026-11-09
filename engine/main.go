@@ -1,0 +1,192 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+// ── syst-engine: سروال Go صغير لمنطق التعارض
+// يستقبل الحمولة من Laravel (كل بيانات القاعة/المشعب/المدرس/المدى/الموجود)
+// ويرجع تقرير الأسباب (severity: hard|soft) — Stateless تمامًا.
+
+type Violation struct {
+	Code         string `json:"code"`
+	MessageArabic string `json:"message_ar"`
+	Severity     string `json:"severity"` // hard|soft
+}
+
+type CheckResult struct {
+	Ok         bool       `json:"ok"`
+	Conflict   bool       `json:"conflict"`
+	Type       string     `json:"type"`
+	Violations []Violation `json:"violations"`
+}
+
+type ExistingSlot struct {
+	ID         int    `json:"id"`
+	Kind       string `json:"kind"` // lecture|exam|booking
+	DayOfWeek  string `json:"day_of_week"`
+	ExamDate   string `json:"exam_date"`
+	StartTime  string `json:"start_time"`
+	EndTime    string `json:"end_time"`
+	HallID     int    `json:"hall_id"`
+	FacultyID  int    `json:"faculty_id"`
+	GroupID    int    `json:"group_id"`
+	CourseID   int    `json:"course_id"`
+}
+
+type Payload struct {
+	Type              string         `json:"type"` // lecture|exam|booking
+	DayOfWeek         string         `json:"day_of_week"`
+	ExamDate          string         `json:"exam_date"`
+	StartTime         string         `json:"start_time"`
+	EndTime           string         `json:"end_time"`
+	HallID            int            `json:"hall_id"`
+	FacultyID         int            `json:"faculty_id"`
+	GroupID           int            `json:"group_id"`
+	CourseID          int            `json:"course_id"`
+	HallStatus        string         `json:"hall_status"`
+	HallCapacity      *int           `json:"hall_capacity"`
+	GroupStudentCount *int           `json:"group_student_count"`
+	Eligible          *bool          `json:"eligible"`
+	Existing          []ExistingSlot `json:"existing"`
+}
+
+func overlaps(aStart, aEnd, bStart, bEnd string) bool {
+	return aStart < bEnd && bStart < aEnd
+}
+
+func samePeriod(a Payload, b ExistingSlot) bool {
+	// للتواريخ الفعلية (الامتحانات) نقارن ExamDate، وإلا نقارن اليوم الأسبوعي.
+	if a.ExamDate != "" && b.ExamDate != "" {
+		return a.ExamDate == b.ExamDate && overlaps(a.StartTime, a.EndTime, b.StartTime, b.EndTime)
+	}
+	return a.DayOfWeek != "" && a.DayOfWeek == b.DayOfWeek && overlaps(a.StartTime, a.EndTime, b.StartTime, b.EndTime)
+}
+
+func check(p Payload) CheckResult {
+	violations := []Violation{}
+	add := func(code, msg, severity string) {
+		violations = append(violations, Violation{Code: code, MessageArabic: msg, Severity: severity})
+	}
+
+	// حالة القاعة (متاحة/صيانة/مغلقة)
+	if p.HallStatus != "" && p.HallStatus != "متاحة" {
+		add("HALL_UNAVAILABLE", fmt.Sprintf("القاعة غير متاحة (الحالة: %s)", p.HallStatus), "hard")
+	}
+
+	// أهلية المدرّس للمادة (R13) — إن مررها الـ Laravel
+	if p.Eligible != nil && !*p.Eligible {
+		add("FACULTY_NOT_ELIGIBLE", "المدرّس غير مُسند لهذا المقرر (R13)", "hard")
+	}
+
+	// سعة القاعة ضد عدد الطلاب للشعبة
+	if p.HallCapacity != nil && p.GroupStudentCount != nil && *p.GroupStudentCount > *p.HallCapacity {
+		add("HALL_CAPACITY", fmt.Sprintf("السعة غير كافية: القاعة %d < الطلاب %d", *p.HallCapacity, *p.GroupStudentCount), "hard")
+	}
+
+	// تعارضات مع الموجود (محاضرة/امتحان/حجز)
+	for _, e := range p.Existing {
+		if !samePeriod(p, e) {
+			continue
+		}
+		// قاعة مشغولة في نفس الفترة (بأي نوع)
+		if e.HallID == p.HallID && e.HallID > 0 {
+			switch e.Kind {
+			case "lecture":
+				add("HALL_BUSY", "القاعة محجوزة لمحاضرة في هذا الوقت", "hard")
+			case "exam":
+				add("HALL_BUSY_EXAM", "القاعة محجوزة لامتحان في هذا الوقت", "hard")
+			case "booking":
+				add("HALL_BUSY_BOOKING", "القاعة محجوزة لنشاط في هذا الوقت", "hard")
+			}
+		}
+		// نفس المدرس في شعبتين متزامنتين
+		if e.FacultyID == p.FacultyID && e.FacultyID > 0 && e.Kind == "lecture" {
+			add("FACULTY_OVERLAP", "عضو هيئة التدريس في محاضرتين في هذا الوقت", "hard")
+		}
+		// نفس الشعبة
+		if e.GroupID == p.GroupID && e.GroupID > 0 {
+			switch e.Kind {
+			case "lecture":
+				add("GROUP_OVERLAP", "الشعبة في محاضرة أخرى في هذا الوقت", "hard")
+			case "exam":
+				add("GROUP_EXAM_CONFLICT", "الشعبة لديها امتحان في نفس الوقت", "hard")
+			}
+		}
+	}
+
+	conflict := false
+	for _, v := range violations {
+		if v.Severity == "hard" {
+			conflict = true
+			break
+		}
+	}
+	return CheckResult{Ok: !conflict, Conflict: conflict, Type: p.Type, Violations: violations}
+}
+
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(data)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func main() {
+	port := os.Getenv("SYST_ENGINE_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("syst-engine listening on :%s", port)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"service": "syst-engine",
+			"status":  "ok",
+			"version": "0.1.0",
+		})
+	})
+
+	mux.HandleFunc("/check", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST only"})
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 4<<20))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			return
+		}
+		var p Payload
+		if err := json.Unmarshal(body, &p); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+			return
+		}
+		if p.Type == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing type"})
+			return
+		}
+		writeJSON(w, http.StatusOK, check(p))
+	})
+
+	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+}

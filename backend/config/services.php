@@ -14,6 +14,9 @@ return [
     |
     */
 
+    'syst_engine' => [
+        'url' => env('SYST_ENGINE_URL', 'http://127.0.0.1:8080'),
+    ],
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
