@@ -110,6 +110,7 @@
 - **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
 - **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل).
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
+- **الفصول (محلي فقط، `all/` و`docs/` gitignored)** — تم تحديثها كاملًا: الفصل الثاني (Go/Python/Java: دورها الفعلي في التنفيذ) · الفصل الثالث2 (أقسام 3-12..3-16: الكينونات التسع الجديدة + 10 جداول قاموس بنفس النمط + العلاقات الكاملة + dept-scoping + ما تحقق على الأرض مع الأدلة: CP-SAT، bulk adopt، OPcache) — مُصدَّر إلى PDF عبر Word COM.
 
 ## القاعدة التشغيلية
 
