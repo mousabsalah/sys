@@ -6,6 +6,7 @@ type ViewName =
   | 'dashboard'
   | 'timetables'
   | 'create-timetable'
+  | 'propose'
   | 'exams'
   | 'create-exam'
   | 'bookings'
@@ -104,6 +105,7 @@ function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'dept', 'guard', 'batch'] },
     { key: 'timetables', label: 'الجداول', roles: ['admin', 'dept', 'batch'] },
     { key: 'create-timetable', label: 'إعداد الجدول', roles: ['admin', 'dept'] },
+    { key: 'propose', label: 'اقتراح تلقائي', roles: ['admin', 'dept'] },
     { key: 'exams', label: 'الامتحانات', roles: ['admin', 'dept', 'batch'] },
     { key: 'create-exam', label: 'إعداد امتحان', roles: ['admin', 'dept'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'dept', 'guard'] },
@@ -200,9 +202,19 @@ function DashboardView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
 }
 
 function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
-  const [groupId, setGroupId] = useState('1')
+  const [groupId, setGroupId] = useState('5')
+  const [groups, setGroups] = useState<{ id: number; batch: string; track: string; student_count: number }[]>([])
   const [rows, setRows] = useState<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>([])
   const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    call<{ groups: { id: number; batch: string; track: string; student_count: number }[]; courses: unknown[] }>('/api/admin/propose-timetable/context')
+      .then((d) => {
+        setGroups(d.groups)
+        setGroupId((cur) => (d.groups.some((g) => String(g.id) === cur) ? cur : String(d.groups[0]?.id ?? cur)))
+      })
+      .catch(() => { /* batch role: القائمة تبقى placeholder */ })
+  }, [call])
 
   useEffect(() => {
     call<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>(`/api/timetables?by=group&id=${groupId}`)
@@ -217,12 +229,11 @@ function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>
         <button className="aust-btn" onClick={onNew}>+ إعداد الجدول</button>
       </div>
       <div className="aust-panel p-3 mb-3 d-flex gap-2">
-        <label className="form-label m-0 align-self-center" htmlFor="grp">الدفعة:</label>
-        <select id="grp" className="form-select" style={{maxWidth: 200}} value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-          <option value="1">الدفعة 1</option>
-          <option value="2">الدفعة 2</option>
-          <option value="3">الدفعة 3</option>
-          <option value="4">الدفعة 4</option>
+        <label className="form-label m-0 align-self-center" htmlFor="grp">الشعبة:</label>
+        <select id="grp" className="form-select" style={{maxWidth: 320}} value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+          {groups.length > 0
+            ? groups.map((g) => <option key={g.id} value={g.id}>{g.batch} — {g.track} ({g.student_count} طالب)</option>)
+            : <option value={groupId}>الشعبة #{groupId}</option>}
         </select>
       </div>
       {err && <div className="alert alert-danger">{err}</div>}
@@ -368,6 +379,162 @@ function CreateExamView({ call, onDone }: { call: ReturnType<typeof useAuthedApi
       </form>
       {verdict && (<div className="aust-panel p-3 mt-3"><h2 className="h5" style={{color: '#782B19'}}>نتيجة التحقق</h2>{verdict.violations.length === 0 && <div className="text-success fw-bold">لا تعارض ✓</div>}<ul className="mb-0">{verdict.violations.map((v, i) => (<li key={i} className={v.severity === 'hard' ? 'text-danger' : 'text-warning'}><strong>{v.message_ar}</strong> <code>{v.code}</code></li>))}</ul></div>)}
       {msg && <div className="alert alert-info mt-3">{msg}</div>}
+    </>
+  )
+}
+
+type ProposalAssignment = {
+  course_id: number; code: string; name: string
+  period_id: number; day: string; start_time: string; end_time: string; label: string
+  hall_id: number; hall_name: string; faculty_id: number; faculty_name: string
+  academic_term: string
+}
+type ProposeUnplaced = { course_id: number; code: string; name: string; sessions: number; reason: string }
+type ProposeResult = {
+  ok: boolean; message_ar?: string
+  status?: string; placed?: number
+  assignments?: ProposalAssignment[]; unplaced?: ProposeUnplaced[]
+}
+type ProposeContext = {
+  groups: { id: number; batch: string; track: string; student_count: number; program_id: number }[]
+  courses: { id: number; code: string; name: string; credit_hours: number }[]
+}
+
+function ProposeView({ call, onAdopted }: { call: ReturnType<typeof useAuthedApi>; onAdopted: () => void }) {
+  const [ctx, setCtx] = useState<ProposeContext | null>(null)
+  const [ctxErr, setCtxErr] = useState<string | null>(null)
+  const [groupId, setGroupId] = useState<number | null>(null)
+  const [courseIds, setCourseIds] = useState<number[]>([])
+  const [term, setTerm] = useState('2026/1')
+  const [result, setResult] = useState<ProposeResult | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [adopting, setAdopting] = useState(false)
+  const [adoptResults, setAdoptResults] = useState<Record<number, 'ok' | 'fail' | 'conflict'>>({})
+
+  useEffect(() => {
+    call<ProposeContext>('/api/admin/propose-timetable/context')
+      .then((d) => { setCtx(d); setCourseIds(d.courses.map((c) => c.id)) })
+      .catch((e) => setCtxErr((e as Error).message))
+  }, [call])
+
+  function toggleCourse(id: number) {
+    setCourseIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  async function propose(e: React.FormEvent) {
+    e.preventDefault()
+    if (!groupId || courseIds.length === 0) return
+    setBusy(true); setResult(null); setAdoptResults({})
+    try {
+      const r = await call<ProposeResult>('/api/admin/propose-timetable', 'POST', { group_id: groupId, course_ids: courseIds, academic_term: term })
+      setResult(r)
+    } catch (er) { setResult({ ok: false, message_ar: (er as Error).message }) }
+    finally { setBusy(false) }
+  }
+
+  async function adoptAll() {
+    if (!result?.assignments?.length) return
+    setAdopting(true)
+    const outcomes: Record<number, 'ok' | 'fail' | 'conflict'> = {}
+    for (let i = 0; i < result.assignments.length; i += 1) {
+      const a = result.assignments[i]
+      try {
+        const r = await call<{ ok: boolean }>('/api/timetables', 'POST', {
+          course_id: a.course_id, faculty_id: a.faculty_id, group_id: groupId,
+          hall_id: a.hall_id, day_of_week: a.day, start_time: a.start_time, end_time: a.end_time,
+          academic_term: a.academic_term,
+        })
+        outcomes[i] = r.ok ? 'ok' : 'conflict'
+      } catch { outcomes[i] = 'fail' }
+      setAdoptResults({ ...outcomes })
+    }
+    setAdopting(false)
+  }
+
+  if (ctxErr) return <div className="alert alert-danger">{ctxErr}</div>
+  if (!ctx) return <div>جارٍ التحميل…</div>
+
+  const totalSessions = ctx.courses.filter((c) => courseIds.includes(c.id)).reduce((sum, c) => sum + Math.min(4, Math.max(1, c.credit_hours)), 0)
+  const adoptedCount = Object.values(adoptResults).filter((v) => v === 'ok').length
+
+  return (
+    <>
+      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>اقتراح الجدول التلقائي (CP-SAT)</h1>
+      <p className="small text-muted mb-3">محرك Google OR-Tools CP-SAT — مقترح للمراجعة فقط؛ أي اعتماد يمر بنفس مسار check→save المعتاد، ولا يُحفظ شيء تلقائيًا.</p>
+
+      <form className="aust-panel p-3 mb-3" onSubmit={propose}>
+        <div className="d-flex flex-wrap gap-2 align-items-end">
+          <div><label className="form-label" htmlFor="pg">الشعبة</label>
+            <select id="pg" className="form-select" value={groupId ?? ''} onChange={(e) => setGroupId(Number(e.target.value))} required>
+              <option value="" disabled>اختر الشعبة…</option>
+              {ctx.groups.map((g) => <option key={g.id} value={g.id}>{g.batch} — {g.track} ({g.student_count} طالب)</option>)}
+            </select>
+          </div>
+          <div><label className="form-label" htmlFor="pt">الفصل</label><input id="pt" className="form-control" value={term} onChange={(e) => setTerm(e.target.value)} /></div>
+          <button type="submit" className="aust-btn" disabled={busy || !groupId || courseIds.length === 0}>{busy ? 'جارٍ الحساب…' : 'اقترح الجدول'}</button>
+        </div>
+
+        <div className="mt-3">
+          <div className="d-flex justify-content-between align-items-center mb-1">
+            <span className="small fw-bold">المقررات المشمولة ({courseIds.length}) — {totalSessions} حصة/أسبوع</span>
+            <span className="d-flex gap-2">
+              <button type="button" className="aust-btn-outline btn-sm" onClick={() => setCourseIds(ctx.courses.map((c) => c.id))}>تحديد الكل</button>
+              <button type="button" className="aust-btn-outline btn-sm" onClick={() => setCourseIds([])}>إلغاء الكل</button>
+            </span>
+          </div>
+          <div className="d-flex flex-wrap gap-2" style={{ maxHeight: 220, overflowY: 'auto' }}>
+            {ctx.courses.map((c) => (
+              <label key={c.id} className="d-flex align-items-center gap-1 small" style={{ border: '1px solid #e5ded2', borderRadius: 8, padding: '2px 8px', cursor: 'pointer', background: courseIds.includes(c.id) ? '#fdf6ee' : '#fff' }}>
+                <input type="checkbox" checked={courseIds.includes(c.id)} onChange={() => toggleCourse(c.id)} />
+                <span>{c.code} — {c.name} <span className="text-muted">({Math.min(4, Math.max(1, c.credit_hours))} حصص)</span></span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </form>
+
+      {result && !result.ok && <div className="alert alert-danger">{result.message_ar ?? 'تعذر الاقتراح'}</div>}
+
+      {result?.ok && (
+        <>
+          <div className="aust-panel p-3 mb-3 d-flex flex-wrap gap-3 align-items-center">
+            <div><div className="small text-muted">حالة المحرك</div><strong style={{ color: '#782B19' }}>{result.status}</strong></div>
+            <div><div className="small text-muted">حصص موزعة</div><strong style={{ color: '#0A1D3B' }}>{result.placed}</strong></div>
+            <div><div className="small text-muted">متعذر</div><strong style={{ color: '#B26225' }}>{result.unplaced?.length ?? 0} مقرر</strong></div>
+            {adoptedCount > 0 && <div><div className="small text-muted">اعتُمد</div><strong style={{ color: '#1f7a3d' }}>{adoptedCount} / {result.assignments?.length}</strong></div>}
+            <button type="button" className="aust-btn ms-auto" onClick={adoptAll} disabled={adopting || !result.assignments?.length}>{adopting ? 'جارٍ الاعتماد…' : 'اعتماد الكل (يمر عبر check→save)'}</button>
+            <button type="button" className="aust-btn-outline" onClick={onAdopted}>عرض الجداول</button>
+          </div>
+
+          <h2 className="h6 mb-2" style={{ color: '#782B19' }}>المسودة المقترحة</h2>
+          <div className="table-responsive">
+            <table className="table table-sm aust-panel">
+              <thead className="table-light"><tr><th>اليوم</th><th>التوقيت</th><th>المقرر</th><th>القاعة</th><th>المدرس</th><th>الحالة</th></tr></thead>
+              <tbody>
+                {result.assignments?.map((a, i) => (
+                  <tr key={i}>
+                    <td>{a.day}</td>
+                    <td><span className="text-muted small">{a.label}</span> {a.start_time?.slice(0,5)}–{a.end_time?.slice(0,5)}</td>
+                    <td><strong>{a.code}</strong> — {a.name}</td>
+                    <td>{a.hall_name}</td>
+                    <td>{a.faculty_name}</td>
+                    <td>{adoptResults[i] === 'ok' ? '✓ اعتُمدت' : adoptResults[i] === 'conflict' ? '⚠ تعارض' : adoptResults[i] === 'fail' ? '✗ فشل' : 'معلقة'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!!result.unplaced?.length && (
+            <>
+              <h2 className="h6 mb-2 mt-3" style={{ color: '#B26225' }}>تعذر توزيعها (راجع السعة/الطاقم/الفترات)</h2>
+              <ul className="small">
+                {result.unplaced.map((u, i) => <li key={i}><strong>{u.code} — {u.name}</strong>: {u.sessions} حصة — {u.reason}</li>)}
+              </ul>
+            </>
+          )}
+        </>
+      )}
     </>
   )
 }
@@ -580,6 +747,7 @@ export default function App() {
       {view === 'dashboard' && <DashboardView call={call} />}
       {view === 'timetables' && <TimetablesView call={call} onNew={() => setView('create-timetable')} />}
       {view === 'create-timetable' && <CreateTimetableView call={call} onDone={() => setView('timetables')} />}
+      {view === 'propose' && <ProposeView call={call} onAdopted={() => setView('timetables')} />}
       {view === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
       {view === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
       {view === 'bookings' && <BookingsView call={call} />}

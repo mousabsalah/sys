@@ -32,4 +32,22 @@ class EngineClient
 
         return $response->json();
     }
+
+    /**
+     * محرك الاقتراح التلقائي — يمرر الحمولة المجمعة من Laravel إلى Go
+     * (Go يستدعي CP-SAT عبر solver.py). ميزانية زمنية 30 ثانية.
+     */
+    public function propose(array $payload): array
+    {
+        $url = config('services.syst_engine.url');
+        $response = Http::timeout(30)->post($url.'/propose', $payload);
+        if ($response->status() === 503) {
+            return ['ok' => false, 'error' => $response->json('error') ?? 'تعذر تشغيل محرك الاقتراح'];
+        }
+        if (! $response->successful()) {
+            throw new RuntimeException("syst-engine /propose failed at {$url}: HTTP {$response->status()} — {$response->body()}");
+        }
+
+        return $response->json();
+    }
 }

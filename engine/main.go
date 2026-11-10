@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -173,6 +176,75 @@ func check(p Payload) CheckResult {
 	return CheckResult{Ok: !conflict, Conflict: conflict, Type: p.Type, Violations: violations}
 }
 
+// ── /propose: اقتراح جدول تلقائي عبر Google OR-Tools CP-SAT ─────────
+// Go يستدعي solver.py (Python) كعملية فرعية؛ فشل Python لا يُسقط النظام،
+// وإنما يُعيد 503 مع رسالة عربية واضحة.
+type ProposeResult struct {
+	Ok         bool            `json:"ok"`
+	Error      string          `json:"error,omitempty"`
+	Status     string          `json:"status,omitempty"`
+	Placed     int             `json:"placed,omitempty"`
+	Unplaced   json.RawMessage `json:"unplaced,omitempty"`
+	Assignments json.RawMessage `json:"assignments,omitempty"`
+}
+
+func handlePropose(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST only"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 4<<20))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+	var probe struct {
+		Group struct {
+			ID int `json:"id"`
+		} `json:"group"`
+	}
+	if err := json.Unmarshal(body, &probe); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+		return
+	}
+	if probe.Group.ID <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing group.id"})
+		return
+	}
+
+	solverPath := os.Getenv("SYST_SOLVER_PATH")
+	if solverPath == "" {
+		solverPath = "./solver.py"
+	}
+	pythonBin := os.Getenv("SYST_PYTHON")
+	if pythonBin == "" {
+		pythonBin = "python"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, pythonBin, solverPath)
+	cmd.Stdin = bytes.NewReader(body)
+	cmd.Env = append(os.Environ(), "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1")
+	output, err := cmd.Output()
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error": "تعذر تشغيل محرك الاقتراح (CP-SAT). حاول لاحقًا أو تابع الجدولة يدويًا.",
+		})
+		return
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(output, &parsed); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "استجابة غير صالحة من المحرك"})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(output)
+}
+
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
@@ -230,6 +302,8 @@ func main() {
 		}
 		writeJSON(w, http.StatusOK, check(p))
 	})
+
+	mux.HandleFunc("/propose", handlePropose)
 
 	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
 }
