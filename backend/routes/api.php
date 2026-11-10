@@ -6,9 +6,9 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\ExamController;
-use App\Http\Controllers\ProposeController;
-use App\Http\Controllers\HallsController;
 use App\Http\Controllers\GuardController;
+use App\Http\Controllers\HallsController;
+use App\Http\Controllers\ProposeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TimetableController;
 use Illuminate\Http\Request;
@@ -52,6 +52,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/halls/available', [HallsController::class, 'available']);
     Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,dept');
     Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,dept');
+    Route::post('/timetables/bulk', [TimetableController::class, 'bulkStore'])->middleware('role:admin,dept');
     Route::post('/admin/propose-timetable', [ProposeController::class, 'store'])->middleware('role:admin,dept');
     Route::get('/admin/propose-timetable/context', [ProposeController::class, 'context'])->middleware('role:admin,dept');
 
@@ -69,6 +70,8 @@ Route::get('/reports/utilization', [ReportController::class, 'utilization']);
 // ── لوحة المدير: بيانات رئيسية للقراءة (admin فقط) ──
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/admin/master-data', [AdminController::class, 'masterData']);
+    Route::get('/admin/plans', [AdminController::class, 'plansIndex']);
+    Route::post('/admin/plans/{group}', [AdminController::class, 'plansStore']);
 });
 
 // ── syst-engine passthrough (مطوّرون) ──

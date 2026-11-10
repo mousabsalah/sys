@@ -157,7 +157,7 @@ def main():
     model.Maximize(100 * placed - 2 * max_load)
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 20.0
+    solver.parameters.max_time_in_seconds = float(data.get("timeout_seconds") or 20.0)
     solver.parameters.num_workers = 8
     solver.parameters.log_search_progress = False
 

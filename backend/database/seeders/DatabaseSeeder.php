@@ -202,5 +202,8 @@ class DatabaseSeeder extends Seeder
                 'batch_id' => $batchId,
             ]);
         }
+
+        // ── الخطة الدراسية لكل شعبة (sample) ──
+        $this->call(GroupCoursesSeeder::class);
     }
 }
