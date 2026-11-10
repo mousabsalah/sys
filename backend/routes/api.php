@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\ExamController;
+use App\Http\Controllers\HallsController;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TimetableController;
@@ -47,6 +48,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ── الحجوزات ──
     Route::get('/bookings', [BookingController::class, 'index']);
+    Route::get('/halls/available', [HallsController::class, 'available']);
     Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,dept');
     Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,dept');
 

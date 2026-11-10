@@ -9,6 +9,8 @@ type ViewName =
   | 'exams'
   | 'create-exam'
   | 'bookings'
+  | 'create-booking'
+  | 'halls-available'
   | 'reports'
   | 'admin'
 
@@ -105,6 +107,8 @@ function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'exams', label: 'الامتحانات', roles: ['admin', 'dept', 'batch'] },
     { key: 'create-exam', label: 'إعداد امتحان', roles: ['admin', 'dept'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'dept', 'guard'] },
+    { key: 'halls-available', label: 'القاعات المتاحة', roles: ['admin', 'dept', 'guard'] },
+    { key: 'create-booking', label: 'حجز قاعة', roles: ['admin', 'dept'] },
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
     { key: 'admin', label: 'البيانات الإدارية', roles: ['admin'] },
   ]
@@ -384,6 +388,113 @@ function BookingsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   )
 }
 
+function HallsAvailableView({ call, onBook }: { call: ReturnType<typeof useAuthedApi>, onBook: (hallId: number) => void }) {
+  const today = '2026-11-10'
+  const [date, setDate] = useState(today)
+  const [from, setFrom] = useState('09:00:00')
+  const [to, setTo] = useState('11:00:00')
+  const [minCapacity, setMinCapacity] = useState('')
+  const [halls, setHalls] = useState<{id:number; name:string; capacity:number; hall_type:string; equipment?:string}[]>([])
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [queried, setQueried] = useState(false)
+
+  async function search(e?: React.FormEvent) {
+    e?.preventDefault()
+    setBusy(true); setErr(null)
+    try {
+      const minCap = minCapacity ? String(minCapacity) : ''
+      const data = await call<{query: Record<string, unknown>; halls: typeof halls; total: number}>(
+        `/api/halls/available?date=${date}&from=${from}&to=${to}${minCap ? `&min_capacity=${minCap}` : ''}`
+      )
+      setHalls(data.halls || [])
+      setQueried(true)
+    } catch (er) { setErr((er as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  useEffect(() => { search() }, [])
+
+  return (
+    <>
+      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>القاعات المتاحة</h1>
+      <form className="aust-panel p-3 d-flex flex-wrap gap-2 align-items-end" onSubmit={search}>
+        <div><label className="form-label" htmlFor="d">التاريخ</label><input id="d" type="date" className="form-control" value={date} onChange={(e) => setDate(e.target.value)} required /></div>
+        <div><label className="form-label" htmlFor="f">من</label><input id="f" type="time" step="1" className="form-control" value={from.slice(0, 5)} onChange={(e) => setFrom(e.target.value + ':00')} /></div>
+        <div><label className="form-label" htmlFor="t">إلى</label><input id="t" type="time" step="1" className="form-control" value={to.slice(0, 5)} onChange={(e) => setTo(e.target.value + ':00')} /></div>
+        <div><label className="form-label" htmlFor="mc">أقل سعة</label><input id="mc" type="number" className="form-control" placeholder="الكل" value={minCapacity} onChange={(e) => setMinCapacity(e.target.value)} /></div>
+        <button type="submit" className="aust-btn" disabled={busy}>{busy ? 'جارٍ البحث…' : 'بحث'}</button>
+      </form>
+
+      {err && <div className="alert alert-danger mt-3">{err}</div>}
+      {queried && halls.length === 0 && <div className="alert alert-warning mt-3">لا توجد قاعات متاحة بالمواصفات. جرّب سعة أقل أو فترة زمنية أخرى.</div>}
+
+      <div className="row g-3 mt-2">
+        {halls.map((h) => (
+          <div className="col-md-4" key={h.id}>
+            <div className="aust-panel p-3 h-100">
+              <div className="d-flex justify-content-between align-items-start">
+                <h2 className="h5 mb-1" style={{color: '#0A1D3B'}}>{h.name}</h2>
+                <span className="badge" style={{background: '#D4822D', color: '#fff'}}>{h.hall_type}</span>
+              </div>
+              <p className="mb-1 small text-muted">سعتها: <strong>{h.capacity}</strong> مقعدًا</p>
+              <p className="mb-2 small">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>
+              <button className="aust-btn-outline w-100" onClick={() => onBook(h.id)}>احجز</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function CreateBookingView({ call, onDone, hallId }: { call: ReturnType<typeof useAuthedApi>, onDone: () => void, hallId: number | null }) {
+  const [date, setDate] = useState('2026-11-10')
+  const [from, setFrom] = useState('13:00:00')
+  const [to, setTo] = useState('15:00:00')
+  const [activityName, setActivityName] = useState('')
+  const [courseId, setCourseId] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!hallId) { setMsg('اختر قاعة من «القاعات المتاحة» أولًا'); return }
+    setBusy(true); setMsg(null)
+    try {
+      const payload: Record<string, unknown> = { hall_id: hallId, date, start_time: from, end_time: to }
+      if (activityName.trim()) payload.activity_name = activityName.trim()
+      if (courseId.trim()) payload.course_id = Number(courseId)
+      const r = await call<{ok: boolean; message_ar?: string}>('/api/bookings', 'POST', payload)
+      if (r.ok) { setSaved(true); setMsg('تم الحجز ✓'); setTimeout(onDone, 800) }
+      else { setMsg(r.message_ar ?? 'تعارض') }
+    } catch (er) { setMsg((er as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <>
+      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>حجز قاعة</h1>
+      <div className="aust-panel p-2 p-md-3 d-inline-flex align-items-center gap-2 mb-3">
+        <span className="small text-muted">القاعة المختارة:</span>
+        <strong>{hallId ? `قاعة #${hallId}` : 'لم تُحدَّد — اذهب إلى «القاعات المتاحة» لاختيارها'}</strong>
+      </div>
+
+      <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={save}>
+        <div><label className="form-label" htmlFor="d">التاريخ</label><input id="d" type="date" className="form-control" value={date} onChange={(e) => setDate(e.target.value)} required /></div>
+        <div><label className="form-label" htmlFor="f">من</label><input id="f" type="time" step="1" className="form-control" value={from.slice(0, 5)} onChange={(e) => setFrom(e.target.value + ':00')} /></div>
+        <div><label className="form-label" htmlFor="t">إلى</label><input id="t" type="time" step="1" className="form-control" value={to.slice(0, 5)} onChange={(e) => setTo(e.target.value + ':00')} /></div>
+        <div><label className="form-label" htmlFor="ac">النشاط</label><input id="ac" className="form-control" placeholder="اجتماع، ورشة، يوم مفتوح…" value={activityName} onChange={(e) => setActivityName(e.target.value)} /></div>
+        <div><label className="form-label" htmlFor="ci">أو مقرر #</label><input id="ci" type="number" className="form-control" placeholder="اختياري" value={courseId} onChange={(e) => setCourseId(e.target.value)} /></div>
+        <div className="d-flex align-items-end"><button type="submit" className="aust-btn w-100" disabled={busy || saved}>{saved ? 'تم الحجز ✓' : busy ? 'جارٍ الحجز…' : 'تأكيد الحجز'}</button></div>
+      </form>
+
+      {msg && <div className="alert alert-info mt-3">{msg}</div>}
+    </>
+  )
+}
+
 function ReportsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [data, setData] = useState<{utilization: {hall_id:number; hall:string; capacity:number; lectures:number; utilization_pct:number}[]} | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -457,6 +568,7 @@ function MasterDataView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
 export default function App() {
   const [view, setView] = useState<ViewName>('login')
   const [auth, setAuth] = useState<{ user: AuthUser; token: string } | null>(null)
+  const [bookingHallId, setBookingHallId] = useState<number | null>(null)
   const call = useAuthedApi(auth?.token ?? null)
 
   if (!auth) {
@@ -471,6 +583,8 @@ export default function App() {
       {view === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
       {view === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
       {view === 'bookings' && <BookingsView call={call} />}
+      {view === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} />}
+      {view === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
       {view === 'reports' && <ReportsView call={call} />}
       {view === 'admin' && <MasterDataView call={call} />}
     </Shell>

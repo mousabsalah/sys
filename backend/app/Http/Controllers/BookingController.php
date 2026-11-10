@@ -59,6 +59,7 @@ class BookingController extends Controller
             'start_time' => ['required', 'date_format:H:i:s'],
             'end_time' => ['required', 'date_format:H:i:s'],
             'course_id' => ['nullable', 'integer', Rule::exists('courses', 'id')],
+            'group_id' => ['nullable', 'integer', Rule::exists('groups', 'id')],
             'activity_name' => ['nullable', 'string', 'max:100'],
             'user_id' => ['sometimes', 'integer', 'exists:users,id'],
         ]);

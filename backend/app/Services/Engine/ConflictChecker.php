@@ -240,8 +240,9 @@ class ConflictChecker
     private function resolveCommon(array $input): array
     {
         $hall = Hall::findOrFail($input['hall_id']);
-        $group = Group::findOrFail($input['group_id'] ?? 0);
-        $batch = Batch::findOrFail($group->batch_id);
+        // الحجز اليدوي قد لا يرتبط بشعبة محددة — group_id=0 مع عدد طلاب=0 (لا يُطلق فحص السعة)
+        $group = ! empty($input['group_id']) ? Group::findOrFail($input['group_id']) : null;
+        $batch = $group ? Batch::findOrFail($group->batch_id) : null;
 
         // سعة القاعة مقابل عدد الطلاب للشعبة
         $facultyId = (int) ($input['faculty_id'] ?? 0);
@@ -260,10 +261,10 @@ class ConflictChecker
             'hall_status' => (string) $hall->status,
             'hall_capacity' => (int) $hall->capacity,
             'hall_type' => (string) $hall->hall_type,
-            'program_id' => (int) $batch->program_id,
-            'group_id' => (int) $input['group_id'],
-            'group_student_count' => (int) $group->student_count,
-            'batch_id' => (int) $group->batch_id,
+            'program_id' => $batch ? (int) $batch->program_id : 0,
+            'group_id' => $group ? (int) $group->id : 0,
+            'group_student_count' => $group ? (int) $group->student_count : 0,
+            'batch_id' => $batch ? (int) $batch->id : 0,
             'course_id' => $courseId,
             'course_difficulty' => 3,
             'faculty_id' => $facultyId,
