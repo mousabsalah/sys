@@ -110,9 +110,14 @@
 - **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
 - **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل).
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
+- **الفصول (محلي فقط، `all/` و`docs/` gitignored)** — الفصل الثاني (الأدوار الفعلية للغات Go/Python/Java) · الفصل الثالث2 (أقسام 3-12..3-16: الكينونات التسع الجديدة + 10 جداول قاموس بنفس النمط + العلاقات الكاملة + dept-scoping + ما تحقق على الأرض مع الأدلة: CP-SAT، bulk adopt، OPcache) — PDFs مولّدة عبر Word COM.
+- **التحسينات الأخيرة (2026-11-10)**:
+  - `vite.config.ts` → `manualChunks` بتقنية function-form — react/bootstrap out-licensed إلى ملفات كاش مستقلين؛ كود التطبيق نفسه ~44 KB فقط.
+  - `routes/web.php` → `/` يُعيد 302 إلى `http://127.0.0.1:5173` (لا صفحة Laravel العامة).
+  - الفهارس المركبة المُتحقة: `timetables(hall_id,day_of_week)` · `(faculty_id,day)` · `(group_id,day)` · `bookings(hall_id,date)` · `exam_sessions(hall_id,exam_date)` و `(group_id,exam_date)` — مغطاة من migration.
+  - `.gitignore` داخل `backend/storage/framework/*/` و `bootstrap/cache/` يستبعد الملفات المولّدة فعليًا.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.
-- **الفصول (محلي فقط، `all/` و`docs/` gitignored)** — تم تحديثها كاملًا: الفصل الثاني (Go/Python/Java: دورها الفعلي في التنفيذ) · الفصل الثالث2 (أقسام 3-12..3-16: الكينونات التسع الجديدة + 10 جداول قاموس بنفس النمط + العلاقات الكاملة + dept-scoping + ما تحقق على الأرض مع الأدلة: CP-SAT، bulk adopt، OPcache) — مُصدَّر إلى PDF عبر Word COM.
 
 ## القاعدة التشغيلية
 
