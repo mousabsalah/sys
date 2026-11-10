@@ -85,7 +85,7 @@
 - **الهرم التنظيمي جامعة ← كلية ← قسم ← دفعة ← شعبة**: جدولا `faculties` و`departments` جديدان؛ `batches.department_id` و`faculty.department_id`؛ `users.faculty_id` لـ dept؛ **المقررات والقاعات جامعية مشتركة**؛ **admin فقط** يحرر المقررات؛ **guard مركزي** (كل القاعات)؛ **dept** يرى كليته فقط (R10–R12 faculty-scoping)؛ **admin** يرى الجامعة + فلتر كلية في اللوحة.
 - **وعاء إسناد الأساتذة (`course_faculty`)**: لكل مقرر قائمة أساتذة مصادقين؛ نموذج إعداد الجدول يتساقط مفلتر حسب المقرر؛ **R13** بمعنيين: لا حفظ بسطر مدرّس خارج الوعاء، **ولا حذف لمدرّس من الوعاء طالما له سطر سارٍ في الجدول** (تعديل المحاضرات أولًا)؛ مادة مشتركة بين دبلوم وبكلاريوس بـ أستاذين = سطرا جدول على نفس `course_id`.
 - **Go هو مسار الحساب الثقيل منذ v1**: التحقق من التعارض + تجميع التقارير كلها في Go `syst-engine` (HTTP/JSON على localhost)؛ Laravel = تنسيق/CRUD/RBAC/transactions فقط؛ لا منطق تعارض في PHP أبدًا؛ `CheckerClient` interface + `GoChecker` للإنتاج و`FakeChecker` للاختبارات.
-- **الخوارزمية المعتمدة للتوليد**: **Google OR-Tools CP-SAT** (2026-11-09) للمحاضرات والامتحانات؛ graph coloring كأساس نظري للامتحانات فقط (لا تطبيق إنتاج)، ولا بدائل (GA/SA/MIP) في الإنتاج — لأسباب حجم المسألة الصغير، بنية تعارضات زمنية، وhard/soft موحد، وترخيص مفتوح ومدمج في Go.
+- **الخوارزمية المعتمدة للتوليد**: **Google OR-Tools CP-SAT** — منفّذ فعليًا في البند 7 (2026-11-10) داخل syst-engine (`/propose` ← `solver.py` عبر Python subprocess، UTF-8 مضبوط) لا في مسار الحفظ اليدوي؛ graph coloring كأساس نظري للامتحانات فقط (لا تطبيق إنتاج)، ولا بدائل (GA/SA/MIP) في الإنتاج.
 - **الهوية البصرية AUST معتمدة** (2026-11-09): `#B26225` Primary · `#9C4D20` Secondary · `#D4822D` Accent · `#782B19` Dark Brown · `#0A1D3B` Navy · `#FFFFFF` White؛ `assets/logo-aust.jpg` — شعار AUST المعتمد (نسخة)، الأصل في `img/شعار الجامة.jpg`؛ تفاصيل التطبيق على كل شاشة في `07-identity.md`.
 
 ## حالة التنفيذ (2026-11-10)
@@ -98,15 +98,16 @@
 | 4 — الحجوزات + الحارس + API | ✅ مكتملة v1 | `POST /api/bookings` + `POST /api/status/now` + `POST /api/halls/{id}/lock|unlock` + `GET /api/locks` + `GET /api/dashboard` + `GET /api/reports/utilization` — Sanctum + role middleware ✓ |
 | 5 — اللوحة + التقارير | ✅ مكتمل v1 | KPIs اللوحة مثبتة على backend؛ تقارير نسبة استخدام القاعات مع شريط تقدّم برتقالي + تصدير CSV ✓ (Real data!) |
 | 6 — واجهة React RTL | ✅ مكتملة v1 | تسجيل دخول + لوحة + قائمة جداول + إنشاء جدول مع تحقق Go + حجوزات + تقارير CSV — RTL/هوية AUST؛ `npm run build` نظيف ✓ |
-| 7 — CP-SAT اقتراح تلقائي | ⏳ (post-v1) | — |
+| 7 — CP-SAT اقتراح تلقائي | ✅ مكتملة (2026-11-10) | `engine/solver.py` (Google OR-Tools CP-SAT: x[c,p,h,f] مع hard constraints كاملة + قيد سعة القاعة + مدرسو course_faculty + تجاهل الموجود + توازن أيام الأسبوع)؛ `POST /propose` داخل syst-engine (Python subprocess، UTF-8 مضبوط)؛ Laravel ProposeController + `POST /api/admin/propose-timetable` + `GET .../context` (admin/dept)؛ شاشة «اقتراح تلقائي» (اختيار الشعبة + مقررات + المسودة) + زر «اعتماد الكل» (مسار check→save التقليدي)؛ **مُختبَر حيًا: CS2024 ← OPTIMAL ← 16/16 حصة اعتمدت ودُفعت إلى timetables** (بيانات الديمو موجودة في القاعدة) |
 | 8 — التشطيب + الفصول + الـdemo | ⏳ | — |
 
 ## جودة الكود (2026-11-10)
 - **Laravel Pint** (`vendor/bin/pint app`) — فروع تنسيق للكود الموجود.
 - **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/`.
-- **oxlint** (React/Vite) — 0 مشاكل على `frontend/`.
-- السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` (قادم لـ syst-engine).
+- **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
+- **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل).
+- السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
 
 ## القاعدة التشغيلية
 
-مصدر الحقيقة للنطاق والتصميم: `docs/03-erd.md` (النموذج) ← `docs/01-system-analysis.md` (التحليل) ← `docs/02-use-cases.md` (الحالات). أي كود يبدأ من هذه الوثائق بعد اعتماد المشرف عليها؛ `00-problem-formulation.md` لا يُعمل به إلا لو دخل زر الاقتراح (CP-SAT) بعد اكتمال v1.
+مصدر الحقيقة للنطاق والتصميم: `docs/03-erd.md` (النموذج) ← `docs/01-system-analysis.md` (التحليل) ← `docs/02-use-cases.md` (الحالات). أي كود يبدأ من هذه الوثائق بعد اعتماد المشرف عليها؛ `00-problem-formulation.md` يُحفظ للوثيقة التاريخية لـ formulation (CP-SAT دخل فعليًا مع البند 7).
