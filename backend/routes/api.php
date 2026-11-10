@@ -63,9 +63,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/locks', [GuardController::class, 'lockLog'])->middleware('role:admin');
 });
 
-// ── اللوحة والتقارير (غير مغلقة) — حاليًا للديمو؛ يمكن تقييدها لاحقًا ──
-Route::get('/dashboard', [DashboardController::class, 'index']);
-Route::get('/reports/utilization', [ReportController::class, 'utilization']);
+// ── اللوحة والتقارير (مقاسة للمناقشة؛ إثبات: لا قبل تسجيل الدخول) ──
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/reports/utilization', [ReportController::class, 'utilization']);
+});
 
 // ── لوحة المدير: بيانات رئيسية للقراءة (admin فقط) ──
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
