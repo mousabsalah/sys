@@ -602,7 +602,7 @@ function BookingsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   )
 }
 
-function HallsAvailableView({ call, onBook }: { call: ReturnType<typeof useAuthedApi>, onBook: (hallId: number) => void }) {
+function HallsAvailableView({ call, onBook, canBook = true }: { call: ReturnType<typeof useAuthedApi>, onBook: (hallId: number) => void, canBook?: boolean }) {
   const today = '2026-11-10'
   const [date, setDate] = useState(today)
   const [from, setFrom] = useState('09:00:00')
@@ -653,7 +653,9 @@ function HallsAvailableView({ call, onBook }: { call: ReturnType<typeof useAuthe
               </div>
               <p className="mb-1 small text-muted">سعتها: <strong>{h.capacity}</strong> مقعدًا</p>
               <p className="mb-2 small">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>
-              <button className="aust-btn-outline w-100" onClick={() => onBook(h.id)}>احجز</button>
+              {canBook
+                ? <button className="aust-btn-outline w-100" onClick={() => onBook(h.id)}>احجز</button>
+                : <span className="small text-muted d-block text-center py-2">الاستعلام فقط — الحجز من المدير أو القسم</span>}
             </div>
           </div>
         ))}
@@ -889,7 +891,7 @@ export default function App() {
       {view === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
       {view === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
       {view === 'bookings' && <BookingsView call={call} />}
-      {view === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} />}
+      {view === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
       {view === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
       {view === 'reports' && <ReportsView call={call} />}
       {view === 'admin' && <MasterDataView call={call} />}
