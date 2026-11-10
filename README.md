@@ -112,10 +112,13 @@
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
 - **الفصول (محلي فقط، `all/` و`docs/` gitignored)** — الفصل الثاني (الأدوار الفعلية للغات Go/Python/Java) · الفصل الثالث2 (أقسام 3-12..3-16: الكينونات التسع الجديدة + 10 جداول قاموس بنفس النمط + العلاقات الكاملة + dept-scoping + ما تحقق على الأرض مع الأدلة: CP-SAT، bulk adopt، OPcache) — PDFs مولّدة عبر Word COM.
 - **التحسينات الأخيرة (2026-11-10)**:
-  - `vite.config.ts` → `manualChunks` بتقنية function-form — react/bootstrap out-licensed إلى ملفات كاش مستقلين؛ كود التطبيق نفسه ~44 KB فقط.
-  - `routes/web.php` → `/` يُعيد 302 إلى `http://127.0.0.1:5173` (لا صفحة Laravel العامة).
-  - الفهارس المركبة المُتحقة: `timetables(hall_id,day_of_week)` · `(faculty_id,day)` · `(group_id,day)` · `bookings(hall_id,date)` · `exam_sessions(hall_id,exam_date)` و `(group_id,exam_date)` — مغطاة من migration.
-  - `.gitignore` داخل `backend/storage/framework/*/` و `bootstrap/cache/` يستبعد الملفات المولّدة فعليًا.
+  - **Code-splitting فعلي للتطبيق كله**: `App.tsx` (~950 سطر) قسّم إلى `types.ts` + `api.ts` + `views/*.tsx` (16 ملفًا مستقلًا) بتحميل **lazy** عبر `React.lazy` و `Suspense`؛ شاشة الدخول تحميل eager (تتطلبها كل الجلسات)؛ الدخول ←Suspense spinner عربي عند استبدال الشاشة.
+  - **PurgeCSS للـ Bootstrap 5 RTL** (`postcss.config.js` + safelist واسعة: aust-*, app-*, d-*, col-*, table-*, form-*, …) — **bootstrap CSS انخفض من 225 KB → 88 KB (~31 KB → ~14 KB gzip)** مع بقاء الواجهة مظهرًا متطابقًا (مُتحقق بصريًا).
+  - `vite.config.ts` → `manualChunks` function-form — react (~68 KB gzip) وكل view على حدة مكان منطيق.
+  - `routes/web.php` → `/` يُعيد 302 إلى `http://127.0.0.1:5173` بدلًا عن صفحة Laravel العامة.
+  - نطاق بيانات الديمو نهائيا نظيف: **0 bookings · 0 exams · 16 timetables (CS2024) · 129 group_courses** — كل محاضرة معتمدة من جلسة بقرار المشرف.
+  - الفهارس المركّبة مُتحقة: `timetables(hall_id,day_of_week)` · `(faculty_id,day)` · `(group_id,day)` · `bookings(hall_id,date)` · `exam_sessions(hall_id|group_id, exam_date)`.
+  - `.gitignore` داخل `backend/storage/framework/*/` و`bootstrap/cache/` يستبعد الملفات المولّدة فعليًا.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.
 
