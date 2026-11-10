@@ -9,6 +9,22 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    // توحيد شكل المستخدم المُعاد للواجهة
+    private function userPayload($u): array
+    {
+        return [
+            'id' => $u->id,
+            'name' => $u->name,
+            'username' => $u->username,
+            'role' => $u->role,
+            'faculty_id' => $u->faculty_id,
+            'batch_id' => $u->batch_id,
+            'is_active' => (bool) $u->is_active,
+            'deactivated_at' => $u->deactivated_at,
+            'last_login_at' => $u->last_login_at,
+        ];
+    }
+
     // POST /api/login — الدخول بكلمة المرور المشفّرة
     public function login(Request $request)
     {
@@ -25,36 +41,26 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->is_active === false) {
+            throw ValidationException::withMessages([
+                'username' => ['الحساب موقوف — تواصل مع إدارة النظام.'],
+            ]);
+        }
+
         $user->forceFill(['last_login_at' => now()])->save();
 
         $token = $user->createToken('syst')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'role' => $user->role,
-                'faculty_id' => $user->faculty_id,
-                'batch_id' => $user->batch_id,
-            ],
+            'user' => $this->userPayload($user),
         ]);
     }
 
     // GET /api/me — بيانات الحساب الحالي
     public function me(Request $request)
     {
-        $u = $request->user();
-
-        return response()->json([
-            'id' => $u->id,
-            'name' => $u->name,
-            'username' => $u->username,
-            'role' => $u->role,
-            'faculty_id' => $u->faculty_id,
-            'batch_id' => $u->batch_id,
-        ]);
+        return response()->json($this->userPayload($request->user()));
     }
 
     // POST /api/logout

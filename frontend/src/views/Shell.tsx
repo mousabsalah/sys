@@ -19,6 +19,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'create-booking', label: 'حجز قاعة', roles: ['admin', 'dept'] },
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
     { key: 'admin', label: 'البيانات الإدارية', roles: ['admin'] },
+    { key: 'admin-users', label: 'إدارة المستخدمين', roles: ['admin'] },
   ]
 
   const visible = items.filter((it) => it.roles.includes(user.role))

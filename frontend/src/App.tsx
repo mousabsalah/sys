@@ -15,6 +15,7 @@ const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const MasterDataView = lazy(() => import('./views/Admin'))
+const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 
 const fallback = (
   <div className="d-flex align-items-center justify-content-center py-5">
@@ -50,6 +51,7 @@ export default function App() {
         {view === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
         {view === 'reports' && <ReportsView call={call} />}
         {view === 'admin' && <MasterDataView call={call} />}
+        {view === 'admin-users' && <AdminUsersView call={call} />}
       </Suspense>
     </Shell>
   )

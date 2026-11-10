@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
@@ -69,8 +70,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/reports/utilization', [ReportController::class, 'utilization']);
 });
 
-// ── لوحة المدير: بيانات رئيسية للقراءة (admin فقط) ──
+// ── لوحة المدير: إدارة المستخدمين + بيانات رئيسية (admin فقط) ──
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    // إدارة المستخدمين
+    Route::get('/admin/users', [AdminUsersController::class, 'index']);
+    Route::post('/admin/users', [AdminUsersController::class, 'store']);
+    Route::put('/admin/users/{user}', [AdminUsersController::class, 'update']);
+    Route::post('/admin/users/{user}/deactivate', [AdminUsersController::class, 'deactivate']);
+    Route::post('/admin/users/{user}/reactivate', [AdminUsersController::class, 'reactivate']);
+    Route::post('/admin/users/{user}/reset-password', [AdminUsersController::class, 'resetPassword']);
+
+    // البيانات الرئيسية
     Route::get('/admin/master-data', [AdminController::class, 'masterData']);
     Route::get('/admin/plans', [AdminController::class, 'plansIndex']);
     Route::post('/admin/plans/{group}', [AdminController::class, 'plansStore']);

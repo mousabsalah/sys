@@ -23,6 +23,8 @@ class User extends Authenticatable
         'faculty_id',
         'batch_id',
         'last_login_at',
+        'is_active',
+        'deactivated_at',
     ];
 
     protected $hidden = [
@@ -35,7 +37,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 }

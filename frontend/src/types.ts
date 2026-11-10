@@ -13,6 +13,7 @@ export type ViewName =
   | 'halls-available'
   | 'reports'
   | 'admin'
+  | 'admin-users'
 
 export interface AuthUser {
   id: number

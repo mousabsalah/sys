@@ -105,11 +105,13 @@
 | 8 — التشطيب + الفصول + الـdemo | ✅ مكتمل 2026-11-10 (بانتظار قبول المشرف) | الفصل الثاني (الأدوار الفعلية للغات) + الفصل الثالث2 (أقسام 3-12..3-16: الكينونات الجديدة · ERD · dept scoping · الأدلة) · PDFs مولّدة · ملحق تقني SYST-08 (.docx/.pdf) للجنة · Vitest 4/4 · README (OPcache + CP-SAT + 2026-11-10 إغلاق) |
 
 ## جودة الكود (2026-11-10)
+
 - **Laravel Pint** (`vendor/bin/pint app`) — فروع تنسيق للكود الموجود.
 - **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/`.
 - **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
 - **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل).
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
+- **Phase 1 — إدارة المستخدمين (2026-11-10)**: migration جديدة (`users.is_active` + `deactivated_at`) وDockerfile `audit_logs`. **Admin فقط** يدير كل الحسابات (`/api/admin/users` CRUD + deactivate/reactivate + reset-password لمرة واحدة) + شاشة «إدارة المستخدمين» في الواجهة (جدول · بحث · فلتر بالدور والحالة · إنشاء · تفعيل/إيقاف · إعادة تعيين). **تعطيل فقط — بلا حذف فعلي**. الحسابات المعطلة تُرفض عند الدخول («الحساب موقوف»). كل فعل إداري يُسجل في `audit_logs` (user_id · action · target · ip · user_agent).
 - **الفصول (محلي فقط، `all/` و`docs/` gitignored)** — الفصل الثاني (الأدوار الفعلية للغات Go/Python/Java) · الفصل الثالث2 (أقسام 3-12..3-16: الكينونات التسع الجديدة + 10 جداول قاموس بنفس النمط + العلاقات الكاملة + dept-scoping + ما تحقق على الأرض مع الأدلة: CP-SAT، bulk adopt، OPcache) — PDFs مولّدة عبر Word COM.
 - **التحسينات الأخيرة (2026-11-10)**:
   - **Code-splitting فعلي للتطبيق كله**: `App.tsx` (~950 سطر) قسّم إلى `types.ts` + `api.ts` + `views/*.tsx` (16 ملفًا مستقلًا) بتحميل **lazy** عبر `React.lazy` و `Suspense`؛ شاشة الدخول تحميل eager (تتطلبها كل الجلسات)؛ الدخول ←Suspense spinner عربي عند استبدال الشاشة.
