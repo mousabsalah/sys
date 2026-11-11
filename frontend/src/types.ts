@@ -14,6 +14,11 @@ export type ViewName =
   | 'reports'
   | 'admin'
   | 'admin-users'
+  | 'admin-faculties'
+  | 'admin-departments'
+  | 'admin-halls'
+  | 'admin-semesters'
+  | 'admin-archive'
 
 export interface AuthUser {
   id: number

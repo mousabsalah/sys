@@ -10,16 +10,22 @@ export function Shell({ user, active, onNav, onLogout, children }: {
   const items: { key: ViewName; label: string; roles: Role[] }[] = [
     { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'dept', 'guard', 'batch'] },
     { key: 'timetables', label: 'الجداول', roles: ['admin', 'dept', 'batch'] },
-    { key: 'create-timetable', label: 'إعداد الجدول', roles: ['admin', 'dept'] },
-    { key: 'propose', label: 'اقتراح تلقائي', roles: ['admin', 'dept'] },
+    { key: 'create-timetable', label: 'إعداد الجدول', roles: ['dept'] },
+    { key: 'propose', label: 'اقتراح تلقائي', roles: ['dept'] },
     { key: 'exams', label: 'الامتحانات', roles: ['admin', 'dept', 'batch'] },
-    { key: 'create-exam', label: 'إعداد امتحان', roles: ['admin', 'dept'] },
+    { key: 'create-exam', label: 'إعداد امتحان', roles: ['dept'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'dept', 'guard'] },
     { key: 'halls-available', label: 'القاعات المتاحة', roles: ['admin', 'dept', 'guard'] },
     { key: 'create-booking', label: 'حجز قاعة', roles: ['admin', 'dept'] },
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
+    // ── شاشات مدير النظام (Phase 2) ──
     { key: 'admin', label: 'البيانات الإدارية', roles: ['admin'] },
     { key: 'admin-users', label: 'إدارة المستخدمين', roles: ['admin'] },
+    { key: 'admin-faculties', label: 'إدارة الكليات', roles: ['admin'] },
+    { key: 'admin-departments', label: 'إدارة الأقسام', roles: ['admin'] },
+    { key: 'admin-halls', label: 'إدارة القاعات', roles: ['admin'] },
+    { key: 'admin-semesters', label: 'الفصول الدراسية', roles: ['admin'] },
+    { key: 'admin-archive', label: 'أرشيف الفصول', roles: ['admin'] },
   ]
 
   const visible = items.filter((it) => it.roles.includes(user.role))

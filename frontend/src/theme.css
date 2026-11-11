@@ -74,6 +74,70 @@ body {
 .app-sidebar .nav-link.active { background: var(--aust-primary); color: #fff; font-weight: 600; }
 .app-sidebar .nav-link.disabled { color: #5f7099; cursor: default; }
 
+/* ── Admin: مؤشرات رقمية ───────────────────── */
+.kpi-card {
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(120, 43, 25, 0.18);
+}
+
+/* ── Admin: الخريطة الهندسية للقاعات ─────────── */
+.hall-map-panel { overflow: hidden; }
+.hall-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+}
+.hall-tile {
+  border: 2px solid var(--aust-navy);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 108px;
+  cursor: default;
+  transition: transform .2s ease, box-shadow .2s ease;
+  animation: hallIn .45s ease both;
+}
+.hall-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(10, 29, 59, .22);
+  z-index: 2;
+}
+@keyframes hallIn {
+  from { opacity: 0; transform: translateY(8px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+.hall-kind { font-size: 18px; color: var(--aust-dark-brown); }
+.hall-name { font-weight: 700; font-size: 13px; color: var(--aust-navy); line-height: 1.3; min-height: 34px; }
+.hall-meta { font-size: 10.5px; color: var(--aust-muted); }
+.hall-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.hall-dot.ok { background: #1f7a3d; box-shadow: 0 0 0 3px rgba(31, 122, 61, .18); }
+.hall-dot.warn { background: #B26225; box-shadow: 0 0 0 3px rgba(178, 98, 37, .2); animation: dotPulse 1.6s ease-in-out infinite; }
+@keyframes dotPulse { 0%,100% { box-shadow: 0 0 0 2px rgba(178,98,37,.25); } 50% { box-shadow: 0 0 0 5px rgba(178,98,37,.28); } }
+.hall-bar { height: 4px; background: #efeae0; border-radius: 2px; overflow: hidden; margin-top: auto; }
+.hall-bar i { display: block; height: 100%; border-radius: 2px; transition: width .8s ease; }
+.hall-idle   { background: #fdfcf9; }
+.hall-busy   { background: #fff8ec; }
+.hall-hot    { background: #fdf0e4; }
+.hall-maint  { background: repeating-linear-gradient(-45deg, #fdf6ec, #fdf6ec 8px, #f5e8d8 8px, #f5e8d8 16px); }
+.hall-closed { background: #2b2b2b; border-color: #1a1a1a; }
+.hall-closed .hall-name,
+.hall-closed .hall-meta,
+.hall-closed .hall-kind { color: #d9d9d9; }
+.hall-closed .hall-bar { background: #444; }
+
+.legend-chip { display: inline-flex; align-items: center; gap: 5px; color: var(--aust-muted); }
+.legend-chip i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hall-tile, .kpi-card, .hall-dot.warn { animation: none !important; transition: none !important; }
+}
+
 /* ── Utility print ───────────────────────────── */
 @media print {
   .app-sidebar { display: none !important; }

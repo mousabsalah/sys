@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Batch;
 use App\Models\Department;
 use App\Models\FacultyEntity;
-use App\Models\Group;
 use App\Models\Hall;
-use App\Models\Program;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -149,13 +150,13 @@ class AdminMasterDataController extends Controller
     {
         $item = Hall::findOrFail($hall);
 
-        if (\Illuminate\Support\Facades\DB::table('timetables')->where('hall_id', $item->id)->exists()) {
+        if (DB::table('timetables')->where('hall_id', $item->id)->exists()) {
             throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بمحاضرات.']]);
         }
-        if (\Illuminate\Support\Facades\DB::table('exam_sessions')->where('hall_id', $item->id)->exists()) {
+        if (DB::table('exam_sessions')->where('hall_id', $item->id)->exists()) {
             throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بامتحانات.']]);
         }
-        if (\Illuminate\Support\Facades\DB::table('bookings')->where('hall_id', $item->id)->exists()) {
+        if (DB::table('bookings')->where('hall_id', $item->id)->exists()) {
             throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بحجوزات.']]);
         }
 
@@ -173,7 +174,16 @@ class AdminMasterDataController extends Controller
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')],
             'department_id' => ['required', 'integer', Rule::exists('departments', 'id')],
             'batch_id' => ['required', 'integer', Rule::exists('batches', 'id')],
-            'academic_term' => ['required', 'string', 'max:20', 'unique:semesters,academic_term,NULL,id,department_id,batch_id'],
+            'academic_term' => ['required', 'string', 'max:20', function ($attribute, $value, $fail) use ($request) {
+                $exists = DB::table('semesters')
+                    ->where('department_id', $request->input('department_id'))
+                    ->where('batch_id', $request->input('batch_id'))
+                    ->where('academic_term', $value)
+                    ->exists();
+                if ($exists) {
+                    $fail('يوجد فصل دراسي بهذا المسمى لنفس القسم والدفعة.');
+                }
+            }],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);
@@ -221,9 +231,24 @@ class AdminMasterDataController extends Controller
             return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشفة بالفعل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
         $item->forceFill(['archived_at' => now()])->save();
-        $this->audit->log($request, 'semester.archive', 'semester', $item->id, ['academic_term' => $item->academic_term]);
 
-        return response()->json(['ok' => true, 'semester' => $item]);
+        // نسخة احتياطية تلقائية عند أرشفة أي فصل (متطلب: تلقائي كل نهاية فصل)
+        $backupFile = null;
+        try {
+            Artisan::call('syst:backup');
+            $latest = collect(File::files(storage_path('backups')))
+                ->filter(fn ($f) => $f->getExtension() === 'sql')
+                ->sortByDesc(fn ($f) => $f->getMTime())
+                ->first();
+            $backupFile = $latest?->getFilename();
+        } catch (\Throwable $e) {
+            // أرشفة الفصل لا تتوقف إذا فشل النسخ الاحتياطي — لكن تُسجَّل الملاحظة
+            $this->audit->log($request, 'backup.auto_failed', 'semester', $item->id, ['error' => $e->getMessage()]);
+        }
+
+        $this->audit->log($request, 'semester.archive', 'semester', $item->id, ['academic_term' => $item->academic_term, 'backup' => $backupFile]);
+
+        return response()->json(['ok' => true, 'semester' => $item, 'backup' => $backupFile]);
     }
 
     public function semesterUnarchive(Request $request, int $semester)
@@ -238,10 +263,10 @@ class AdminMasterDataController extends Controller
     public function semesterDelete(Request $request, int $semester)
     {
         $item = Semester::findOrFail($semester);
-        if (\Illuminate\Support\Facades\DB::table('timetables')->where('semester_id', $item->id)->exists()) {
+        if (DB::table('timetables')->where('semester_id', $item->id)->exists()) {
             throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بمحاضرات.']]);
         }
-        if (\Illuminate\Support\Facades\DB::table('exam_sessions')->where('semester_id', $item->id)->exists()) {
+        if (DB::table('exam_sessions')->where('semester_id', $item->id)->exists()) {
             throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بامتحانات.']]);
         }
         $item->delete();

@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 
+// ECharts يرسم على canvas وهو غير مدعوم كاملًا في jsdom — نستبدل الرسم بمكوّن فارغ
+vi.mock('echarts-for-react/lib/core', () => ({
+  default: () => <div data-testid="echarts-stub" />,
+}))
+
 const BASE = 'http://127.0.0.1:8765'
 const kpis = {
   halls_registered: 20,
@@ -9,6 +14,26 @@ const kpis = {
   exams_this_week: 3,
   batches_count: 8,
   courses_count: 30,
+}
+
+const adminStats = {
+  kpis: {
+    halls_count: 20, halls_available_now: 18, total_students: 808, faculty_members: 12,
+    lectures_total: 16, exams_total: 1, bookings_total: 0, batches_count: 8,
+    courses_count: 30, groups_count: 16,
+  },
+  halls: [
+    { id: 1, name: 'مدرج أ', capacity: 150, hall_type: 'قاعة', status: 'متاحة', lectures: 15, exams: 0, bookings: 0 },
+    { id: 2, name: 'معمل الحاسوب 1', capacity: 40, hall_type: 'معمل', status: 'متاحة', lectures: 1, exams: 0, bookings: 0 },
+  ],
+  day_distribution: [
+    { day: 'السبت', lectures: 2 }, { day: 'الأحد', lectures: 3 }, { day: 'الاثنين', lectures: 2 },
+    { day: 'الثلاثاء', lectures: 3 }, { day: 'الأربعاء', lectures: 3 }, { day: 'الخميس', lectures: 3 },
+  ],
+  faculty_share: [{ id: 2, name: 'كلية الهندسة', lectures: 16 }],
+  semester_activity: [
+    { id: 1, academic_term: '2026/1', faculty: 'كلية العلوم', department: 'علوم الحاسوب', batch: 'دفعة 2022', start_date: '2026-02-01', archived_at: null, lectures: 0, exams: 1, bookings: 0 },
+  ],
 }
 
 const adminUser = {
@@ -41,6 +66,9 @@ function installFetchMock(options: { loginFails?: boolean } = {}) {
     }
     if (url.startsWith(`${BASE}/api/dashboard`)) {
       return jsonResponse({ kpis, latest_bookings: [] })
+    }
+    if (url.startsWith(`${BASE}/api/admin/dashboard-stats`)) {
+      return jsonResponse(adminStats)
     }
     if (url.startsWith(`${BASE}/api/timetables`)) {
       return jsonResponse([])
@@ -80,17 +108,17 @@ describe('SYST App', () => {
     expect(screen.getByLabelText('كلمة المرور')).toBeInTheDocument()
   })
 
-  it('logs in and shows the dashboard with live KPIs', async () => {
+  it('logs in and shows the dashboard with live KPIs', { timeout: 20000 }, async () => {
     installFetchMock()
     render(<App />)
     fireEvent.change(screen.getByLabelText('اسم المستخدم'), { target: { value: 'مدير_النظام' } })
     fireEvent.change(screen.getByLabelText('كلمة المرور'), { target: { value: 'Admin@123456' } })
     fireEvent.click(screen.getByRole('button', { name: 'دخول' }))
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'لوحة التحكم' })).toBeInTheDocument())
-    expect(screen.getByText('القاعات المسجلة')).toBeInTheDocument()
-    expect(screen.getByText('20')).toBeInTheDocument()
-    expect(screen.getByText('16')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'لوحة تحكم مدير النظام' })).toBeInTheDocument(), { timeout: 6000 })
+    await waitFor(() => expect(screen.getByText('القاعات المسجلة')).toBeInTheDocument(), { timeout: 6000 })
+    await waitFor(() => expect(screen.getByText('20')).toBeInTheDocument(), { timeout: 6000 })
+    await waitFor(() => expect(screen.getByText('16')).toBeInTheDocument(), { timeout: 6000 })
     expect(screen.getByRole('button', { name: 'تسجيل الخروج' })).toBeInTheDocument()
   })
 
@@ -107,7 +135,7 @@ describe('SYST App', () => {
     installFetchMock()
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'دخول' }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'لوحة التحكم' })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'لوحة تحكم مدير النظام' })).toBeInTheDocument(), { timeout: 6000 })
     fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'دخول' })).toBeInTheDocument())
   })

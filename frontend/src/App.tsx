@@ -16,6 +16,11 @@ const CreateBookingView = lazy(() => import('./views/CreateBooking'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const MasterDataView = lazy(() => import('./views/Admin'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
+const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
+const AdminDepartmentsView = lazy(() => import('./views/AdminDepartments'))
+const AdminHallsView = lazy(() => import('./views/AdminHalls'))
+const AdminSemestersView = lazy(() => import('./views/AdminSemesters'))
+const AdminArchiveView = lazy(() => import('./views/AdminArchive'))
 
 const fallback = (
   <div className="d-flex align-items-center justify-content-center py-5">
@@ -32,15 +37,15 @@ export default function App() {
   if (!auth) {
     return (
       <Suspense fallback={fallback}>
-        <AuthView onAuthed={(user, token) => { setAuth({ user, token }); setView('dashboard') }} />
+        <AuthView onAuthed={(user, token) => { sessionStorage.setItem('aust_token', token); setAuth({ user, token }); setView('dashboard') }} />
       </Suspense>
     )
   }
 
   return (
-    <Shell user={auth.user} active={view} onNav={setView} onLogout={() => { setAuth(null); setView('login') }}>
+    <Shell user={auth.user} active={view} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
       <Suspense fallback={fallback}>
-        {view === 'dashboard' && <DashboardView call={call} />}
+        {view === 'dashboard' && <DashboardView call={call} role={auth.user.role} />}
         {view === 'timetables' && <TimetablesView call={call} onNew={() => setView('create-timetable')} />}
         {view === 'create-timetable' && <CreateTimetableView call={call} onDone={() => setView('timetables')} />}
         {view === 'propose' && <ProposeView call={call} onAdopted={() => setView('timetables')} />}
@@ -52,6 +57,11 @@ export default function App() {
         {view === 'reports' && <ReportsView call={call} />}
         {view === 'admin' && <MasterDataView call={call} />}
         {view === 'admin-users' && <AdminUsersView call={call} />}
+        {view === 'admin-faculties' && <AdminFacultiesView call={call} />}
+        {view === 'admin-departments' && <AdminDepartmentsView call={call} />}
+        {view === 'admin-halls' && <AdminHallsView call={call} />}
+        {view === 'admin-semesters' && <AdminSemestersView call={call} />}
+        {view === 'admin-archive' && <AdminArchiveView call={call} />}
       </Suspense>
     </Shell>
   )
