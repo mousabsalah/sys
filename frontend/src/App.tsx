@@ -14,19 +14,22 @@ const BookingsView = lazy(() => import('./views/Bookings'))
 const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
 const ReportsView = lazy(() => import('./views/Reports'))
-const MasterDataView = lazy(() => import('./views/Admin'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
 const AdminDepartmentsView = lazy(() => import('./views/AdminDepartments'))
 const AdminHallsView = lazy(() => import('./views/AdminHalls'))
 const AdminSemestersView = lazy(() => import('./views/AdminSemesters'))
 const AdminArchiveView = lazy(() => import('./views/AdminArchive'))
+const AdminPlansView = lazy(() => import('./views/AdminPlans'))
 
 const fallback = (
   <div className="d-flex align-items-center justify-content-center py-5">
     <div className="spinner-border" role="status" aria-label="جارٍ التحميل" style={{ color: '#B26225' }} />
   </div>
 )
+
+// صفحات مخفية عن مدير النظام — حتى لو وصل إليها بأي طريق تعود إلى اللوحة
+const ADMIN_HIDDEN: ReadonlySet<ViewName> = new Set(['timetables', 'exams', 'halls-available', 'create-booking', 'create-timetable', 'create-exam', 'propose'])
 
 export default function App() {
   const [auth, setAuth] = useState<{ user: AuthUser; token: string } | null>(null)
@@ -42,26 +45,28 @@ export default function App() {
     )
   }
 
+  const activeView = auth.user.role === 'admin' && ADMIN_HIDDEN.has(view) ? 'dashboard' : view
+
   return (
-    <Shell user={auth.user} active={view} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
+    <Shell user={auth.user} active={activeView} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
       <Suspense fallback={fallback}>
-        {view === 'dashboard' && <DashboardView call={call} role={auth.user.role} />}
-        {view === 'timetables' && <TimetablesView call={call} onNew={() => setView('create-timetable')} />}
-        {view === 'create-timetable' && <CreateTimetableView call={call} onDone={() => setView('timetables')} />}
-        {view === 'propose' && <ProposeView call={call} onAdopted={() => setView('timetables')} />}
-        {view === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
-        {view === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
-        {view === 'bookings' && <BookingsView call={call} />}
-        {view === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
-        {view === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
-        {view === 'reports' && <ReportsView call={call} />}
-        {view === 'admin' && <MasterDataView call={call} />}
-        {view === 'admin-users' && <AdminUsersView call={call} />}
-        {view === 'admin-faculties' && <AdminFacultiesView call={call} />}
-        {view === 'admin-departments' && <AdminDepartmentsView call={call} />}
-        {view === 'admin-halls' && <AdminHallsView call={call} />}
-        {view === 'admin-semesters' && <AdminSemestersView call={call} />}
-        {view === 'admin-archive' && <AdminArchiveView call={call} />}
+        {activeView === 'dashboard' && <DashboardView call={call} role={auth.user.role} />}
+        {activeView === 'timetables' && <TimetablesView call={call} onNew={() => setView('create-timetable')} />}
+        {activeView === 'create-timetable' && <CreateTimetableView call={call} onDone={() => setView('timetables')} />}
+        {activeView === 'propose' && <ProposeView call={call} onAdopted={() => setView('timetables')} />}
+        {activeView === 'exams' && <ExamsView call={call} onNew={() => setView('create-exam')} />}
+        {activeView === 'create-exam' && <CreateExamView call={call} onDone={() => setView('exams')} />}
+        {activeView === 'bookings' && <BookingsView call={call} />}
+        {activeView === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
+        {activeView === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
+        {activeView === 'reports' && <ReportsView call={call} />}
+        {activeView === 'admin-users' && <AdminUsersView call={call} />}
+        {activeView === 'admin-plans' && <AdminPlansView call={call} />}
+        {activeView === 'admin-faculties' && <AdminFacultiesView call={call} />}
+        {activeView === 'admin-departments' && <AdminDepartmentsView call={call} />}
+        {activeView === 'admin-halls' && <AdminHallsView call={call} />}
+        {activeView === 'admin-semesters' && <AdminSemestersView call={call} />}
+        {activeView === 'admin-archive' && <AdminArchiveView call={call} />}
       </Suspense>
     </Shell>
   )

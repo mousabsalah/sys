@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 
 // ECharts يرسم على canvas وهو غير مدعوم كاملًا في jsdom — نستبدل الرسم بمكوّن فارغ
-vi.mock('echarts-for-react/lib/core', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: () => <div data-testid="echarts-stub" />,
 }))
 

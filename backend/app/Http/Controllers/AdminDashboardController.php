@@ -15,6 +15,7 @@ class AdminDashboardController extends Controller
     {
         // ── القاعات مع إشغالها (عدد المحاضرات + عدد الامتحانات + الحجوزات) ──
         $halls = DB::table('halls')
+            ->whereNull('halls.deleted_at')
             ->leftJoin('timetables', 'timetables.hall_id', '=', 'halls.id')
             ->leftJoin('exam_sessions', 'exam_sessions.hall_id', '=', 'halls.id')
             ->leftJoin('bookings', 'bookings.hall_id', '=', 'halls.id')
@@ -76,8 +77,8 @@ class AdminDashboardController extends Controller
 
         // ── مؤشرات إضافية ──
         $kpis = [
-            'halls_count' => DB::table('halls')->count(),
-            'halls_available_now' => DB::table('halls')->where('status', 'متاحة')->count(),
+            'halls_count' => DB::table('halls')->whereNull('deleted_at')->count(),
+            'halls_available_now' => DB::table('halls')->whereNull('deleted_at')->where('status', 'متاحة')->count(),
             'total_students' => (int) DB::table('batches')->sum('student_count'),
             'faculty_members' => DB::table('faculty')->count(),
             'lectures_total' => DB::table('timetables')->count(),

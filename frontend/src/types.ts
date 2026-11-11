@@ -12,13 +12,13 @@ export type ViewName =
   | 'create-booking'
   | 'halls-available'
   | 'reports'
-  | 'admin'
   | 'admin-users'
   | 'admin-faculties'
   | 'admin-departments'
   | 'admin-halls'
   | 'admin-semesters'
   | 'admin-archive'
+  | 'admin-plans'
 
 export interface AuthUser {
   id: number

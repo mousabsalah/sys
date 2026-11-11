@@ -14,6 +14,7 @@ class ReportController extends Controller
 
         $rows = DB::table('timetables')
             ->join('halls', 'halls.id', '=', 'timetables.hall_id')
+            ->whereNull('halls.deleted_at')
             ->select('halls.id', 'halls.name', 'halls.capacity', DB::raw('COUNT(timetables.id) AS lectures'))
             ->groupBy('halls.id', 'halls.name', 'halls.capacity')
             ->orderByDesc('lectures')
