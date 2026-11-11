@@ -9,6 +9,9 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    // هاش وهمي يُستخدم فقط لتوحيد زمن المقارنة — لا يطابق أي كلمة مرور حقيقية
+    private const DUMMY_PASSWORD_HASH = '$2y$10$oaemJDhips6IkKRPC0MID.HDh9p5Iu0.bu.64ENQHxIc3bWxwsIIK';
+
     // توحيد شكل المستخدم المُعاد للواجهة
     private function userPayload($u): array
     {
@@ -35,7 +38,11 @@ class AuthController extends Controller
 
         $user = User::where('username', $validated['username'])->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        // توحيد زمن المقارنة: ننفذ Hash::check حتى عند عدم وجود المستخدم (إبطال أوراكل الفروق الزمنية)
+        $hash = $user ? $user->password : self::DUMMY_PASSWORD_HASH;
+        $passwordOk = Hash::check($validated['password'], $hash);
+
+        if (! $user || ! $passwordOk) {
             throw ValidationException::withMessages([
                 'username' => ['بيانات الدخول غير صحيحة.'],
             ]);

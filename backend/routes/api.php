@@ -26,8 +26,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware(['auth:sanctum', 'active']);
 
-// ── تسجيل الدخول/الخروج/ملفي ──
-Route::post('/login', [AuthController::class, 'login']);
+// ── تسجيل الدخول/الخروج/ملفي (الدخول: 5 محاولات/دقيقة لكل IP) ──
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // ── الدخول: واجهة المتصفح — طلب GET على /api/login يُرجع توضيح JSON (لا صفحة Symfony 405) ──
 Route::get('/login', function () {

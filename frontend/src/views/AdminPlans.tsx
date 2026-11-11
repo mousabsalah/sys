@@ -48,6 +48,8 @@ export default function AdminPlansView({ call }: { call: ReturnType<typeof useAu
   }
   async function save() {
     if (editingGroup === null) return
+    const planSize = editItems.length
+    if (!window.confirm(`استبدال خطة الشعبة كاملة؟ المقررات الحالية ستُمحى وتُستبدل بـ ${planSize} مقرر.`)) return
     setSaving(true); setMsg(null); setErr(null)
     try {
       await call(`/api/admin/plans/${editingGroup}`, 'POST', { items: editItems })

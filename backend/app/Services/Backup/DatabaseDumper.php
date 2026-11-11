@@ -13,6 +13,17 @@ class DatabaseDumper implements BackupGateway
 {
     public function dump(): ?string
     {
+        try {
+            return $this->performDump();
+        } catch (\Throwable $e) {
+            Log::error('[syst:backup] استثناء غير متوقع أثناء النسخ', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    private function performDump(): ?string
+    {
         $dir = storage_path('backups');
         if (! File::isDirectory($dir)) {
             File::makeDirectory($dir, 0700, true);
@@ -23,9 +34,14 @@ class DatabaseDumper implements BackupGateway
         $host = $config['host'];
         $port = (string) ($config['port'] ?? 3306);
         $username = $config['username'];
-        $password = $config['password'] ?? '';
+        $password = (string) ($config['password'] ?? '');
+        // منع حقن أسطر الأوامر عبر ملف defaults-extra-file — كلمة المرور تُكتب كما هي دون CRLF
+        $password = strtr($password, ["\r" => '', "\n" => '']);
 
         $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'.sql';
+        if (file_exists($dir.DIRECTORY_SEPARATOR.$filename)) {
+            $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'_'.substr(uniqid(), -4).'.sql';
+        }
         $target = $dir.DIRECTORY_SEPARATOR.$filename;
 
         $candidates = [

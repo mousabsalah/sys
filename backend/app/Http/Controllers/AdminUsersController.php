@@ -44,6 +44,7 @@ class AdminUsersController extends Controller
 
         $limit = max(1, min((int) $request->query('limit', 200), 500));
 
+        // العدّ يُنفذ على النسخة الأصلية من الاستعلام — limit الاستعلام الفرعي لا يقيّد دالة count
         $users = $query->limit($limit)->get();
         $total = (clone $query)->count();
 

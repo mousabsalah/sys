@@ -44,7 +44,12 @@ class AdminBackupController extends Controller
      */
     public function list()
     {
-        $backups = collect(File::files(storage_path('backups')))
+        $dir = storage_path('backups');
+        if (! File::isDirectory($dir)) {
+            return response()->json(['backups' => [], 'total' => 0]);
+        }
+
+        $backups = collect(File::files($dir))
             ->filter(fn ($f) => $f->getExtension() === 'sql')
             ->sortByDesc(fn ($f) => $f->getMTime())
             ->values()
@@ -62,7 +67,7 @@ class AdminBackupController extends Controller
      */
     public function download(string $file)
     {
-        if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}\.sql$/', $file)) {
+        if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[0-9a-z]{4})?\.sql$/i', $file)) {
             return response()->json(['ok' => false, 'message_ar' => 'اسم ملف غير صالح.'], 422);
         }
         $path = storage_path('backups'.DIRECTORY_SEPARATOR.$file);

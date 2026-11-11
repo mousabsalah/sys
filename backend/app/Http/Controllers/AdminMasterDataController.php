@@ -278,11 +278,10 @@ class AdminMasterDataController extends Controller
             $this->audit->log($request, 'backup.auto_failed', 'semester', $item->id, ['error' => 'mysqldump فشل — راجع اللوج']);
         }
 
-        DB::transaction(function () use ($item) {
+        DB::transaction(function () use ($item, $request, $backupFile) {
             $item->forceFill(['archived_at' => now()])->save();
+            $this->audit->log($request, 'semester.archive', 'semester', $item->id, ['academic_term' => $item->academic_term, 'backup' => $backupFile]);
         });
-
-        $this->audit->log($request, 'semester.archive', 'semester', $item->id, ['academic_term' => $item->academic_term, 'backup' => $backupFile]);
 
         return response()->json(['ok' => true, 'semester' => $item->refresh(), 'backup' => $backupFile]);
     }
@@ -290,8 +289,10 @@ class AdminMasterDataController extends Controller
     public function semesterUnarchive(Request $request, int $semester)
     {
         $item = Semester::findOrFail($semester);
-        $item->forceFill(['archived_at' => null])->save();
-        $this->audit->log($request, 'semester.unarchive', 'semester', $item->id, ['academic_term' => $item->academic_term]);
+        DB::transaction(function () use ($item, $request) {
+            $item->forceFill(['archived_at' => null])->save();
+            $this->audit->log($request, 'semester.unarchive', 'semester', $item->id, ['academic_term' => $item->academic_term]);
+        });
 
         return response()->json(['ok' => true, 'semester' => $item]);
     }

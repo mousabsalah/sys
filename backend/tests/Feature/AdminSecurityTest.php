@@ -20,6 +20,7 @@ use App\Services\Engine\ConflictChecker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /**
@@ -561,5 +562,139 @@ class AdminSecurityTest extends TestCase
             ->json();
 
         $this->assertSame('aust_graduation_2099-01-01_000000.sql', $response['backup']);
+    }
+
+    // ═══ تغطية خطة الشعبة + النسخ الاحتياطي ═══
+
+    private function makeCourse(string $code): Course
+    {
+        return Course::create(['code' => $code, 'name' => 'مقرر '.$code, 'credit_hours' => 3]);
+    }
+
+    public function test_plans_store_replaces_plan_and_logs_audit(): void
+    {
+        $admin = $this->makeUser('admin');
+        [, , , $group] = $this->makeAcademicChain();
+        $courseA = $this->makeCourse('T100');
+        $courseB = $this->makeCourse('T200');
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/plans/'.$group->id, [
+                'items' => [
+                    ['course_id' => $courseA->id, 'sessions_per_week' => 4],
+                    ['course_id' => $courseB->id, 'sessions_per_week' => 3],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('group_courses', [
+            'group_id' => $group->id,
+            'course_id' => $courseA->id,
+            'sessions_per_week' => 4,
+        ]);
+        $this->assertDatabaseHas('group_courses', [
+            'group_id' => $group->id,
+            'course_id' => $courseB->id,
+            'sessions_per_week' => 3,
+        ]);
+        $this->assertTrue(DB::table('audit_logs')
+            ->where('action', 'plan.replace')
+            ->where('target_id', (string) $group->id)
+            ->exists());
+    }
+
+    public function test_plans_store_rejects_duplicate_course(): void
+    {
+        $admin = $this->makeUser('admin');
+        [, , , $group] = $this->makeAcademicChain();
+        $course = $this->makeCourse('T100');
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/plans/'.$group->id, [
+                'items' => [
+                    ['course_id' => $course->id, 'sessions_per_week' => 4],
+                    ['course_id' => $course->id, 'sessions_per_week' => 3],
+                ],
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('group_courses', ['group_id' => $group->id]);
+    }
+
+    public function test_backup_create_uses_dumper_and_returns_file(): void
+    {
+        $this->app->instance(BackupGateway::class, new class implements BackupGateway
+        {
+            public function dump(): ?string
+            {
+                return 'aust_graduation_2099-01-01_000000.sql';
+            }
+        });
+
+        $admin = $this->makeUser('admin');
+
+        $response = $this->actingAs($admin)
+            ->postJson('/api/admin/backup/create')
+            ->assertOk()
+            ->json();
+
+        $this->assertTrue($response['ok']);
+        $this->assertSame('aust_graduation_2099-01-01_000000.sql', $response['file']);
+    }
+
+    public function test_backup_create_returns_generic_error_on_dumper_failure(): void
+    {
+        $this->app->instance(BackupGateway::class, new class implements BackupGateway
+        {
+            public function dump(): ?string
+            {
+                return null;
+            }
+        });
+
+        $admin = $this->makeUser('admin');
+
+        $response = $this->actingAs($admin)->postJson('/api/admin/backup/create');
+
+        $this->assertSame(500, $response->status());
+        $this->assertFalse($response->json('ok'));
+    }
+
+    public function test_backup_download_rejects_invalid_filename(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        // اسم لا يطابق النمط الرسمي — يجب 422 من داخل المتحكم
+        $this->actingAs($admin)
+            ->getJson('/api/admin/backup/download/arbitrary-backup.sql')
+            ->assertStatus(422);
+    }
+
+    public function test_backup_download_serves_existing_backup(): void
+    {
+        $admin = $this->makeUser('admin');
+        $file = 'aust_graduation_2099-01-01_000000.sql';
+        File::put(storage_path('backups/'.$file), '-- dump');
+
+        try {
+            $this->actingAs($admin)
+                ->get('/api/admin/backup/download/'.$file)
+                ->assertOk();
+        } finally {
+            File::delete(storage_path('backups/'.$file));
+        }
+    }
+
+    public function test_login_throttle_locks_out_after_repeated_failures(): void
+    {
+        $user = $this->makeUser('guard');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/login', ['username' => $user->username, 'password' => 'wrong-pass']);
+        }
+
+        $this->postJson('/api/login', ['username' => $user->username, 'password' => 'Password@123'])
+            ->assertStatus(429);
     }
 }

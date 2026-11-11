@@ -13,6 +13,7 @@ use App\Models\GroupCourse;
 use App\Models\Hall;
 use App\Models\Period;
 use App\Models\Program;
+use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -64,13 +65,13 @@ class AdminController extends Controller
     {
         $input = $request->validate([
             'items' => ['required', 'array'],
-            'items.*.course_id' => ['required', 'integer', 'distinct:strict', Rule::exists('courses', 'id')],
+            'items.*.course_id' => ['required', 'integer', 'distinct', Rule::exists('courses', 'id')],
             'items.*.sessions_per_week' => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 
         $groupModel = Group::findOrFail($group);
 
-        DB::transaction(function () use ($input, $groupModel) {
+        DB::transaction(function () use ($input, $groupModel, $request) {
             GroupCourse::where('group_id', $groupModel->id)->delete();
             foreach ($input['items'] as $item) {
                 GroupCourse::create([
@@ -79,6 +80,7 @@ class AdminController extends Controller
                     'sessions_per_week' => (int) $item['sessions_per_week'],
                 ]);
             }
+            app(AuditLogger::class)->log($request, 'plan.replace', 'group', $groupModel->id, ['course_count' => count($input['items'])]);
         });
 
         $plan = DB::table('group_courses')
