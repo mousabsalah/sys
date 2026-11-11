@@ -128,6 +128,18 @@
   - نطاق بيانات الديمو نهائيا نظيف: **0 bookings · 0 exams · 16 timetables (CS2024) · 129 group_courses** — كل محاضرة معتمدة من جلسة بقرار المشرف.
   - الفهارس المركّبة مُتحقة: `timetables(hall_id,day_of_week)` · `(faculty_id,day)` · `(group_id,day)` · `bookings(hall_id,date)` · `exam_sessions(hall_id|group_id, exam_date)`.
   - `.gitignore` داخل `backend/storage/framework/*/` و`bootstrap/cache/` يستبعد الملفات المولّدة فعليًا.
+- **Backend logic: correctness pass (2026-11-12)**:
+  - `existingSlots()` يعيد كتابة مرة واحدة: يستثني المحاضرات والامتحانات **المؤرشفة** (scope `notArchived` على `Timetable`/`ExamSession`) ويقبل `academic_term` كفلتر اختياري، ويستثني الحجوزات **الملغاة** والأرشفة منها (scope `Booking::active()` = confirmed + غير مؤرشف)، ويحدّ حجوزات المحاضرة المتكررة لنفس يوم الأسبوع فقط.
+  - `GuardController::lock` كان يفحص `Timetable` بلا `day_of_week` (الحارس كان ممنوع يقفل قيد محاضرات أي يوم) — أُضيف الفلتر + استثني المؤرشف؛ و`unlock` يعيد الحالة لـ«متاحة» فقط إذا كانت «مغلقة» (لا يمس «صيانة» الإدارية).
+  - تحقق `after:start_time` على `end_time` في محاضرات/امتحانات/حجوزات (منع مدى زمني مقلوب) + نفس الفحص داخل المحرك (`INVALID_TIME_RANGE` hard).
+  - commit* يربط `semester_id` من الفصل النشط للدفعة (`SemesterResolver`) — الأرشفة الآن تحتوي كل محاضرة/امتحان جديد.
+  - فحص التعارض أصبح يأخذ قفل الشعبة ثم المدرس (إضافة لقفل القاعة) — إغلاق سباق شعبة-متزامن عبر قاعتين؛ ترتيب قفل ثابت (قاعة ← شعبة ← مدرس).
+  - `/api/syst-engine/*` خلف `auth:sanctum`؛ `BookingController::index` بدون بارامترات → أحدث 100 حجز؛ `weeklyExisting($term)` يستثني المؤرشف.
+  - جديد: `App\Services\Academic\ArabicDay` (مصدر واحد ليوم الأسبوع) + `SemesterResolver`؛ إصلاح `api.php` (تلف ترميز سابق — أُعيد كتابته نظيفًا).
+- **Frontend (2026-11-12)**:
+  - إزالة الحقول المعبأة مسبقًا في شاشة الدخول (كانت كلمة مرور المدير ظاهرة في الكود!)؛ تواريخ صلبة استُبدلت بتاريخ اليوم الحالي؛ «الحجوزات» تعرض أحدث الحجوزات بدل يوم محدد.
+  - Fix: اختبار الخروج لا يعتمد على التعبئة المسبقة؛ `App.test.tsx` — **4/4**.
+- **Verified live**: duplicate 422 بأكواد HALL_BUSY/FACULTY_OVERLAP/GROUP_OVERLAP · admin 403 · مدى مقلوب 422 · **أرشفة الفصل ← 201 محاضرة → إلغاء الأرشفة** · guard now=200 · passthrough 401 مع JSON.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.
 

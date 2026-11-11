@@ -56,7 +56,7 @@ class TimetableController extends Controller
             'assignments.*.hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
             'assignments.*.day_of_week' => ['required', 'string', 'in:السبت,الأحد,الاثنين,الثلاثاء,الأربعاء,الخميس'],
             'assignments.*.start_time' => ['required', 'date_format:H:i:s'],
-            'assignments.*.end_time' => ['required', 'date_format:H:i:s'],
+            'assignments.*.end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'assignments.*.academic_term' => ['sometimes', 'string', 'max:20'],
             'assignments.*.course_code' => ['sometimes', 'string', 'max:20'],
         ]);
@@ -175,7 +175,7 @@ class TimetableController extends Controller
             'hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
             'day_of_week' => ['required', 'string', 'in:السبت,الأحد,الاثنين,الثلاثاء,الأربعاء,الخميس'],
             'start_time' => ['required', 'date_format:H:i:s'],
-            'end_time' => ['required', 'date_format:H:i:s'],
+            'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'academic_term' => ['sometimes', 'string', 'max:20'],
         ]);
 

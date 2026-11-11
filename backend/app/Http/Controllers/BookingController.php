@@ -41,8 +41,13 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $by = $request->query('by', 'hall'); // hall|date
-        $id = (string) $request->query('id', now()->toDateString());
+        $by = $request->query('by'); // hall|date|null
+        $id = $request->query('id');
+
+        // بدون بارامترات: أحدث 100 حجز (قائمة الواجهة)
+        if ($by === null || $id === null) {
+            return Booking::orderByDesc('date')->orderByDesc('start_time')->limit(100)->get();
+        }
 
         if ($by === 'date') {
             return Booking::whereDate('date', $id)->orderBy('start_time')->get();
@@ -57,7 +62,7 @@ class BookingController extends Controller
             'hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
             'date' => ['required', 'date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i:s'],
-            'end_time' => ['required', 'date_format:H:i:s'],
+            'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'course_id' => ['nullable', 'integer', Rule::exists('courses', 'id')],
             'group_id' => ['nullable', 'integer', Rule::exists('groups', 'id')],
             'activity_name' => ['nullable', 'string', 'max:100'],

@@ -82,7 +82,7 @@ class ExamController extends Controller
             'hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
             'exam_date' => ['required', 'date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i:s'],
-            'end_time' => ['required', 'date_format:H:i:s'],
+            'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'exam_type' => ['sometimes', 'in:اختبار قصير,ميدترم,فاينل'],
             'academic_term' => ['sometimes', 'string', 'max:20'],
         ]);

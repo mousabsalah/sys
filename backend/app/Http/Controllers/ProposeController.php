@@ -109,7 +109,7 @@ class ProposeController extends Controller
         $courseIdsInput = ! empty($input['course_ids']) ? array_map('intval', $input['course_ids']) : null;
 
         // الموجود العام أسبوعيًا — ينمو مع كل شعبة تُحل (شعبة في الوضع المتعدد لا تحتل قاعة تشغلها سابقتها)
-        $existing = $this->weeklyExisting();
+        $existing = $this->weeklyExisting($term);
 
         $allAssignments = [];
         $allUnplaced = [];
@@ -261,9 +261,14 @@ class ProposeController extends Controller
         ]);
     }
 
-    private function weeklyExisting(): array
+    private function weeklyExisting(?string $term = null): array
     {
-        return Timetable::orderBy('id')->get()->map(fn (Timetable $t) => [
+        $query = Timetable::notArchived()->orderBy('id');
+        if ($term !== null && $term !== '') {
+            $query->where('academic_term', $term);
+        }
+
+        return $query->get()->map(fn (Timetable $t) => [
             'id' => (int) $t->id,
             'kind' => 'lecture',
             'day_of_week' => $t->day_of_week,

@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\ExamSession;
 use App\Models\Hall;
 use App\Models\Timetable;
+use App\Services\Academic\ArabicDay;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,28 +31,19 @@ class HallsController extends Controller
         $minCapacity = (int) ($validated['min_capacity'] ?? 0);
         $date = $validated['date'];
 
-        $dayMap = [
-            Carbon::SUNDAY => 'الأحد',
-            Carbon::MONDAY => 'الاثنين',
-            Carbon::TUESDAY => 'الثلاثاء',
-            Carbon::WEDNESDAY => 'الأربعاء',
-            Carbon::THURSDAY => 'الخميس',
-            Carbon::FRIDAY => 'الجمعة',
-            Carbon::SATURDAY => 'السبت',
-        ];
-        $dayArabic = $dayMap[Carbon::parse($date)->dayOfWeek];
+        $dayArabic = ArabicDay::of(Carbon::parse($date));
 
         $busyIds = collect()
-            ->merge(Timetable::where('day_of_week', $dayArabic)
+            ->merge(Timetable::notArchived()->where('day_of_week', $dayArabic)
                 ->where('start_time', '<', $to)
                 ->where('end_time', '>', $from)
                 ->pluck('hall_id'))
-            ->merge(ExamSession::whereDate('exam_date', $date)
+            ->merge(ExamSession::notArchived()->whereDate('exam_date', $date)
                 ->where('start_time', '<', $to)
                 ->where('end_time', '>', $from)
                 ->pluck('hall_id'))
-            ->merge(Booking::whereDate('date', $date)
-                ->where('status', 'confirmed')
+            ->merge(Booking::active()
+                ->whereDate('date', $date)
                 ->where('start_time', '<', $to)
                 ->where('end_time', '>', $from)
                 ->pluck('hall_id'))

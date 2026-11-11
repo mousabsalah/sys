@@ -115,6 +115,9 @@ func check(p Payload) CheckResult {
 	if p.Type != "exam" && p.DayOfWeek == "" && p.ExamDate == "" {
 		add("MISSING_DAY_OF_WEEK", "اليوم الأسبوعي أو التاريخ مطلوب للنوع lecture|booking", "hard")
 	}
+	if p.StartTime != "" && p.EndTime != "" && p.EndTime <= p.StartTime {
+		add("INVALID_TIME_RANGE", "وقت النهاية يجب أن يكون بعد وقت البداية", "hard")
+	}
 
 	// حالة القاعة (متاحة/صيانة/مغلقة)
 	if p.HallStatus != "" && p.HallStatus != "متاحة" {

@@ -7,6 +7,7 @@ use App\Models\ExamSession;
 use App\Models\GuardLock;
 use App\Models\Hall;
 use App\Models\Timetable;
+use App\Services\Academic\ArabicDay;
 use App\Services\Engine\ConflictChecker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,18 +31,22 @@ class GuardController extends Controller
 
         $hall = Hall::findOrFail($hallId);
 
-        // لا يمكن قفل قاعة فيها محاضرة/حجز/امتحان الآن
+        // لا يمكن قفل قاعة فيها محاضرة/حجز/امتحان الآن — المحاضرات تُفلتر باليوم الصحيح
         $now = now();
         $today = $now->format('H:i:s');
-        $inLecture = Timetable::where('hall_id', $hallId)
+        $weekday = ArabicDay::of($now);
+        $inLecture = Timetable::notArchived()
+            ->where('hall_id', $hallId)
+            ->where('day_of_week', $weekday)
             ->where('start_time', '<=', $today)->where('end_time', '>', $today)->exists();
-        $inExam = ExamSession::where('hall_id', $hallId)
+        $inExam = ExamSession::notArchived()
+            ->where('hall_id', $hallId)
             ->whereDate('exam_date', $now->toDateString())
             ->where('start_time', '<=', $today)->where('end_time', '>', $today)->exists();
-        $inBooking = Booking::where('hall_id', $hallId)
+        $inBooking = Booking::active()
+            ->where('hall_id', $hallId)
             ->whereDate('date', $now->toDateString())
-            ->where('start_time', '<=', $today)->where('end_time', '>', $today)
-            ->where('status', 'confirmed')->exists();
+            ->where('start_time', '<=', $today)->where('end_time', '>', $today)->exists();
 
         if ($inLecture || $inExam || $inBooking) {
             return response()->json([
@@ -77,8 +82,11 @@ class GuardController extends Controller
                 'action_at' => now(),
                 'notes' => $request->input('notes'),
             ]);
-            $hall->status = 'متاحة';
-            $hall->save();
+            // نعيد الحالة لـ«متاحة» فقط إذا كانت مغلقة من حارس — لا نمس «صيانة» أو «متاحة» التي عيّنها الأدمن
+            if ($hall->status === 'مغلقة') {
+                $hall->status = 'متاحة';
+                $hall->save();
+            }
         });
 
         return response()->json(['ok' => true, 'hall_id' => $hallId, 'action' => 'unlock']);
