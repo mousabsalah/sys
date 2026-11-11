@@ -65,7 +65,7 @@ class AdminBackupController extends Controller
     /**
      * تحميل نسخة .sql مباشرةً. اسم الملف محصور على النمط الرسمي لمنع path traversal.
      */
-    public function download(string $file)
+    public function download(Request $request, string $file)
     {
         if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[0-9a-z]{4})?\.sql$/i', $file)) {
             return response()->json(['ok' => false, 'message_ar' => 'اسم ملف غير صالح.'], 422);
@@ -74,6 +74,9 @@ class AdminBackupController extends Controller
         if (! File::exists($path)) {
             return response()->json(['ok' => false, 'message_ar' => 'الملف غير موجود.'], 404);
         }
+
+        // تنزيل نسخة كاملة = أدق مسار تسريب — يجب أن يترك أثرًا في التدقيق أولًا
+        $this->audit->log($request, 'backup.download', 'backup', null, ['file' => $file]);
 
         return response()->download($path, $file, [
             'Content-Type' => 'application/sql',

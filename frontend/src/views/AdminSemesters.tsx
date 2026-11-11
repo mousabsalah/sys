@@ -85,6 +85,7 @@ export default function AdminSemestersView({ call }: { call: ReturnType<typeof u
   }
 
   async function unarchive(s: Semester) {
+    if (!window.confirm(`إلغاء أرشفة فصل «${s.academic_term}»؟ ستعود محاضراته لتحجب الجدولة.`)) return
     setErr(null); setMsg(null)
     try {
       await call(`/api/admin/semesters/${s.id}/unarchive`, 'POST')

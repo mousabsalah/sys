@@ -675,6 +675,7 @@ class AdminSecurityTest extends TestCase
     {
         $admin = $this->makeUser('admin');
         $file = 'aust_graduation_2099-01-01_000000.sql';
+        File::ensureDirectoryExists(storage_path('backups'));
         File::put(storage_path('backups/'.$file), '-- dump');
 
         try {

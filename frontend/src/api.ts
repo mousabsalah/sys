@@ -13,6 +13,10 @@ export async function api<T>(path: string, method: string = 'GET', body?: unknow
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
+    if (res.status === 429) {
+      const retry = res.headers.get('Retry-After')
+      throw new Error(`محاولات كثيرة — انتظر ${retry ?? '60'} ثانية وحاول مجددًا`)
+    }
     let detail = res.statusText
     try {
       const j = await res.json()

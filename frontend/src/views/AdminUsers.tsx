@@ -91,6 +91,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
 
   async function toggleActive(u: AdminUser) {
     setErr(null); setMsg(null)
+    if (!u.is_active && !window.confirm(`تفعيل حساب «${u.name}»؟ سيعود قادرًا على الدخول فورًا.`)) return
     if (u.is_active && !window.confirm(`إيقاف حساب «${u.name}»؟ سيُقطع كل التوكنات النشطة فورًا.`)) return
     try {
       await call(`/api/admin/users/${u.id}/${u.is_active ? 'deactivate' : 'reactivate'}`, 'POST')

@@ -39,7 +39,7 @@ class ProposeController extends Controller
         $groups = FacultyScope::groupQuery($user)
             ->join('batches', 'batches.id', '=', 'groups.batch_id')
             ->orderBy('batches.name')
-            ->orderByRaw("FIELD(groups.track, 'دبلوم', 'بكلاريوس')")
+            ->orderByRaw("CASE groups.track WHEN 'دبلوم' THEN 1 WHEN 'بكلاريوس' THEN 2 ELSE 3 END")
             ->get(['groups.id', 'batches.name as batch', 'groups.track', 'groups.student_count', 'batches.program_id']);
 
         $planItems = DB::table('group_courses')

@@ -64,14 +64,14 @@ class AdminController extends Controller
     public function plansStore(Request $request, int $group)
     {
         $input = $request->validate([
-            'items' => ['required', 'array'],
+            'items' => ['required', 'array', 'min:1'],
             'items.*.course_id' => ['required', 'integer', 'distinct', Rule::exists('courses', 'id')],
             'items.*.sessions_per_week' => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 
-        $groupModel = Group::findOrFail($group);
-
-        DB::transaction(function () use ($input, $groupModel, $request) {
+        $groupModel = DB::transaction(function () use ($input, $group, $request) {
+            // قفل صف الشعبة داخل المعاملة — خطتان من نفس الشعبة لا تندمجان تزامنيًا
+            $groupModel = Group::lockForUpdate()->findOrFail($group);
             GroupCourse::where('group_id', $groupModel->id)->delete();
             foreach ($input['items'] as $item) {
                 GroupCourse::create([
@@ -81,6 +81,8 @@ class AdminController extends Controller
                 ]);
             }
             app(AuditLogger::class)->log($request, 'plan.replace', 'group', $groupModel->id, ['course_count' => count($input['items'])]);
+
+            return $groupModel;
         });
 
         $plan = DB::table('group_courses')

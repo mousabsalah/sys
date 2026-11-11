@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     // هاش وهمي يُستخدم فقط لتوحيد زمن المقارنة — لا يطابق أي كلمة مرور حقيقية
-    private const DUMMY_PASSWORD_HASH = '$2y$10$oaemJDhips6IkKRPC0MID.HDh9p5Iu0.bu.64ENQHxIc3bWxwsIIK';
+    private const DUMMY_PASSWORD_HASH = '$2y$12$C16lTIMjGW6cN.NRTS31Ler8S5BZnQyA1x9PRms3Vk.ly3v8HzEGS';
 
     // توحيد شكل المستخدم المُعاد للواجهة
     private function userPayload($u): array

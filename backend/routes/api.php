@@ -27,7 +27,7 @@ Route::get('/user', function (Request $request) {
 })->middleware(['auth:sanctum', 'active']);
 
 // ── تسجيل الدخول/الخروج/ملفي (الدخول: 5 محاولات/دقيقة لكل IP) ──
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1,login');
 
 // ── الدخول: واجهة المتصفح — طلب GET على /api/login يُرجع توضيح JSON (لا صفحة Symfony 405) ──
 Route::get('/login', function () {
@@ -102,7 +102,7 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     Route::post('/admin/semesters', [AdminMasterDataController::class, 'semesterStore']);
     Route::put('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterUpdate']);
     Route::post('/admin/semesters/{semester}/dates', [AdminMasterDataController::class, 'semesterSetDates']);
-    Route::post('/admin/semesters/{semester}/archive', [AdminMasterDataController::class, 'semesterArchive'])->middleware('throttle:12,1');
+    Route::post('/admin/semesters/{semester}/archive', [AdminMasterDataController::class, 'semesterArchive'])->middleware('throttle:12,1,archive');
     Route::post('/admin/semesters/{semester}/unarchive', [AdminMasterDataController::class, 'semesterUnarchive']);
     Route::delete('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterDelete']);
 
@@ -111,7 +111,7 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     Route::get('/admin/semesters/{semester}/archived', [AdminDashboardController::class, 'archivedSchedule']);
 
     // النسخ الاحتياطي (إنشاء/قائمة/تحميل مباشر) — إنشاء: 6 طلبات/دقيقة كحد أقصى
-    Route::post('/admin/backup/create', [AdminBackupController::class, 'create'])->middleware('throttle:6,1');
+    Route::post('/admin/backup/create', [AdminBackupController::class, 'create'])->middleware('throttle:6,1,backup');
     Route::get('/admin/backup/list', [AdminBackupController::class, 'list']);
     Route::get('/admin/backup/download/{file}', [AdminBackupController::class, 'download']);
 });
