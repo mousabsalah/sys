@@ -2,40 +2,55 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
+use App\Models\ExamSession;
 use App\Models\Semester;
+use App\Models\Timetable;
 use Illuminate\Support\Facades\DB;
 
 /**
  * AdminDashboardController — بيانات رسومية جاهزة للرسم البياني في لوحة الأدمن + قراءة الأرشفة.
- * يجمع كل ما تحتاجه الواجهة في طلب واحد لتقليل الجوالة بين الشاشة والسيرفر.
+ * يحترم منطق الأرشفة: المحاضرات/الامتحانات/الحجوزات المرتبطة بفصل مؤرشف تُستبعد من كل الإحصاءات.
  */
 class AdminDashboardController extends Controller
 {
     public function dashboardStats()
     {
-        // ── القاعات مع إشغالها (عدد المحاضرات + عدد الامتحانات + الحجوزات) ──
+        // ── القاعات مع إشغالها (محاضرات/امتحانات/حجوزات غير مؤرشفة) ──
+        $lectures = Timetable::notArchived()
+            ->select('hall_id', DB::raw('COUNT(*) AS lectures'))
+            ->groupBy('hall_id')
+            ->pluck('lectures', 'hall_id');
+        $exams = ExamSession::notArchived()
+            ->select('hall_id', DB::raw('COUNT(*) AS exams'))
+            ->groupBy('hall_id')
+            ->pluck('exams', 'hall_id');
+        $bookings = Booking::active()
+            ->select('hall_id', DB::raw('COUNT(*) AS bookings'))
+            ->groupBy('hall_id')
+            ->pluck('bookings', 'hall_id');
+
         $halls = DB::table('halls')
             ->whereNull('halls.deleted_at')
-            ->leftJoin('timetables', 'timetables.hall_id', '=', 'halls.id')
-            ->leftJoin('exam_sessions', 'exam_sessions.hall_id', '=', 'halls.id')
-            ->leftJoin('bookings', 'bookings.hall_id', '=', 'halls.id')
-            ->select(
-                'halls.id',
-                'halls.name',
-                'halls.capacity',
-                'halls.hall_type',
-                'halls.status',
-                DB::raw('COUNT(DISTINCT timetables.id) AS lectures'),
-                DB::raw('COUNT(DISTINCT exam_sessions.id) AS exams'),
-                DB::raw('COUNT(DISTINCT bookings.id) AS bookings'),
-            )
-            ->groupBy('halls.id', 'halls.name', 'halls.capacity', 'halls.hall_type', 'halls.status')
-            ->orderByDesc('lectures')
-            ->get();
+            ->select('halls.id', 'halls.name', 'halls.capacity', 'halls.hall_type', 'halls.status')
+            ->orderByDesc('halls.capacity')
+            ->get()
+            ->map(fn ($h) => [
+                'id' => (int) $h->id,
+                'name' => (string) $h->name,
+                'capacity' => (int) $h->capacity,
+                'hall_type' => (string) $h->hall_type,
+                'status' => (string) $h->status,
+                'lectures' => (int) ($lectures[$h->id] ?? 0),
+                'exams' => (int) ($exams[$h->id] ?? 0),
+                'bookings' => (int) ($bookings[$h->id] ?? 0),
+            ])
+            ->sortByDesc('lectures')
+            ->values();
 
         // ── توزيع المحاضرات حسب يوم الأسبوع (مخزنة كنص عربي) ──
         $dayOrder = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-        $rawDays = DB::table('timetables')
+        $rawDays = Timetable::notArchived()
             ->select('day_of_week', DB::raw('COUNT(*) AS lectures'))
             ->groupBy('day_of_week')
             ->pluck('lectures', 'day_of_week');
@@ -45,7 +60,7 @@ class AdminDashboardController extends Controller
         }
 
         // ── حصة كل كلية من المحاضرات (عبر department → faculty) ──
-        $facultyShare = DB::table('timetables')
+        $facultyShare = Timetable::notArchived()
             ->join('groups', 'groups.id', '=', 'timetables.group_id')
             ->join('batches', 'batches.id', '=', 'groups.batch_id')
             ->join('departments', 'departments.id', '=', 'batches.department_id')
@@ -55,8 +70,12 @@ class AdminDashboardController extends Controller
             ->orderByDesc('lectures')
             ->get();
 
-        // ── نشاط كل فصل دراسي (للرسم الخطي عبر الزمن) ──
-        $semesterActivity = Semester::withCount(['timetables', 'examSessions', 'bookings'])
+        // ── نشاط كل فصل دراسي (للرسم الخطي عبر الزمن) — بإحصاءات غير مؤرشفة فقط ──
+        $semesterActivity = Semester::withCount([
+            'timetables' => fn ($q) => $q->notArchived(),
+            'examSessions' => fn ($q) => $q->notArchived(),
+            'bookings' => fn ($q) => $q->active(),
+        ])
             ->with('faculty:id,name', 'department:id,name', 'batch:id,name')
             ->orderBy('start_date')
             ->orderBy('id')
@@ -81,9 +100,9 @@ class AdminDashboardController extends Controller
             'halls_available_now' => DB::table('halls')->whereNull('deleted_at')->where('status', 'متاحة')->count(),
             'total_students' => (int) DB::table('batches')->sum('student_count'),
             'faculty_members' => DB::table('faculty')->count(),
-            'lectures_total' => DB::table('timetables')->count(),
-            'exams_total' => DB::table('exam_sessions')->count(),
-            'bookings_total' => DB::table('bookings')->count(),
+            'lectures_total' => Timetable::notArchived()->count(),
+            'exams_total' => ExamSession::notArchived()->count(),
+            'bookings_total' => Booking::active()->count(),
             'batches_count' => DB::table('batches')->count(),
             'courses_count' => DB::table('courses')->count(),
             'groups_count' => DB::table('groups')->count(),
@@ -127,7 +146,7 @@ class AdminDashboardController extends Controller
                 'halls.name AS hall_name',
                 'faculty.full_name AS faculty_name',
             )
-            ->orderBy('timetables.day_of_week')
+            ->orderByRaw("FIELD(timetables.day_of_week, 'السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس')")
             ->orderBy('timetables.start_time')
             ->get();
 

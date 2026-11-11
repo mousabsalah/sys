@@ -16,12 +16,14 @@ export default function AdminHallsView({ call }: { call: ReturnType<typeof useAu
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   async function refresh() {
     try {
       const data = await call<Master>('/api/admin/master-data')
       setHalls(data.halls ?? [])
     } catch (e) { setErr((e as Error).message) }
+    finally { setLoading(false) }
   }
   useEffect(() => { refresh() }, [])
 
@@ -84,6 +86,7 @@ export default function AdminHallsView({ call }: { call: ReturnType<typeof useAu
         <table className="table table-sm aust-panel align-middle">
           <thead className="table-light"><tr><th>#</th><th>القاعة</th><th>النوع</th><th>السعة</th><th>الحالة</th><th>التجهيزات</th><th></th></tr></thead>
           <tbody>
+            {loading && <tr><td colSpan={7} className="text-muted">جارٍ التحميل…</td></tr>}
             {halls.map((h) => (
               <tr key={h.id}>
                 <td>#{h.id}</td>
@@ -98,7 +101,7 @@ export default function AdminHallsView({ call }: { call: ReturnType<typeof useAu
                 </td>
               </tr>
             ))}
-            {halls.length === 0 && <tr><td colSpan={7} className="text-muted">لا توجد قاعات</td></tr>}
+            {!loading && halls.length === 0 && <tr><td colSpan={7} className="text-muted">لا توجد قاعات</td></tr>}
           </tbody>
         </table>
       </div>

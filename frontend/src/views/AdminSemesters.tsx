@@ -36,6 +36,7 @@ export default function AdminSemestersView({ call }: { call: ReturnType<typeof u
   const [msg, setMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [backupBusy, setBackupBusy] = useState(false)
+  const [archiving, setArchiving] = useState<number | null>(null)
 
   async function refresh() {
     try {
@@ -73,12 +74,14 @@ export default function AdminSemestersView({ call }: { call: ReturnType<typeof u
   }
 
   async function archive(s: Semester) {
-    setErr(null); setMsg(null)
+    const ok = window.confirm(`أرشفة فصل «${s.academic_term}» — ${s.faculty ?? ''} / ${s.department ?? ''}؟\nستُجمَّد محاضراته وامتحاناته ولن تحجب الجدولة الجديدة، وستُنشأ نسخة احتياطية تلقائيًا.`)
+    if (!ok) return
+    setArchiving(s.id); setErr(null); setMsg(null)
     try {
       const r = await call<{ ok: boolean; backup: string | null }>(`/api/admin/semesters/${s.id}/archive`, 'POST')
       setMsg(`تمت أرشفة الفصل ✓ — نسخة احتياطية: ${r.backup ?? 'تعذر إنشاؤها'}`)
       refresh()
-    } catch (e) { setErr((e as Error).message) }
+    } catch (e) { setErr((e as Error).message) } finally { setArchiving(null) }
   }
 
   async function unarchive(s: Semester) {
@@ -108,16 +111,18 @@ export default function AdminSemestersView({ call }: { call: ReturnType<typeof u
   }
 
   async function downloadBackup(file: string) {
-    const token = sessionStorage.getItem('aust_token')
-    const res = await fetch(`${BASE}/api/admin/backup/download/${encodeURIComponent(file)}`, {
-      headers: { Authorization: `Bearer ${token ?? ''}` },
-    })
-    if (!res.ok) { setErr('تعذر تحميل الملف'); return }
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = file; a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const token = sessionStorage.getItem('aust_token')
+      const res = await fetch(`${BASE}/api/admin/backup/download/${encodeURIComponent(file)}`, {
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+      })
+      if (!res.ok) { setErr(`تعذر تحميل الملف (${res.status})`); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = file; a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { setErr(`تعذر تحميل النسخة: ${(e as Error).message}`) }
   }
 
   return (
@@ -171,7 +176,7 @@ export default function AdminSemestersView({ call }: { call: ReturnType<typeof u
                 </td>
                 <td className="d-flex gap-1">
                   {!s.archived_at
-                    ? <button className="aust-btn-outline btn-sm" onClick={() => archive(s)}>أرشفة</button>
+                    ? <button className="aust-btn-outline btn-sm" disabled={archiving === s.id} onClick={() => archive(s)}>{archiving === s.id ? 'جارٍ الأرشفة…' : 'أرشفة'}</button>
                     : <button className="aust-btn-outline btn-sm" onClick={() => unarchive(s)}>إلغاء أرشفة</button>}
                   <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(s)}>حذف</button>
                 </td>

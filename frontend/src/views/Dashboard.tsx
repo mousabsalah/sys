@@ -21,13 +21,14 @@ const statsFallback = (
 export default function DashboardView({ call, role }: { call: ReturnType<typeof useAuthedApi>; role?: Role }) {
   const [core, setCore] = useState<CoreData | null>(null)
   const [stats, setStats] = useState<AdminStats | null>(null)
+  const [statsErr, setStatsErr] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const isAdmin = role === 'admin'
 
   useEffect(() => {
     call<CoreData>('/api/dashboard').then(setCore).catch((e) => setErr((e as Error).message))
     if (isAdmin) {
-      call<AdminStats>('/api/admin/dashboard-stats').then(setStats).catch(() => setStats(null))
+      call<AdminStats>('/api/admin/dashboard-stats').then(setStats).catch((e) => setStatsErr((e as Error).message))
     }
   }, [call, isAdmin])
 
@@ -54,9 +55,17 @@ export default function DashboardView({ call, role }: { call: ReturnType<typeof 
 
       {/* ── المؤشرات + الخريطة والرسوم (المدير فقط)؛ بقية الأدوار تحصل على شريط كلاسيكي ── */}
       {isAdmin ? (
-        <Suspense fallback={statsFallback}>
-          {stats && <AdminStatsView stats={stats} />}
-        </Suspense>
+        <>
+          {statsErr && (
+            <div className="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+              <span>تعذر تحميل لوحة المدير: {statsErr}</span>
+              <button className="aust-btn-outline btn-sm" onClick={() => { setStatsErr(null); call<AdminStats>('/api/admin/dashboard-stats').then(setStats).catch((e) => setStatsErr((e as Error).message)) }}>إعادة المحاولة</button>
+            </div>
+          )}
+          <Suspense fallback={statsFallback}>
+            {stats && <AdminStatsView stats={stats} />}
+          </Suspense>
+        </>
       ) : (
         <div className="row g-3 mb-4">
           {classicCards.map((c) => (

@@ -21,12 +21,14 @@ export default function AdminPlansView({ call }: { call: ReturnType<typeof useAu
 
   async function load() {
     try {
-      const [pl, master] = await Promise.all([
+      const [pl, master] = await Promise.allSettled([
         call<PlanList>('/api/admin/plans'),
         call<MasterLite>('/api/admin/master-data'),
       ])
-      setData(pl)
-      setCourses(master.courses ?? [])
+      if (pl.status === 'rejected') throw pl.reason
+      setData(pl.value)
+      setCourses(master.status === 'fulfilled' ? (master.value.courses ?? []) : [])
+      if (master.status === 'rejected') setErr((master.reason as Error).message)
     } catch (e) { setErr((e as Error).message) }
   }
   useEffect(() => { load() }, [])
@@ -46,20 +48,21 @@ export default function AdminPlansView({ call }: { call: ReturnType<typeof useAu
   }
   async function save() {
     if (editingGroup === null) return
-    setSaving(true); setMsg(null)
+    setSaving(true); setMsg(null); setErr(null)
     try {
       await call(`/api/admin/plans/${editingGroup}`, 'POST', { items: editItems })
       await load(); setEditingGroup(null); setMsg('تم حفظ الخطة ✓')
-    } catch (e) { setMsg((e as Error).message) } finally { setSaving(false) }
+    } catch (e) { setErr((e as Error).message) } finally { setSaving(false) }
   }
 
-  if (err) return <div className="alert alert-danger">{err}</div>
+  if (!data && err) return <div className="alert alert-danger">{err}</div>
   if (!data) return <div>جارٍ التحميل…</div>
 
   return (
     <>
       <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>الخطط الدراسية للشعب</h1>
       <p className="small text-muted mb-3">المقررات والحصص الأسبوعية لكل شعبة — هي المصدر الذي يبني عليه الاقتراح التلقائي (CP-SAT) جدول الفصل.</p>
+      {err && <div className="alert alert-danger py-2">{err}</div>}
       {msg && <div className="alert alert-success py-2">{msg}</div>}
 
       <div className="row g-2">

@@ -15,6 +15,7 @@ export default function AdminDepartmentsView({ call }: { call: ReturnType<typeof
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   async function refresh() {
     try {
@@ -22,6 +23,7 @@ export default function AdminDepartmentsView({ call }: { call: ReturnType<typeof
       setFaculties(data.faculties ?? [])
       setDepartments(data.departments ?? [])
     } catch (e) { setErr((e as Error).message) }
+    finally { setLoading(false) }
   }
   useEffect(() => { refresh() }, [])
 
@@ -96,7 +98,8 @@ export default function AdminDepartmentsView({ call }: { call: ReturnType<typeof
                 </td>
               </tr>
             ))}
-            {departments.length === 0 && <tr><td colSpan={5} className="text-muted">لا توجد أقسام</td></tr>}
+            {loading && <tr><td colSpan={5} className="text-muted">جارٍ التحميل…</td></tr>}
+            {!loading && departments.length === 0 && <tr><td colSpan={5} className="text-muted">لا توجد أقسام</td></tr>}
           </tbody>
         </table>
       </div>

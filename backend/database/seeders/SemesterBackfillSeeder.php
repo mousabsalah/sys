@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\Department;
 use App\Models\Semester;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * SemesterBackfillSeeder — توليد سطر semester واحد لكل دفعة (8 دفعات) ونسب الحجوزات والمحاضرات والامتحانات الحالية إليه.
@@ -27,20 +28,22 @@ class SemesterBackfillSeeder extends Seeder
         }
 
         // ربط الجداول الحالية بسم ester لكل دفعة
-        \Illuminate\Support\Facades\DB::table('timetables')
+        DB::table('timetables')
             ->select('group_id')
             ->distinct()
             ->orderBy('group_id')
             ->get()
             ->each(function ($row) {
-                $group = \Illuminate\Support\Facades\DB::table('groups')->where('id', $row->group_id)->first();
-                if (! $group) { return; }
-                $semester = \Illuminate\Support\Facades\DB::table('semesters')
+                $group = DB::table('groups')->where('id', $row->group_id)->first();
+                if (! $group) {
+                    return;
+                }
+                $semester = DB::table('semesters')
                     ->where('batch_id', $group->batch_id)
                     ->where('academic_term', '2026/1')
                     ->first();
                 if ($semester) {
-                    \Illuminate\Support\Facades\DB::table('timetables')
+                    DB::table('timetables')
                         ->where('group_id', $row->group_id)
                         ->whereNull('semester_id')
                         ->update(['semester_id' => $semester->id]);
@@ -48,7 +51,7 @@ class SemesterBackfillSeeder extends Seeder
             });
 
         // ربط الامتحانات الحالية
-        \Illuminate\Support\Facades\DB::table('exam_sessions')
+        DB::table('exam_sessions')
             ->join('groups', 'groups.id', '=', 'exam_sessions.group_id')
             ->leftJoin('semesters', function ($join) {
                 $join->on('semesters.batch_id', '=', 'groups.batch_id')
@@ -59,22 +62,22 @@ class SemesterBackfillSeeder extends Seeder
             ->get()
             ->each(function ($row) {
                 if ($row->semester_id) {
-                    \Illuminate\Support\Facades\DB::table('exam_sessions')
+                    DB::table('exam_sessions')
                         ->where('id', $row->id)
                         ->update(['semester_id' => $row->semester_id]);
                 }
             });
 
         // ربط الحجوزات الحالية بسم ester اخذ
-        \Illuminate\Support\Facades\DB::table('bookings')
+        DB::table('bookings')
             ->leftJoin('courses', 'courses.id', '=', 'bookings.course_id')
             ->get()
             ->each(function ($row) {
-                $semester = \Illuminate\Support\Facades\DB::table('semesters')
+                $semester = DB::table('semesters')
                     ->where('academic_term', '2026/1')
                     ->first();
                 if ($semester) {
-                    \Illuminate\Support\Facades\DB::table('bookings')
+                    DB::table('bookings')
                         ->where('id', $row->id)
                         ->whereNull('semester_id')
                         ->update(['semester_id' => $semester->id]);

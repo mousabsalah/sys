@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * AdminUsersController — إدارة كل المستخدمين (admin فقط).
- * الفعل يمر عبر transaction + audit log — لا حذف فعلي (تعطيل فقط).
+ * كل فعل يمر عبر transaction (عند خطوات متعددة) + audit log — لا حذف فعلي (تعطيل فقط).
  */
 class AdminUsersController extends Controller
 {
@@ -41,10 +42,13 @@ class AdminUsersController extends Controller
             $query->where('is_active', false);
         }
 
-        $users = $query->limit((int) $request->query('limit', 200))->get();
+        $limit = min((int) $request->query('limit', 200), 500);
+
+        $users = $query->limit($limit)->get();
+        $total = (clone $query)->count();
 
         return response()->json([
-            'total' => $users->count(),
+            'total' => $total,
             'users' => $users->map(fn ($u) => $this->userPayload($u)),
         ]);
     }
@@ -109,9 +113,13 @@ class AdminUsersController extends Controller
             return response()->json(['ok' => false, 'message_ar' => 'لا يمكنك تعطيل حسابك أنت.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $target->forceFill(['is_active' => false, 'deactivated_at' => now()])->save();
+        DB::transaction(function () use (&$revoked, $target) {
+            $revoked = $target->tokens()->count();
+            $target->tokens()->delete();
+            $target->forceFill(['is_active' => false, 'deactivated_at' => now()])->save();
+        });
 
-        $this->audit->log($request, 'user.deactivate', 'user', $target->id, ['username' => $target->username]);
+        $this->audit->log($request, 'user.deactivate', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
 
         return response()->json(['ok' => true, 'user' => $this->userPayload($target)]);
     }
@@ -134,10 +142,14 @@ class AdminUsersController extends Controller
         $plain = $this->generatePassword(10);
 
         // Laravel Hash + Model cast('password' => 'hashed') → تمرير الـplain سيُخزن مشفّرًا
-        $target->password = $plain;
-        $target->save();
+        $revoked = $target->tokens()->count();
+        DB::transaction(function () use ($target, $plain) {
+            $target->password = $plain;
+            $target->save();
+            $target->tokens()->delete();
+        });
 
-        $this->audit->log($request, 'user.reset_password', 'user', $target->id, ['username' => $target->username]);
+        $this->audit->log($request, 'user.reset_password', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
 
         return response()->json([
             'ok' => true,

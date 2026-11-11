@@ -34,9 +34,15 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('timetables', function (Blueprint $table) { $table->dropForeign(['semester_id']); });
-        Schema::table('exam_sessions', function (Blueprint $table) { $table->dropForeign(['semester_id']); });
-        Schema::table('bookings', function (Blueprint $table) { $table->dropForeign(['semester_id']); });
+        Schema::table('timetables', function (Blueprint $table) {
+            $table->dropForeign(['semester_id']);
+        });
+        Schema::table('exam_sessions', function (Blueprint $table) {
+            $table->dropForeign(['semester_id']);
+        });
+        Schema::table('bookings', function (Blueprint $table) {
+            $table->dropForeign(['semester_id']);
+        });
         Schema::dropIfExists('semesters');
     }
 };

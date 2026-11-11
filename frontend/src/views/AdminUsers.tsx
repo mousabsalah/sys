@@ -15,6 +15,10 @@ type AdminUser = {
 }
 
 type ListResp = { total: number; users: AdminUser[] }
+type MasterLite = {
+  faculties: { id: number; name: string }[]
+  batches: { id: number; name: string; department_id: number }[]
+}
 
 const ROLE_LABEL: Record<AdminUser['role'], string> = {
   admin: 'مدير النظام',
@@ -23,11 +27,12 @@ const ROLE_LABEL: Record<AdminUser['role'], string> = {
   batch: 'دفعة',
 }
 
-const FACULTY_LABEL: Record<number, string> = { 1: 'كلية العلوم', 2: 'كلية الهندسة', 3: 'كلية إدارة الأعمال' }
-
 export default function AdminUsersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [faculties, setFaculties] = useState<MasterLite['faculties']>([])
+  const [batches, setBatches] = useState<MasterLite['batches']>([])
   const [q, setQ] = useState('')
+  const [debouncedQ, setDebouncedQ] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactivated'>('all')
   const [err, setErr] = useState<string | null>(null)
@@ -36,13 +41,12 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'dept' as AdminUser['role'], faculty_id: '', batch_id: '' })
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null)
-  const [resetting, setResetting] = useState<number | null>(null)
 
   async function refresh() {
     setErr(null); setLoading(true)
     try {
       const qs = new URLSearchParams()
-      if (q) qs.set('q', q)
+      if (debouncedQ) qs.set('q', debouncedQ)
       if (roleFilter) qs.set('role', roleFilter)
       qs.set('status', statusFilter)
       const data = await call<ListResp>(`/api/admin/users?${qs.toString()}`)
@@ -51,7 +55,19 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
     finally { setLoading(false) }
   }
 
-  useEffect(() => { refresh() }, [q, roleFilter, statusFilter])
+  // debounce البحث — 300ms بدل طلب على كل ضغطة زر
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 300)
+    return () => clearTimeout(t)
+  }, [q])
+
+  useEffect(() => { refresh() }, [debouncedQ, roleFilter, statusFilter])
+
+  useEffect(() => {
+    call<MasterLite>('/api/admin/master-data')
+      .then((d) => { setFaculties(d.faculties ?? []); setBatches(d.batches ?? []) })
+      .catch(() => { /* تُعرض القوائم فارغة بدل تعطل الصفحة */ })
+  }, [call])
 
   async function create() {
     setErr(null); setMsg(null)
@@ -64,7 +80,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
       const r = await call<{ ok: boolean }>('/api/admin/users', 'POST', payload)
       if (r.ok) {
         setMsg('تم إنشاء الحساب ✓')
-        setForm({ name: '', username: '', email: '', password: '', role: 'dept', faculty_id: '', batch_id: '' })
+        setForm({ name: '', username: '', email: '', password: '', role: form.role, faculty_id: '', batch_id: '' })
         setCreating(false)
         refresh()
       }
@@ -85,7 +101,6 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
     try {
       const r = await call<{ ok: boolean; temporary_password: string }>(`/api/admin/users/${u.id}/reset-password`, 'POST')
       setTempPassword({ username: u.username, password: r.temporary_password })
-      setResetting(null)
       setMsg('تم توليد كلمة مرور مؤقتة')
       refresh()
     } catch (e) { setErr((e as Error).message) }
@@ -130,11 +145,15 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
               <option value="batch">دفعة</option>
             </select>
             {form.role === 'dept' && (
-              <select className="form-select" value={form.faculty_id} onChange={(e) => setForm({ ...form, faculty_id: e.target.value })}>
+              <select className="form-select" value={form.faculty_id} onChange={(e) => setForm({ ...form, faculty_id: e.target.value })} required>
                 <option value="">— اختر الكلية —</option>
-                <option value="1">كلية العلوم</option>
-                <option value="2">كلية الهندسة</option>
-                <option value="3">كلية إدارة الأعمال</option>
+                {faculties.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            )}
+            {form.role === 'batch' && (
+              <select className="form-select" value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })} required>
+                <option value="">— اختر الدفعة —</option>
+                {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             )}
             <button className="aust-btn" onClick={create}>إنشاء الحساب</button>
@@ -167,7 +186,12 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
                 <td><strong>{u.name}</strong></td>
                 <td dir="ltr">{u.username}</td>
                 <td>{ROLE_LABEL[u.role]}</td>
-                <td>{u.role === 'dept' ? (FACULTY_LABEL[u.faculty_id ?? 0] ?? '—') : u.batch_id ? `#${u.batch_id}` : '—'}</td>
+                <td>{u.role === 'dept'
+                  ? (faculties.find((f) => f.id === u.faculty_id)?.name ?? '—')
+                  : u.batch_id
+                    ? (batches.find((b) => b.id === u.batch_id)?.name ?? `#${u.batch_id}`)
+                    : '—'}
+                </td>
                 <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('ar-SD') : '—'}</td>
                 <td>
                   {u.is_active
@@ -176,7 +200,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
                 </td>
                 <td className="d-flex gap-1">
                   <button className="aust-btn-outline btn-sm" onClick={() => toggleActive(u)}>{u.is_active ? 'إيقاف' : 'تفعيل'}</button>
-                  <button className="aust-btn-outline btn-sm" onClick={() => resetting === u.id ? setResetting(null) : resetPassword(u)}>إعادة كلمة المرور</button>
+                  <button className="aust-btn-outline btn-sm" onClick={() => resetPassword(u)}>إعادة كلمة المرور</button>
                 </td>
               </tr>
             ))}

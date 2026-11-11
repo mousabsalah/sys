@@ -1,0 +1,304 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Batch;
+use App\Models\Course;
+use App\Models\Department;
+use App\Models\Faculty;
+use App\Models\FacultyEntity;
+use App\Models\Group;
+use App\Models\Hall;
+use App\Models\Program;
+use App\Models\Semester;
+use App\Models\Timetable;
+use App\Models\User;
+use App\Services\Engine\ConflictChecker;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Tests\TestCase;
+
+/**
+ * AdminSecurityTest — يثبت جروح الأدمن: الصلاحيات، تعطيل الحسابات،
+ * حذف التوكنات، رفض الحذف المرتبط بـ 422، واحترام الأرشفة في إحصاءات اللوحة.
+ */
+class AdminSecurityTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function makeUser(string $role = 'admin', bool $active = true): User
+    {
+        return User::create([
+            'name' => 'Test '.$role,
+            'username' => 'test_'.$role.'_'.uniqid(),
+            'email' => uniqid().'@test.local',
+            'password' => 'Password@123',
+            'role' => $role,
+            'is_active' => $active,
+        ]);
+    }
+
+    private function makeAcademicChain(): array
+    {
+        $faculty = FacultyEntity::create(['name' => 'كلية العلوم', 'code' => 'SCI', 'description' => null]);
+        $department = Department::create(['faculty_id' => $faculty->id, 'name' => 'علوم الحاسوب', 'code' => 'CS']);
+        $program = Program::create(['name' => 'بكالوريوس', 'description' => null]);
+        $batch = Batch::create(['name' => 'دفعة 2026', 'student_count' => 40, 'department_id' => $department->id, 'program_id' => $program->id]);
+        $group = Group::create(['batch_id' => $batch->id, 'department_id' => $department->id, 'track' => 'بكلاريوس', 'student_count' => 40]);
+
+        return [$faculty, $department, $batch, $group];
+    }
+
+    private function makeHall(string $name = 'قاعة اختبار'): Hall
+    {
+        return Hall::create([
+            'name' => $name,
+            'capacity' => 50,
+            'hall_type' => 'قاعة',
+            'status' => 'متاحة',
+            'equipment' => null,
+        ]);
+    }
+
+    private function makeCourseAndLecturer(int $departmentId): array
+    {
+        $course = Course::create([
+            'code' => 'CS101',
+            'name' => 'مقدمة علوم الحاسوب',
+            'credit_hours' => 3,
+        ]);
+        $lecturer = Faculty::create([
+            'full_name' => 'د. أحمد',
+            'department_id' => $departmentId,
+            'email' => uniqid().'@lecturer.local',
+        ]);
+
+        return [$course, $lecturer];
+    }
+
+    private function makeTimetable(int $hallId, int $groupId, int $semesterId, int $courseId = 1, int $facultyId = 1): Timetable
+    {
+        return Timetable::create([
+            'course_id' => $courseId,
+            'faculty_id' => $facultyId,
+            'group_id' => $groupId,
+            'hall_id' => $hallId,
+            'day_of_week' => 'السبت',
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'academic_term' => '2026/1',
+            'semester_id' => $semesterId,
+        ]);
+    }
+
+    private function authedAs(User $user)
+    {
+        return $this->withHeaders(['Accept' => 'application/json'])->actingAs($user, 'sanctum');
+    }
+
+    // ── المصادقة والتعطيل ────────────────────────────────────────────
+
+    public function test_deactivated_user_is_rejected_by_middleware_even_with_token(): void
+    {
+        $user = $this->makeUser('guard', true);
+        // إيقاف من القاعدة مباشرة (حالة توكنات سابقة للإصلاح)
+        $user->forceFill(['is_active' => false])->save();
+
+        $this->authedAs($user)
+            ->getJson('/api/dashboard')
+            ->assertStatus(403);
+    }
+
+    public function test_login_is_rejected_for_deactivated_user(): void
+    {
+        $user = $this->makeUser('guard', false);
+
+        $this->postJson('/api/login', ['username' => $user->username, 'password' => 'Password@123'])
+            ->assertStatus(422);
+    }
+
+    public function test_deactivate_revokes_all_target_tokens(): void
+    {
+        $admin = $this->makeUser('admin');
+        $target = $this->makeUser('guard');
+
+        $login = $this->postJson('/api/login', ['username' => $target->username, 'password' => 'Password@123'])->json();
+        $token = $login['token'] ?? null;
+        $this->assertNotNull($token);
+        $this->assertGreaterThan(0, $target->tokens()->count());
+
+        $adminToken = $this->postJson('/api/login', ['username' => $admin->username, 'password' => 'Password@123'])->json('token');
+        $this->withHeaders(['Authorization' => 'Bearer '.$adminToken, 'Accept' => 'application/json'])
+            ->postJson('/api/admin/users/'.$target->id.'/deactivate')
+            ->assertOk();
+
+        $this->assertSame(0, $target->fresh()->tokens()->count());
+        Auth::forgetUser();
+        $this->withHeaders(['Authorization' => 'Bearer '.$token, 'Accept' => 'application/json'])
+            ->getJson('/api/dashboard')
+            ->assertStatus(401);
+    }
+
+    public function test_reset_password_revokes_all_target_tokens(): void
+    {
+        $admin = $this->makeUser('admin');
+        $target = $this->makeUser('guard');
+
+        $this->postJson('/api/login', ['username' => $target->username, 'password' => 'Password@123']);
+        $this->assertGreaterThan(0, $target->tokens()->count());
+
+        $adminToken = $this->postJson('/api/login', ['username' => $admin->username, 'password' => 'Password@123'])->json('token');
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$adminToken, 'Accept' => 'application/json'])
+            ->postJson('/api/admin/users/'.$target->id.'/reset-password')
+            ->assertOk()
+            ->json();
+
+        $this->assertArrayHasKey('temporary_password', $response);
+        $this->assertSame(0, $target->fresh()->tokens()->count());
+    }
+
+    public function test_admin_cannot_create_timetables_but_dept_can(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $admin = $this->makeUser('admin');
+        $deptUser = $this->makeUser('dept');
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $hall = $this->makeHall();
+
+        $payload = [
+            'course_id' => $course->id,
+            'faculty_id' => $lecturer->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'day_of_week' => 'السبت',
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'academic_term' => '2026/1',
+        ];
+
+        $this->authedAs($admin)
+            ->postJson('/api/timetables', $payload)
+            ->assertStatus(403);
+
+        // dept يمرر — نفكّك المحرك بالمحاكاة (لا نريد HTTP حقيقي إلى syst-engine)
+        $this->mock(ConflictChecker::class, function ($mock) {
+            $mock->shouldReceive('commitTimetable')->andReturn(['ok' => true, 'timetable' => null]);
+        });
+
+        $this->authedAs($deptUser)
+            ->postJson('/api/timetables', $payload)
+            ->assertStatus(201);
+    }
+
+    public function test_non_admin_cannot_reach_admin_routes(): void
+    {
+        $deptUser = $this->makeUser('dept');
+
+        $this->authedAs($deptUser)
+            ->getJson('/api/admin/users')
+            ->assertStatus(403);
+    }
+
+    // ── رفض الحذف المرتبط ────────────────────────────────────────────
+
+    public function test_faculty_delete_blocked_by_linked_department(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty] = $this->makeAcademicChain();
+
+        $this->authedAs($admin)
+            ->deleteJson('/api/admin/faculties/'.$faculty->id)
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('faculties', ['id' => $faculty->id]);
+    }
+
+    public function test_hall_delete_blocked_by_linked_timetable(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id);
+
+        $this->authedAs($admin)
+            ->deleteJson('/api/admin/halls/'.$hall->id)
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('halls', ['id' => $hall->id]);
+    }
+
+    public function test_semester_delete_blocked_by_linked_timetable(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id);
+
+        $this->authedAs($admin)
+            ->deleteJson('/api/admin/semesters/'.$semester->id)
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('semesters', ['id' => $semester->id]);
+    }
+
+    public function test_semester_create_rejects_broken_academic_chain(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $otherFaculty = FacultyEntity::create(['name' => 'كلية الهندسة', 'code' => 'ENG', 'description' => null]);
+
+        // قسم لا ينتمي للكلية المختارة
+        $this->authedAs($admin)
+            ->postJson('/api/admin/semesters', [
+                'faculty_id' => $otherFaculty->id,
+                'department_id' => $department->id,
+                'batch_id' => $batch->id,
+                'academic_term' => '2026/2',
+            ])
+            ->assertStatus(422);
+    }
+
+    // ── احترام الأرشفة في إحصاءات لوحة الأدمن ───────────────────────
+
+    public function test_dashboard_stats_excludes_archived_semester_data(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall();
+
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id);
+
+        // قبل الأرشفة: الإحصائيات تحسب المحاضرة
+        $before = $this->actingAs($admin)->getJson('/api/admin/dashboard-stats')->json();
+        $this->assertSame(1, $before['kpis']['lectures_total']);
+
+        $semester->forceFill(['archived_at' => now()])->save();
+
+        // بعد الأرشفة: الإحصائيات لا تحسبها
+        $after = $this->actingAs($admin)->getJson('/api/admin/dashboard-stats')->json();
+        $this->assertSame(0, $after['kpis']['lectures_total']);
+        $this->assertSame(0, $after['halls'][0]['lectures']);
+    }
+}

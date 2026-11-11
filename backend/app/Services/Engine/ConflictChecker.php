@@ -10,6 +10,7 @@ use App\Models\Faculty;
 use App\Models\Group;
 use App\Models\GuardLock;
 use App\Models\Hall;
+use App\Models\Semester;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Academic\SemesterResolver;
@@ -190,6 +191,14 @@ class ConflictChecker
         return DB::transaction(function () use ($input, $date, $day, $ctx, $term) {
             Hall::where('id', $ctx['hall_id'])->lockForUpdate()->firstOrFail();
 
+            // حجز قد يخدم فصلًا واحدًا فقط — ننسبه للفصل الوحيد النشط الذي يغطي تاريخه، وإلا يظل NULL
+            $dateWindowSemesters = Semester::query()
+                ->whereNull('archived_at')
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
+                ->pluck('id');
+            $semesterId = $dateWindowSemesters->count() === 1 ? (int) $dateWindowSemesters->first() : null;
+
             $existing = $this->existingSlots(hallId: $ctx['hall_id'], dayOfWeek: $day, examDate: $date, term: $term);
             $payload = $this->buildPayload('booking', $input, $day, $ctx, $existing);
             $payload['exam_date'] = $date;
@@ -208,6 +217,7 @@ class ConflictChecker
                 'activity_name' => $input['activity_name'] ?? null,
                 'user_id' => $input['user_id'],
                 'status' => 'confirmed',
+                'semester_id' => $semesterId,
             ]);
 
             return ['ok' => true, 'booking' => $booking];
@@ -310,8 +320,9 @@ class ConflictChecker
     {
         $slots = [];
 
-        // الجداول — بدون فصول مؤرشفة، وبنفس الفصل إن حُددت الصيغة
-        $lectureQuery = Timetable::notArchived()->where('day_of_week', $dayOfWeek);
+        // الجداول — بدون فصول مؤرشفة، وبنفس الفصل إن حُددت الصيغة، وأعمدة مطلوبة فقط
+        $lectureQuery = Timetable::notArchived()->where('day_of_week', $dayOfWeek)
+            ->select('id', 'day_of_week', 'start_time', 'end_time', 'hall_id', 'faculty_id', 'group_id', 'course_id');
         if ($term !== null && $term !== '') {
             $lectureQuery->where('academic_term', $term);
         }
@@ -335,10 +346,13 @@ class ConflictChecker
             // حجز لفترة محددة / امتحان: نفس اليوم + نفس القاعة يكفي
             $bookings = Booking::active()->whereDate('date', $examDate)->where('hall_id', $hallId)->get();
         } else {
-            // محاضرة أسبوعية متكررة: الحجوزات من نفس يوم الأسبوع فقط
-            $bookings = Booking::active()->get()->filter(
-                fn ($b) => ArabicDay::of(Carbon::parse($b->date)) === $dayOfWeek
-            )->values();
+            // محاضرة أسبوعية متكررة: الحجوزات المستقبلية من نفس يوم الأسبوع فقط
+            $bookings = Booking::active()
+                ->where('date', '>=', now()->subDays(30)->toDateString())
+                ->get(['id', 'date', 'start_time', 'end_time', 'hall_id', 'course_id'])
+                ->filter(
+                    fn ($b) => ArabicDay::of(Carbon::parse($b->date)) === $dayOfWeek
+                )->values();
         }
         foreach ($bookings as $b) {
             $slots[] = [
@@ -355,8 +369,9 @@ class ConflictChecker
             ];
         }
 
-        // الامتحانات — بدون فصول مؤرشفة
-        $examQuery = ExamSession::notArchived();
+        // الامتحانات — بدون فصول مؤرشفة وأعمدة مطلوبة فقط
+        $examQuery = ExamSession::notArchived()
+            ->select('id', 'exam_date', 'start_time', 'end_time', 'hall_id', 'group_id', 'course_id');
         foreach ($examQuery->get() as $e) {
             $slots[] = [
                 'id' => (int) $e->id,

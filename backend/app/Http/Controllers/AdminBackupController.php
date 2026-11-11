@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Console\Commands\BackupDatabase;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class AdminBackupController extends Controller
 {
@@ -17,25 +19,25 @@ class AdminBackupController extends Controller
     public function create(Request $request)
     {
         Artisan::call('syst:backup');
-        $output = Artisan::output();
-        $created = collect(File::files(storage_path('backups')))
-            ->filter(fn ($f) => $f->getExtension() === 'sql')
-            ->sortByDesc(fn ($f) => $f->getMTime())
-            ->first();
 
-        $this->audit->log($request, 'backup.create', 'backup', null, [
-            'file' => $created?->getFilename(),
-        ]);
+        $file = BackupDatabase::$lastCreatedFile;
+        if (! $file) {
+            Log::error('[syst:backup] فشل إنشاء نسخة احتياطية — راجع سجل المهمة', ['output' => Artisan::output()]);
 
-        if (! $created) {
-            return response()->json(['ok' => false, 'message_ar' => 'تعذر إنشاء النسخة الاحتياطية.', 'output' => trim($output)], 500);
+            return response()->json([
+                'ok' => false,
+                'message_ar' => 'تعذر إنشاء النسخة الاحتياطية الآن — راجع سجل النظام أو حاول لاحقًا.',
+            ], 500);
         }
+
+        $sizeKb = round((int) @filesize(storage_path('backups/'.$file)) / 1024, 1);
+        $this->audit->log($request, 'backup.create', 'backup', null, ['file' => $file]);
 
         return response()->json([
             'ok' => true,
-            'file' => $created->getFilename(),
-            'size_kb' => round($created->getSize() / 1024, 1),
-            'created_at' => date('c', $created->getMTime()),
+            'file' => $file,
+            'size_kb' => $sizeKb,
+            'created_at' => now()->toIso8601String(),
         ]);
     }
 
@@ -58,7 +60,7 @@ class AdminBackupController extends Controller
     }
 
     /**
-     * تحميل نسخة .sql مباشرةً. اسم الملف محصور على نمط aust_graduation_*.sql لمنع path traversal.
+     * تحميل نسخة .sql مباشرةً. اسم الملف محصور على النمط الرسمي لمنع path traversal.
      */
     public function download(string $file)
     {

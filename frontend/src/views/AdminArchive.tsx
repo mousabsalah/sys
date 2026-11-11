@@ -36,12 +36,14 @@ export default function AdminArchiveView({ call }: { call: ReturnType<typeof use
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<ArchivedResp | null>(null)
   const [loading, setLoading] = useState(false)
+  const [listLoading, setListLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
     call<{ semesters: Semester[] }>('/api/admin/semesters')
       .then((r) => setSemesters((r.semesters ?? []).filter((s) => s.archived_at)))
       .catch((e) => setErr((e as Error).message))
+      .finally(() => setListLoading(false))
   }, [call])
 
   async function open(id: number) {
@@ -62,6 +64,7 @@ export default function AdminArchiveView({ call }: { call: ReturnType<typeof use
           <div className="aust-panel p-3">
             <h2 className="h6 fw-bold mb-2" style={{ color: '#782B19' }}>الفصول المؤرشفة ({semesters.length})</h2>
             <div className="list-group">
+              {listLoading && <div className="text-muted small p-2">جارٍ التحميل…</div>}
               {semesters.map((s) => (
                 <button
                   key={s.id}
@@ -79,7 +82,7 @@ export default function AdminArchiveView({ call }: { call: ReturnType<typeof use
                   </div>
                 </button>
               ))}
-              {semesters.length === 0 && <div className="text-muted small p-2">لا توجد فصول مؤرشفة بعد — تُؤرشف من صفحة «الفصول الدراسية».</div>}
+              {!listLoading && semesters.length === 0 && <div className="text-muted small p-2">لا توجد فصول مؤرشفة بعد — تُؤرشف من صفحة «الفصول الدراسية».</div>}
             </div>
           </div>
         </div>

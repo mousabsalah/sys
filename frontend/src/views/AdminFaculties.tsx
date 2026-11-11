@@ -13,12 +13,14 @@ export default function AdminFacultiesView({ call }: { call: ReturnType<typeof u
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   async function refresh() {
     try {
       const data = await call<Master>('/api/admin/master-data')
       setFaculties(data.faculties ?? [])
     } catch (e) { setErr((e as Error).message) }
+    finally { setLoading(false) }
   }
   useEffect(() => { refresh() }, [])
 
@@ -81,7 +83,8 @@ export default function AdminFacultiesView({ call }: { call: ReturnType<typeof u
                 </td>
               </tr>
             ))}
-            {faculties.length === 0 && <tr><td colSpan={5} className="text-muted">لا توجد كليات</td></tr>}
+            {loading && <tr><td colSpan={5} className="text-muted">جارٍ التحميل…</td></tr>}
+            {!loading && faculties.length === 0 && <tr><td colSpan={5} className="text-muted">لا توجد كليات</td></tr>}
           </tbody>
         </table>
       </div>

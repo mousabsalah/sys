@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
-use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminMasterDataController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AuthController;
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 */
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware(['auth:sanctum', 'active']);
 
 // ── تسجيل الدخول/الخروج/ملفي ──
 Route::post('/login', [AuthController::class, 'login']);
@@ -37,11 +37,11 @@ Route::get('/login', function () {
         'hint' => 'واجهة React SPA على منفذ 5173 هي نقطة الدخول للنظام.',
     ], 405);
 });
-Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::get('/me', [AuthController::class, 'me'])->middleware(['auth:sanctum', 'active']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum', 'active']);
 
 // ── الجداول ──
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/timetables', [TimetableController::class, 'index']);
     Route::post('/timetables/check', [TimetableController::class, 'check'])->middleware('role:dept');
     Route::post('/timetables', [TimetableController::class, 'store'])->middleware('role:dept');
@@ -68,13 +68,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // ── اللوحة والتقارير (مقاسة للمناقشة؛ إثبات: لا قبل تسجيل الدخول) ──
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/reports/utilization', [ReportController::class, 'utilization']);
 });
 
 // ── لوحة المدير: إدارة المستخدمين + بيانات رئيسية (admin فقط) ──
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     // إدارة المستخدمين
     Route::get('/admin/users', [AdminUsersController::class, 'index']);
     Route::post('/admin/users', [AdminUsersController::class, 'store']);
@@ -102,7 +102,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::post('/admin/semesters', [AdminMasterDataController::class, 'semesterStore']);
     Route::put('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterUpdate']);
     Route::post('/admin/semesters/{semester}/dates', [AdminMasterDataController::class, 'semesterSetDates']);
-    Route::post('/admin/semesters/{semester}/archive', [AdminMasterDataController::class, 'semesterArchive']);
+    Route::post('/admin/semesters/{semester}/archive', [AdminMasterDataController::class, 'semesterArchive'])->middleware('throttle:12,1');
     Route::post('/admin/semesters/{semester}/unarchive', [AdminMasterDataController::class, 'semesterUnarchive']);
     Route::delete('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterDelete']);
 
@@ -110,14 +110,14 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard-stats', [AdminDashboardController::class, 'dashboardStats']);
     Route::get('/admin/semesters/{semester}/archived', [AdminDashboardController::class, 'archivedSchedule']);
 
-    // النسخ الاحتياطي (إنشاء/قائمة/تحميل مباشر)
-    Route::post('/admin/backup/create', [AdminBackupController::class, 'create']);
+    // النسخ الاحتياطي (إنشاء/قائمة/تحميل مباشر) — إنشاء: 6 طلبات/دقيقة كحد أقصى
+    Route::post('/admin/backup/create', [AdminBackupController::class, 'create'])->middleware('throttle:6,1');
     Route::get('/admin/backup/list', [AdminBackupController::class, 'list']);
     Route::get('/admin/backup/download/{file}', [AdminBackupController::class, 'download']);
 });
 
 // ── syst-engine passthrough (مطوّرين — خلف المصادقة) ──
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/syst-engine/health', [EnginePassthrough::class, 'health']);
     Route::post('/syst-engine/check', [EnginePassthrough::class, 'check']);
 });

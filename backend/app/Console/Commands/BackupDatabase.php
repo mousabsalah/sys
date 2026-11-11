@@ -11,11 +11,16 @@ class BackupDatabase extends Command
 
     protected $description = 'Dump قاعدة بيانات aust_graduation كاملة إلى ملف .sql داخل storage/backups';
 
+    /** اسم آخر ملف نُشئ فعليًا — تستهلكه المتحكمات بدل البحث حسب mtime */
+    public static ?string $lastCreatedFile = null;
+
     public function handle(): int
     {
+        self::$lastCreatedFile = null;
+
         $dir = storage_path('backups');
         if (! File::isDirectory($dir)) {
-            File::makeDirectory($dir, 0755, true);
+            File::makeDirectory($dir, 0700, true);
         }
 
         $config = config('database.connections.mysql');
@@ -71,6 +76,9 @@ class BackupDatabase extends Command
 
             return self::FAILURE;
         }
+
+        @chmod($target, 0600);
+        self::$lastCreatedFile = $filename;
 
         // الاحتفاظ بآخر 10 نسخ فقط
         $kept = collect(File::files($dir))
