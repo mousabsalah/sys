@@ -2,27 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Console\Commands\BackupDatabase;
 use App\Services\Audit\AuditLogger;
+use App\Services\Backup\BackupGateway;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 class AdminBackupController extends Controller
 {
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private BackupGateway $dumper) {}
 
     /**
      * إنشاء نسخة احتياطية فورية (mysqldump كامل للقاعدة).
      */
     public function create(Request $request)
     {
-        Artisan::call('syst:backup');
+        $file = $this->dumper->dump();
 
-        $file = BackupDatabase::$lastCreatedFile;
         if (! $file) {
-            Log::error('[syst:backup] فشل إنشاء نسخة احتياطية — راجع سجل المهمة', ['output' => Artisan::output()]);
+            Log::error('[syst:backup] فشل إنشاء نسخة احتياطية عبر البوابة');
 
             return response()->json([
                 'ok' => false,

@@ -29,6 +29,7 @@ const ROLE_LABEL: Record<AdminUser['role'], string> = {
 
 export default function AdminUsersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [totalUsers, setTotalUsers] = useState(0)
   const [faculties, setFaculties] = useState<MasterLite['faculties']>([])
   const [batches, setBatches] = useState<MasterLite['batches']>([])
   const [q, setQ] = useState('')
@@ -51,6 +52,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
       qs.set('status', statusFilter)
       const data = await call<ListResp>(`/api/admin/users?${qs.toString()}`)
       setUsers(data.users ?? [])
+      setTotalUsers(data.total ?? data.users?.length ?? 0)
     } catch (e) { setErr((e as Error).message) }
     finally { setLoading(false) }
   }
@@ -89,6 +91,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
 
   async function toggleActive(u: AdminUser) {
     setErr(null); setMsg(null)
+    if (u.is_active && !window.confirm(`إيقاف حساب «${u.name}»؟ سيُقطع كل التوكنات النشطة فورًا.`)) return
     try {
       await call(`/api/admin/users/${u.id}/${u.is_active ? 'deactivate' : 'reactivate'}`, 'POST')
       setMsg(u.is_active ? 'تم إيقاف الحساب' : 'تم تفعيل الحساب')
@@ -98,6 +101,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
 
   async function resetPassword(u: AdminUser) {
     setErr(null)
+    if (!window.confirm(`توليد كلمة مرور مؤقتة لـ«${u.name}»؟ سيُبطل كل جلساته الحالية فورًا.`)) return
     try {
       const r = await call<{ ok: boolean; temporary_password: string }>(`/api/admin/users/${u.id}/reset-password`, 'POST')
       setTempPassword({ username: u.username, password: r.temporary_password })
@@ -108,7 +112,8 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{ color: '#0A1D3B' }}>إدارة المستخدمين</h1>
+      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>إدارة المستخدمين</h1>
+      <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف.</p>
 
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <div className="alert alert-danger py-2">{err}</div>}

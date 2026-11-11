@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Batch;
+use App\Models\Booking;
 use App\Models\Course;
 use App\Models\Department;
+use App\Models\ExamSession;
 use App\Models\Faculty;
 use App\Models\FacultyEntity;
 use App\Models\Group;
@@ -13,9 +15,11 @@ use App\Models\Program;
 use App\Models\Semester;
 use App\Models\Timetable;
 use App\Models\User;
+use App\Services\Backup\BackupGateway;
 use App\Services\Engine\ConflictChecker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -300,5 +304,262 @@ class AdminSecurityTest extends TestCase
         $after = $this->actingAs($admin)->getJson('/api/admin/dashboard-stats')->json();
         $this->assertSame(0, $after['kpis']['lectures_total']);
         $this->assertSame(0, $after['halls'][0]['lectures']);
+    }
+
+    // ═══ اختبارات المسارات الدقيقة من جولة الإصلاح (items N1-N8) ═══
+
+    public function test_ensure_active_blocks_non_dashboard_route_too(): void
+    {
+        $user = $this->makeUser('guard', true);
+        $user->forceFill(['is_active' => false])->save();
+
+        $this->actingAs($user)
+            ->getJson('/api/me')
+            ->assertStatus(403);
+    }
+
+    public function test_reactivate_restores_access(): void
+    {
+        $admin = $this->makeUser('admin');
+        $target = $this->makeUser('guard', false);
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/users/'.$target->id.'/reactivate')
+            ->assertOk();
+
+        // بعد التفعيل يجب قراءة نسخة حديثة من القاعدة — وإلا يحتفظ الكائن بقيمة is_active=false القديمة
+        $this->actingAs($target->fresh())
+            ->getJson('/api/dashboard')
+            ->assertOk();
+    }
+
+    public function test_semester_update_duplicate_term_rejected_but_same_term_allowed(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+
+        $semesterA = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/2',
+        ]);
+
+        $this->actingAs($admin)
+            ->putJson('/api/admin/semesters/'.$semesterA->id, ['academic_term' => '2026/2'])
+            ->assertStatus(422);
+
+        $this->actingAs($admin)
+            ->putJson('/api/admin/semesters/'.$semesterA->id, ['academic_term' => '2026/1'])
+            ->assertOk();
+    }
+
+    public function test_department_faculty_move_cascades_semester_faculty(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $otherFaculty = FacultyEntity::create(['name' => 'كلية الطب', 'code' => 'MED', 'description' => null]);
+
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+
+        $this->actingAs($admin)
+            ->putJson('/api/admin/departments/'.$department->id, ['faculty_id' => $otherFaculty->id])
+            ->assertOk();
+
+        $this->assertSame($otherFaculty->id, (int) $semester->fresh()->faculty_id);
+    }
+
+    public function test_hall_delete_blocked_by_linked_booking_and_exam(): void
+    {
+        $admin = $this->makeUser('admin');
+        [, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall();
+
+        Booking::create([
+            'hall_id' => $hall->id,
+            'date' => '2026-12-01',
+            'start_time' => '08:00:00',
+            'end_time' => '09:00:00',
+            'user_id' => $admin->id,
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/admin/halls/'.$hall->id)
+            ->assertStatus(422);
+
+        DB::table('bookings')->where('hall_id', $hall->id)->delete();
+
+        ExamSession::create([
+            'course_id' => $course->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'exam_date' => '2026-12-01',
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'exam_type' => 'نهائي',
+            'academic_term' => '2026/1',
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/admin/halls/'.$hall->id)
+            ->assertStatus(422);
+    }
+
+    public function test_semester_delete_blocked_by_linked_booking_and_exam(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+
+        Booking::create([
+            'hall_id' => $this->makeHall('قاعة الحجوزات')->id,
+            'date' => '2026-12-01',
+            'start_time' => '08:00:00',
+            'end_time' => '09:00:00',
+            'user_id' => $admin->id,
+            'status' => 'confirmed',
+            'semester_id' => $semester->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/admin/semesters/'.$semester->id)
+            ->assertStatus(422);
+
+        DB::table('bookings')->where('semester_id', $semester->id)->delete();
+
+        ExamSession::create([
+            'course_id' => $course->id,
+            'group_id' => $group->id,
+            'hall_id' => $this->makeHall('قاعة الامتحانات')->id,
+            'exam_date' => '2026-12-01',
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'exam_type' => 'نهائي',
+            'academic_term' => '2026/1',
+            'semester_id' => $semester->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson('/api/admin/semesters/'.$semester->id)
+            ->assertStatus(422);
+    }
+
+    public function test_department_create_rejects_duplicate_name_in_same_faculty(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty] = $this->makeAcademicChain();
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/departments', [
+                'faculty_id' => $faculty->id,
+                'name' => 'علوم الحاسوب',
+                'code' => 'CS-DUP',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_archived_semester_is_frozen_for_update_dates_and_delete(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $semester->forceFill(['archived_at' => now()])->save();
+
+        $this->actingAs($admin)
+            ->putJson('/api/admin/semesters/'.$semester->id, ['academic_term' => '2026/9'])
+            ->assertStatus(422);
+        $this->actingAs($admin)
+            ->postJson('/api/admin/semesters/'.$semester->id.'/dates', [
+                'start_date' => '2026-01-01',
+                'end_date' => '2026-06-30',
+            ])
+            ->assertStatus(422);
+        $this->actingAs($admin)
+            ->deleteJson('/api/admin/semesters/'.$semester->id)
+            ->assertStatus(422);
+    }
+
+    public function test_archive_logs_backup_failure_and_returns_null_backup(): void
+    {
+        $this->app->instance(BackupGateway::class, new class implements BackupGateway
+        {
+            public function dump(): ?string
+            {
+                return null; // فشل mysqldump
+            }
+        });
+
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->postJson('/api/admin/semesters/'.$semester->id.'/archive')
+            ->assertOk()
+            ->json();
+
+        $this->assertNull($response['backup']);
+        $this->assertNotNull($semester->fresh()->archived_at);
+        $this->assertTrue(DB::table('audit_logs')
+            ->where('action', 'backup.auto_failed')
+            ->where('target_type', 'semester')
+            ->where('target_id', (string) $semester->id)
+            ->exists());
+    }
+
+    public function test_archive_success_attributes_exact_backup_file(): void
+    {
+        $this->app->instance(BackupGateway::class, new class implements BackupGateway
+        {
+            public function dump(): ?string
+            {
+                return 'aust_graduation_2099-01-01_000000.sql';
+            }
+        });
+
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->postJson('/api/admin/semesters/'.$semester->id.'/archive')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame('aust_graduation_2099-01-01_000000.sql', $response['backup']);
     }
 }

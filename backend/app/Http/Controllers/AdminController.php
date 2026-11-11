@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * AdminController — لوحة المدير للبيانات الرئيسية (كليات/أقسام/دفعات/قاعات...)
- * v1 قراءة-فقط في البدء؛ CRUD لاحقًا.
+ * AdminController — لوحة المدير للبيانات الرئيسية (كليات/أقسام/دفعات/قاعات/خطط...)
+ * قراءة + إدارة الخطط الدراسية للشعب.
  */
 class AdminController extends Controller
 {
@@ -64,7 +64,7 @@ class AdminController extends Controller
     {
         $input = $request->validate([
             'items' => ['required', 'array'],
-            'items.*.course_id' => ['required', 'integer', Rule::exists('courses', 'id')],
+            'items.*.course_id' => ['required', 'integer', 'distinct:strict', Rule::exists('courses', 'id')],
             'items.*.sessions_per_week' => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 

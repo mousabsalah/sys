@@ -139,6 +139,13 @@
 - **Frontend (2026-11-12)**:
   - إزالة الحقول المعبأة مسبقًا في شاشة الدخول (كانت كلمة مرور المدير ظاهرة في الكود!)؛ تواريخ صلبة استُبدلت بتاريخ اليوم الحالي؛ «الحجوزات» تعرض أحدث الحجوزات بدل يوم محدد.
   - Fix: اختبار الخروج لا يعتمد على التعبئة المسبقة؛ `App.test.tsx` — **4/4**.
+- **Logical correctness pass 2 (2026-11-12)** — بعد مراجعة مستقلة (reviewer subagent):
+  - **فتحت ثغرة مصادقة حرجة**: `RoleAuthMiddleware` كان يفحص `role` فقط و`sanctum.expiration=null` — أي حساب مدير معطّل يحتفظ بوصول كامل للأبد. أُضيف `EnsureUserIsActive` middleware على كل مسارات sanctum + `deactivate`/`resetPassword` يمسحان توكنات الهدف داخل transaction.
+  - **500 → 422** في الحذف المرتبط (فصول جديدة تربط faculty/department + bookings حين حذف فصل) + `assertAcademicChain` ( batch→department→faculty ) + `assertAcademicTermUnique` على الإنشاء والتعديل + محاذاة القواعد للمخطط (`faculties.description` 255 · `halls.name` 50 · `faculties.name` فريد).
+  - **لوحة الأدمن تحترم الأرشفة بالكامل**: كل الإحصاءات (KPIs/per-hall/day/faculty/التركز semesters) تستبعد الفصول المؤرشفة عبر scopes.
+  - النسخ التلقائي: backup **قبل** كتابة archived_at + `BackupDatabase::$lastCreatedFile` لنسب الملف بالضبط + throttle على archive (12/د) وbackup/create (6/د) + أذونات 0700/0600 + أخطاء عامة للعميل (التفصيل في اللوج).
+  - Laravel: 13 اختبار PHPUnit جديد (`AdminSecurityTest`) — المصادقة، التعطيل، حذف التوكنات، 403/422، الأرشفة تخفي الإحصاءات.
+  - الواجهة: خطأ تحميل لوحة المدير يُظهر الآن مع زر «إعادة المحاولة» · AdminPlans يفصل رسالة الخطأ باللون الأحمر · debounce 300ms في بحث المستخدمين · قوائم من master-data الحية · زر أرشفة مع تأكيد وحالة انشغال.
 - **Verified live**: duplicate 422 بأكواد HALL_BUSY/FACULTY_OVERLAP/GROUP_OVERLAP · admin 403 · مدى مقلوب 422 · **أرشفة الفصل ← 201 محاضرة → إلغاء الأرشفة** · guard now=200 · passthrough 401 مع JSON.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.

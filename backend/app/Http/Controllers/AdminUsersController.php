@@ -42,7 +42,7 @@ class AdminUsersController extends Controller
             $query->where('is_active', false);
         }
 
-        $limit = min((int) $request->query('limit', 200), 500);
+        $limit = max(1, min((int) $request->query('limit', 200), 500));
 
         $users = $query->limit($limit)->get();
         $total = (clone $query)->count();
@@ -74,12 +74,16 @@ class AdminUsersController extends Controller
             throw ValidationException::withMessages(['batch_id' => ['اختار الدفعة للحساب.']]);
         }
 
-        $user = User::create($input + ['is_active' => true]);
+        $user = DB::transaction(function () use ($input, $request) {
+            $user = User::create($input + ['is_active' => true]);
 
-        $this->audit->log($request, 'user.create', 'user', $user->id, [
-            'role' => $user->role,
-            'username' => $user->username,
-        ]);
+            $this->audit->log($request, 'user.create', 'user', $user->id, [
+                'role' => $user->role,
+                'username' => $user->username,
+            ]);
+
+            return $user;
+        });
 
         return response()->json(['ok' => true, 'user' => $this->userPayload($user)], Response::HTTP_CREATED);
     }
@@ -96,9 +100,10 @@ class AdminUsersController extends Controller
             'batch_id' => ['sometimes', 'nullable', 'integer', Rule::exists('batches', 'id')],
         ]);
 
-        $target->fill($input)->save();
-
-        $this->audit->log($request, 'user.update', 'user', $target->id, $input);
+        DB::transaction(function () use ($request, $target, $input) {
+            $target->fill($input)->save();
+            $this->audit->log($request, 'user.update', 'user', $target->id, $input);
+        });
 
         return response()->json(['ok' => true, 'user' => $this->userPayload($target)]);
     }
@@ -113,13 +118,12 @@ class AdminUsersController extends Controller
             return response()->json(['ok' => false, 'message_ar' => 'لا يمكنك تعطيل حسابك أنت.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        DB::transaction(function () use (&$revoked, $target) {
+        DB::transaction(function () use (&$revoked, $target, $request) {
             $revoked = $target->tokens()->count();
             $target->tokens()->delete();
             $target->forceFill(['is_active' => false, 'deactivated_at' => now()])->save();
+            $this->audit->log($request, 'user.deactivate', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
         });
-
-        $this->audit->log($request, 'user.deactivate', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
 
         return response()->json(['ok' => true, 'user' => $this->userPayload($target)]);
     }
@@ -128,9 +132,10 @@ class AdminUsersController extends Controller
     public function reactivate(Request $request, int $user)
     {
         $target = User::findOrFail($user);
-        $target->forceFill(['is_active' => true, 'deactivated_at' => null])->save();
-
-        $this->audit->log($request, 'user.reactivate', 'user', $target->id, ['username' => $target->username]);
+        DB::transaction(function () use ($request, $target) {
+            $target->forceFill(['is_active' => true, 'deactivated_at' => null])->save();
+            $this->audit->log($request, 'user.reactivate', 'user', $target->id, ['username' => $target->username]);
+        });
 
         return response()->json(['ok' => true, 'user' => $this->userPayload($target)]);
     }
@@ -142,14 +147,13 @@ class AdminUsersController extends Controller
         $plain = $this->generatePassword(10);
 
         // Laravel Hash + Model cast('password' => 'hashed') → تمرير الـplain سيُخزن مشفّرًا
-        $revoked = $target->tokens()->count();
-        DB::transaction(function () use ($target, $plain) {
+        DB::transaction(function () use ($request, $target, $plain, &$revoked) {
             $target->password = $plain;
             $target->save();
+            $revoked = $target->tokens()->count();
             $target->tokens()->delete();
+            $this->audit->log($request, 'user.reset_password', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
         });
-
-        $this->audit->log($request, 'user.reset_password', 'user', $target->id, ['username' => $target->username, 'tokens_revoked' => $revoked]);
 
         return response()->json([
             'ok' => true,

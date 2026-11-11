@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Console\Commands\BackupDatabase;
 use App\Models\Batch;
 use App\Models\Department;
 use App\Models\FacultyEntity;
 use App\Models\Hall;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
+use App\Services\Backup\BackupGateway;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AdminMasterDataController extends Controller
 {
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private BackupGateway $dumper) {}
 
     // ══════════════ الكليات ══════════════
 
@@ -83,6 +82,10 @@ class AdminMasterDataController extends Controller
             'code' => ['required', 'string', 'max:20', 'unique:departments,code'],
         ]);
 
+        if (Department::where('faculty_id', (int) $input['faculty_id'])->where('name', $input['name'])->exists()) {
+            throw ValidationException::withMessages(['name' => ['يوجد قسم بهذا الاسم في نفس الكلية.']]);
+        }
+
         $department = Department::create($input);
         $this->audit->log($request, 'department.create', 'department', $department->id, ['code' => $department->code]);
 
@@ -99,6 +102,12 @@ class AdminMasterDataController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $item, $input) {
+            $newFacultyId = (int) ($input['faculty_id'] ?? $item->faculty_id);
+            $newName = (string) ($input['name'] ?? $item->name);
+            if (Department::where('faculty_id', $newFacultyId)->where('name', $newName)->where('id', '!=', $item->id)->exists()) {
+                throw ValidationException::withMessages(['name' => ['يوجد قسم بهذا الاسم في نفس الكلية.']]);
+            }
+
             $item->fill($input);
 
             // إذا انتقل القسم لكلية أخرى — ننقل faculty_id المخزّن على فصوله (نسخ denorm) للحفاظ على التسلسل
@@ -213,6 +222,9 @@ class AdminMasterDataController extends Controller
     public function semesterUpdate(Request $request, int $semester)
     {
         $item = Semester::findOrFail($semester);
+        if ($item->archived_at) {
+            return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشف — السجل التاريخي مجمّد. فكّ الأرشفة أولًا للتعديل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         $input = $request->validate([
             'faculty_id' => ['sometimes', 'integer', Rule::exists('faculties', 'id')],
             'department_id' => ['sometimes', 'integer', Rule::exists('departments', 'id')],
@@ -239,6 +251,9 @@ class AdminMasterDataController extends Controller
     public function semesterSetDates(Request $request, int $semester)
     {
         $item = Semester::findOrFail($semester);
+        if ($item->archived_at) {
+            return response()->json(['ok' => false, 'message_ar' => 'لا يمكن تعديل تواريخ فصل مؤرشف — السجل التاريخي مجمّد.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         $input = $request->validate([
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
@@ -257,12 +272,10 @@ class AdminMasterDataController extends Controller
         }
 
         // نسخة احتياطية تلقائية قبل الأرشفة (متطلب: تلقائي كل نهاية فصل) — خارج المعاملة حتى لا تطول
-        $backupFile = null;
-        try {
-            Artisan::call('syst:backup');
-            $backupFile = BackupDatabase::$lastCreatedFile;
-        } catch (\Throwable $e) {
-            $this->audit->log($request, 'backup.auto_failed', 'semester', $item->id, ['error' => $e->getMessage()]);
+        $backupFile = $this->dumper->dump();
+        if ($backupFile === null) {
+            // فشل النسخ لا يمنع الأرشفة (تشغيلية) لكنه مسجّل دائمًا — لا فجوة صامتة
+            $this->audit->log($request, 'backup.auto_failed', 'semester', $item->id, ['error' => 'mysqldump فشل — راجع اللوج']);
         }
 
         DB::transaction(function () use ($item) {
@@ -286,6 +299,9 @@ class AdminMasterDataController extends Controller
     public function semesterDelete(Request $request, int $semester)
     {
         $item = Semester::findOrFail($semester);
+        if ($item->archived_at) {
+            return response()->json(['ok' => false, 'message_ar' => 'لا يمكن حذف فصل مؤرشف — فكّ الأرشفة أولًا ثم احذف إن لم يكن مرتبطًا.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         return DB::transaction(function () use ($request, $item) {
             if (DB::table('timetables')->where('semester_id', $item->id)->exists()) {
