@@ -4,7 +4,7 @@ import { useAuthedApi } from '../api'
 export default function BookingsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [rows, setRows] = useState<{id:number; hall_id:number; date:string; start_time:string; end_time:string; activity_name?:string}[]>([])
   const [err, setErr] = useState<string | null>(null)
-  useEffect(() => { call<typeof rows>('/api/bookings?by=date&id=2026-11-10').then(setRows).catch((e) => setErr((e as Error).message)) }, [call])
+  useEffect(() => { call<typeof rows>('/api/bookings').then(setRows).catch((e) => setErr((e as Error).message)) }, [call])
   return (
     <>
       <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>الحجوزات</h1>

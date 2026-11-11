@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuthedApi } from '../api'
 
 export default function HallsAvailableView({ call, onBook, canBook = true }: { call: ReturnType<typeof useAuthedApi>, onBook: (hallId: number) => void, canBook?: boolean }) {
-  const today = '2026-11-10'
+  const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
   const [from, setFrom] = useState('09:00:00')
   const [to, setTo] = useState('11:00:00')

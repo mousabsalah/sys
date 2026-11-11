@@ -3,8 +3,8 @@ import { api } from '../api'
 import type { AuthUser, LoginResponse } from '../types'
 
 export default function LoginView({ onAuthed }: { onAuthed: (u: AuthUser, token: string) => void }) {
-  const [username, setUsername] = useState('مدير_النظام')
-  const [password, setPassword] = useState('Admin@123456')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

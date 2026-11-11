@@ -134,6 +134,8 @@ describe('SYST App', () => {
   it('logs out back to the login screen', async () => {
     installFetchMock()
     render(<App />)
+    fireEvent.change(screen.getByLabelText('اسم المستخدم'), { target: { value: 'مدير_النظام' } })
+    fireEvent.change(screen.getByLabelText('كلمة المرور'), { target: { value: 'Admin@123456' } })
     fireEvent.click(screen.getByRole('button', { name: 'دخول' }))
     await waitFor(() => expect(screen.getByRole('heading', { name: 'لوحة تحكم مدير النظام' })).toBeInTheDocument(), { timeout: 6000 })
     fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }))
