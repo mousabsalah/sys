@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminMasterDataController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
@@ -84,6 +85,24 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/admin/master-data', [AdminController::class, 'masterData']);
     Route::get('/admin/plans', [AdminController::class, 'plansIndex']);
     Route::post('/admin/plans/{group}', [AdminController::class, 'plansStore']);
+
+    // إدارة الكليات والأقسام والقاعات والفصول الدراسية (CRUD كامل + audit)
+    Route::post('/admin/faculties', [AdminMasterDataController::class, 'facultyStore']);
+    Route::put('/admin/faculties/{faculty}', [AdminMasterDataController::class, 'facultyUpdate']);
+    Route::delete('/admin/faculties/{faculty}', [AdminMasterDataController::class, 'facultyDelete']);
+    Route::post('/admin/departments', [AdminMasterDataController::class, 'departmentStore']);
+    Route::put('/admin/departments/{department}', [AdminMasterDataController::class, 'departmentUpdate']);
+    Route::delete('/admin/departments/{department}', [AdminMasterDataController::class, 'departmentDelete']);
+    Route::post('/admin/halls', [AdminMasterDataController::class, 'hallStore']);
+    Route::put('/admin/halls/{hall}', [AdminMasterDataController::class, 'hallUpdate']);
+    Route::delete('/admin/halls/{hall}', [AdminMasterDataController::class, 'hallDelete']);
+    Route::get('/admin/semesters', [AdminMasterDataController::class, 'semestersIndex']);
+    Route::post('/admin/semesters', [AdminMasterDataController::class, 'semesterStore']);
+    Route::put('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterUpdate']);
+    Route::post('/admin/semesters/{semester}/dates', [AdminMasterDataController::class, 'semesterSetDates']);
+    Route::post('/admin/semesters/{semester}/archive', [AdminMasterDataController::class, 'semesterArchive']);
+    Route::post('/admin/semesters/{semester}/unarchive', [AdminMasterDataController::class, 'semesterUnarchive']);
+    Route::delete('/admin/semesters/{semester}', [AdminMasterDataController::class, 'semesterDelete']);
 });
 
 // ── syst-engine passthrough (مطوّرون) ──
