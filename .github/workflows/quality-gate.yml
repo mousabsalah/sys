@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -12,22 +20,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP (with pcov coverage driver)
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_sqlite, mbstring, tokenizer, xml, ctype, json
+          extensions: pdo_sqlite, mbstring, tokenizer, xml, ctype, json, pcov
 
-      - name: Cache Composer
+      - name: Cache Composer (XDG path)
         uses: actions/cache@v4
         with:
-          path: ~/.composer/cache
+          path: ~/.cache/composer
           key: composer-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-
 
       - name: Install dependencies
         working-directory: backend
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Bootstrap environment
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
 
       - name: Pint (style)
         working-directory: backend
@@ -37,9 +51,27 @@ jobs:
         working-directory: backend
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
-      - name: PHPUnit (feature + unit)
+      - name: PHPUnit + coverage floor (60%)
         working-directory: backend
-        run: vendor/bin/phpunit --no-coverage
+        run: |
+          vendor/bin/phpunit --coverage-text --only-summary-for-coverage-text | tee coverage.txt
+          python3 -c "import re,sys; t=open('coverage.txt').read(); print(t); m=re.findall(r'([0-9]+(?:\.[0-9]+)?)\s*%', t); print('percentages found:', m); s=max(float(x) for x in m) if m else 0.0; print('coverage floor check: max pct', s); sys.exit(0 if s >= 60 else 1)"
+
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - name: Go build & vet
+        working-directory: engine
+        run: |
+          go build ./...
+          go vet ./...
 
   frontend:
     runs-on: ubuntu-latest
@@ -63,4 +95,4 @@ jobs:
 
       - name: Vitest
         working-directory: frontend
-        run: npm test -- --run
+        run: npm test

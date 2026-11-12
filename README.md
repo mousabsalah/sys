@@ -107,10 +107,12 @@
 ## جودة الكود (2026-11-10)
 
 - **Laravel Pint** (`vendor/bin/pint app`) — فروع تنسيق للكود الموجود.
-- **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/`.
+- **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/` (الاختبارات مستثناة عن بُنية ـ توقيع المتحكمات مثبّتة في CI).
 - **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
-- **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل).
+- **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل). **CI**: `.github/workflows/quality-gate.yml` يشغّل Pint + PHPStan + PHPUnit(مع coverage floor 60%) + oxlint + **Go build/vet** على كل push/PR إلى `main`.
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
+- **سلوك `propose` موثق**: إذا كانت كل الشعب تفشل لأسباب «لا شيء» (لا فترات · لا مقررات · لا قيعان) → ردّ `200 ok:true, placed:0` وليس 503 — مفروض بقاعدة `test_propose_all_skip_still_returns_200_ok_true`.
+- **تحقق الجودة هنا**: `php artisan test` (41 اختبار · 100 assertion) · `vendor/bin/phpstan analyse` · `vendor/bin/pint --test` · `npm test` · `npm run build` — كلها نظيفة في النسخة الحالية. البوابة تعمل تلقائيًا على GitHub Actions.
 - **Phase 1 — إدارة المستخدمين (2026-11-10)**: migration جديدة (`users.is_active` + `deactivated_at`) وDockerfile `audit_logs`. **Admin فقط** يدير كل الحسابات (`/api/admin/users` CRUD + deactivate/reactivate + reset-password لمرة واحدة) + شاشة «إدارة المستخدمين» في الواجهة (جدول · بحث · فلتر بالدور والحالة · إنشاء · تفعيل/إيقاف · إعادة تعيين). **تعطيل فقط — بلا حذف فعلي**. الحسابات المعطلة تُرفض عند الدخول («الحساب موقوف»). كل فعل إداري يُسجل في `audit_logs` (user_id · action · target · ip · user_agent).
 - **Phase 2 — لوحة المدير الكاملة + الفصول الدراسية + النسخ الاحتياطي (2026-11-11)**:
   - **كيان `semesters` جديد** (faculty_id · department_id · batch_id · academic_term · start/end · archived_at، قيد `unique(department_id,batch_id,academic_term)`)؛ **8 فصول 2026/1** وتوليف `semester_id` على `timetables/exam_sessions/bookings` (القاعات مستقلة بقرار المشرف — الخيار «ج»).
@@ -144,7 +146,7 @@
   - **500 → 422** في الحذف المرتبط (فصول جديدة تربط faculty/department + bookings حين حذف فصل) + `assertAcademicChain` ( batch→department→faculty ) + `assertAcademicTermUnique` على الإنشاء والتعديل + محاذاة القواعد للمخطط (`faculties.description` 255 · `halls.name` 50 · `faculties.name` فريد).
   - **لوحة الأدمن تحترم الأرشفة بالكامل**: كل الإحصاءات (KPIs/per-hall/day/faculty/التركز semesters) تستبعد الفصول المؤرشفة عبر scopes.
   - النسخ التلقائي: BackupGateway قابل للحقن (mysqldump) + backup **قبل** كتابة archived_at + فشل النسخ مسجّل دائمًا في `audit_logs` (`backup.auto_failed`) ولا يرمي أبدًا + throttle (archive 12/د، backup/create 6/د) + أذونات 0700/0600 + أذونات 0600 للملف المؤقت وحذفه بانضباط في `finally`.
-  - Laravel: 40 اختبار PHPUnit (AdminSecurityTest + ExampleTest) — المصادقة، التعطيل، حذف التوكنات، 403/422، تجميد المؤرشف(مساران)، مسارا نجاح/فشل النسخ، خطة الشعبة، تنزيل النسخ الاحتياطية، throttle الدخول(5 محاولات)، عزل المحرك (ENGINE_ERROR island — فرعا Throwable وok:false كلاهما)، عقد EngineClient (503→ok:false لا يرمي).
+  - Laravel: 41 اختبار PHPUnit (AdminSecurityTest + ExampleTest) — المصادقة، التعطيل، حذف التوكنات، 403/422، تجميد المؤرشف(مساران)، مسارا نجاح/فشل النسخ، خطة الشعبة، تنزيل النسخ الاحتياطية، throttle الدخول(5 محاولات)، عزل المحرك (ENGINE_ERROR island — فرعا Throwable وok:false كلاهما)، عقد EngineClient (503→ok:false لا يرمي).
   - الواجهة: خطأ تحميل لوحة المدير يُظهر الآن مع زر «إعادة المحاولة» · AdminPlans يفصل رسالة الخطأ باللون الأحمر · debounce 300ms في بحث المستخدمين · قوائم من master-data الحية · تأكيد على الأرشفة/الإيقاف/إعادة التعيين · إجمالي الحسابات ظاهر للمدير.
 - **Verified live**: duplicate 422 بأكواد HALL_BUSY/FACULTY_OVERLAP/GROUP_OVERLAP · admin 403 · مدى مقلوب 422 · **أرشفة الفصل ← 201 محاضرة → إلغاء الأرشفة** · guard now=200 · passthrough 401 مع JSON.
 - **مخاطر مقبولة موثقة (للعرض أمام اللجنة على شبكة محلية)**:

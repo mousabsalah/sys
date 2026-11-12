@@ -785,6 +785,27 @@ class AdminSecurityTest extends TestCase
         (new EngineClient)->propose(['group' => ['id' => 1]]);
     }
 
+    // ═══ سلوك NO_*: كل الشعب تفشل للأسباب نفسها → 200 ok:true (توثيقي) ═══
+
+    public function test_propose_all_skip_still_returns_200_ok_true(): void
+    {
+        $deptUser = $this->makeUser('dept');
+        $faculty = FacultyEntity::create(['name' => 'كلية بدون فترات', 'code' => 'NOP', 'description' => null]);
+        $dept = Department::create(['faculty_id' => $faculty->id, 'name' => 'قسم بدون فترات', 'code' => 'NOP-D']);
+        // برنامج بلا أية Period مسجلة — propose يجب أن يرجع NO_PERIODS دون استدعاء المحرك
+        $program = Program::create(['name' => 'بكالريوس فارغ', 'description' => null]);
+        $batch = Batch::create(['name' => 'دفعة بلا فترات', 'student_count' => 60, 'department_id' => $dept->id, 'program_id' => $program->id]);
+        $group = Group::create(['batch_id' => $batch->id, 'department_id' => $dept->id, 'track' => 'بكلاريوس', 'student_count' => 30]);
+
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $response = $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', ['group_ids' => [$group->id]]);
+
+        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 0);
+        $this->assertSame('NO_PERIODS', collect($response->json('groups'))->first()['status']);
+    }
+
     public function test_login_throttle_locks_out_after_repeated_failures(): void
     {
         $user = $this->makeUser('guard');
