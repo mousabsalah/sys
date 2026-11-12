@@ -108,11 +108,11 @@
 
 - **Laravel Pint** (`vendor/bin/pint app`) — فروع تنسيق للكود الموجود.
 - **Larastan/PHPStan** — `phpstan.neon` مستوى 5 — **0 أخطاء** على طبقة `app/` (الاختبارات مستثناة عن بُنية ـ توقيع المتحكمات مثبّتة في CI).
-- **oxlint** (React/Vite) — 0 أخطاء على `frontend/` (تحذيرَين في نمط الكتابة القائم، لا أخطاء).
-- **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل). **CI**: `.github/workflows/quality-gate.yml` يشغّل Pint + PHPStan + PHPUnit(مع coverage floor 60%) + oxlint + **Go build/vet** على كل push/PR إلى `main`.
+- **oxlint** (React/Vite) — **0 أخطاء** على `frontend/` (17 تحذيرًا في نمط الكتابة القائم، لا أخطاء).
+- **Go build + vet** لـ `engine/` — نظيفان (0 مشاكل). **CI**: `.github/workflows/quality-gate.yml` يشغّل Pint + PHPStan + PHPUnit (بأرضية **Lines ≥ 60%** عبر pcov مع فحص موجّه لسطر `Lines:` فقط) + oxlint + **Go build/vet** على كل push/PR إلى `main`.
 - السلسلة: `laravel-specialist` skill + `laravel-patterns` + `golang-code-style` + `ortools` (CP-SAT).
 - **سلوك `propose` موثق**: إذا كانت كل الشعب تفشل لأسباب «لا شيء» (لا فترات · لا مقررات · لا قيعان) → ردّ `200 ok:true, placed:0` وليس 503 — مفروض بقاعدة `test_propose_all_skip_still_returns_200_ok_true`.
-- **تحقق الجودة هنا**: `php artisan test` (41 اختبار · 100 assertion) · `vendor/bin/phpstan analyse` · `vendor/bin/pint --test` · `npm test` · `npm run build` — كلها نظيفة في النسخة الحالية. البوابة تعمل تلقائيًا على GitHub Actions.
+- **تحقق الجودة هنا (محلي)**: `cd backend && php artisan test` (**41 اختبار · 102 assertion**) · `vendor/bin/phpstan analyse --memory-limit=512M` · `vendor/bin/pint --test` · **`cd engine && go build ./... && go vet ./...`** · `cd frontend && npm test && npm run build` — كلها نظيفة في النسخة الحالية. البوابة الآلية على GitHub Actions (`.github/workflows/quality-gate.yml`) تُشغّل نفس الخطوات على كل push/PR — **لم يُرصد بعد تشغيل أخضر فعلي للبوابة على هذا الفرع من هذه البيئة (gh غير مسجّل دخول هنا)؛ الاعتماد المحلي للأوامر أعلاه هو الدليل المتاح الآن**.
 - **Phase 1 — إدارة المستخدمين (2026-11-10)**: migration جديدة (`users.is_active` + `deactivated_at`) وDockerfile `audit_logs`. **Admin فقط** يدير كل الحسابات (`/api/admin/users` CRUD + deactivate/reactivate + reset-password لمرة واحدة) + شاشة «إدارة المستخدمين» في الواجهة (جدول · بحث · فلتر بالدور والحالة · إنشاء · تفعيل/إيقاف · إعادة تعيين). **تعطيل فقط — بلا حذف فعلي**. الحسابات المعطلة تُرفض عند الدخول («الحساب موقوف»). كل فعل إداري يُسجل في `audit_logs` (user_id · action · target · ip · user_agent).
 - **Phase 2 — لوحة المدير الكاملة + الفصول الدراسية + النسخ الاحتياطي (2026-11-11)**:
   - **كيان `semesters` جديد** (faculty_id · department_id · batch_id · academic_term · start/end · archived_at، قيد `unique(department_id,batch_id,academic_term)`)؛ **8 فصول 2026/1** وتوليف `semester_id` على `timetables/exam_sessions/bookings` (القاعات مستقلة بقرار المشرف — الخيار «ج»).
