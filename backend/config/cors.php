@@ -21,9 +21,9 @@ return [
     'allowed_headers' => ['*'],
 
     // ترويسات غير Safelisted يجب كشفها صراحةً — وإلا res.headers.get('Retry-After') دائمًا null في المتصفح
-    'exposed_headers' => ['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+    'exposed_headers' => ['Retry-After', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
 
-    'max_age' => 0,
+    'max_age' => 600,
 
     'supports_credentials' => false,
 

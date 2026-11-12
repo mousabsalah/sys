@@ -689,6 +689,17 @@ class AdminSecurityTest extends TestCase
 
     // ═══ تغطية إصلاحات الجولة الرابعة ═══
 
+    public function test_propose_requires_group_or_groups(): void
+    {
+        $deptUser = $this->makeUser('dept');
+        [$faculty] = $this->makeAcademicChain();
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', [])
+            ->assertStatus(422);
+    }
+
     public function test_backup_download_writes_audit_row(): void
     {
         $admin = $this->makeUser('admin');

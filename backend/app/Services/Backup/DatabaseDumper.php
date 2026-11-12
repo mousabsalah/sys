@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * DatabaseDumper — نسخة الإنتاج من BackupGateway.
- * ينفذ mysqldump كاملًا ويُرجع اسم الملف الناتج (aust_graduation_<Y-m-d_H-i-s>.sql)، أو null عند الفشل.
+ * ينفذ mysqldump كاملًا ويُرجع اسم الملف الناتج، أو null عند الفشل — «لا يرمي أبدًا».
  */
 class DatabaseDumper implements BackupGateway
 {
@@ -38,8 +38,8 @@ class DatabaseDumper implements BackupGateway
         // منع حقن أسطر الأوامر عبر ملف defaults-extra-file — كلمة المرور تُكتب كما هي دون CRLF
         $password = strtr($password, ["\r" => '', "\n" => '']);
 
-        // اسم فريد دائمًا (التاريخ والثانية واللاحقة) — لا سباق على اسم الملف مهما توالى النداء ضمن الثانية
-        $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'_'.substr(uniqid(), -4).'.sql';
+        // اسم فريد دائمًا (التاريخ والثانية ولوّحك ثانٍ عشوائي) — لا سباق على اسم الملف
+        $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'_'.bin2hex(random_bytes(8)).'.sql';
         $target = $dir.DIRECTORY_SEPARATOR.$filename;
 
         $candidates = [

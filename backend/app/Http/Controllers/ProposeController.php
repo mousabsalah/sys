@@ -13,6 +13,7 @@ use App\Services\Access\FacultyScope;
 use App\Services\Engine\EngineClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /**
@@ -76,8 +77,8 @@ class ProposeController extends Controller
     public function store(Request $request)
     {
         $input = $request->validate([
-            'group_id' => ['required_without:group_ids', 'sometimes', 'integer', Rule::exists('groups', 'id')],
-            'group_ids' => ['required_without:group_id', 'sometimes', 'array', 'min:1', 'max:32'],
+            'group_id' => ['required_without:group_ids', 'integer', Rule::exists('groups', 'id')],
+            'group_ids' => ['required_without:group_id', 'array', 'min:1', 'max:32', 'distinct'],
             'group_ids.*' => ['integer', Rule::exists('groups', 'id')],
             'course_ids' => ['sometimes', 'array'],
             'course_ids.*' => ['integer', Rule::exists('courses', 'id')],
@@ -89,7 +90,7 @@ class ProposeController extends Controller
         $multi = ! empty($input['group_ids']);
         $groupIds = $multi
             ? array_map('intval', $input['group_ids'])
-            : [(int) $input['group_id']];
+            : [(int) ($input['group_id'] ?? 0)];
 
         // ── dept scoping: كل شعبة مطلوبة يجب أن تقع داخل نطاق كلية المستخدم ──
         foreach ($groupIds as $gid) {
@@ -197,7 +198,15 @@ class ProposeController extends Controller
                 'timeout_seconds' => $multi ? 8 : 20,
             ];
 
-            $result = $this->engine->propose($payload);
+            try {
+                $result = $this->engine->propose($payload);
+            } catch (\Throwable $e) {
+                $anyFailure = 'تعذر محرك الاقتراح — تابع يدويًا أو حاول لاحقًا';
+                Log::error('[propose] engine فشل', ['group_id' => $gid, 'error' => $e->getMessage()]);
+                $groupSummaries[] = ['group_id' => $gid, 'ok' => false, 'status' => 'ENGINE_ERROR', 'placed' => 0, 'batch' => $batch->name, 'track' => $group->track];
+
+                continue;
+            }
             if (! ($result['ok'] ?? false)) {
                 $anyFailure = $result['error'] ?? 'تعذر المحرك — تابع يدويًا';
                 $groupSummaries[] = ['group_id' => $gid, 'ok' => false, 'status' => 'ENGINE_ERROR', 'placed' => 0, 'batch' => $batch->name, 'track' => $group->track];

@@ -67,7 +67,7 @@ class AdminBackupController extends Controller
      */
     public function download(Request $request, string $file)
     {
-        if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[0-9a-z]{4})?\.sql$/i', $file)) {
+        if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[0-9a-f]{4,16})?\.sql$/i', $file)) {
             return response()->json(['ok' => false, 'message_ar' => 'اسم ملف غير صالح.'], 422);
         }
         $path = storage_path('backups'.DIRECTORY_SEPARATOR.$file);

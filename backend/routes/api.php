@@ -110,10 +110,10 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard-stats', [AdminDashboardController::class, 'dashboardStats']);
     Route::get('/admin/semesters/{semester}/archived', [AdminDashboardController::class, 'archivedSchedule']);
 
-    // النسخ الاحتياطي (إنشاء/قائمة/تحميل مباشر) — إنشاء: 6 طلبات/دقيقة كحد أقصى
+    // النسخ الاحتياطي (إنشاء/قائمة/تحميل مباشر) — إنشاء: 6/دقيقة؛ القائمة/التنزيل: 30/دقيقة
     Route::post('/admin/backup/create', [AdminBackupController::class, 'create'])->middleware('throttle:6,1,backup');
-    Route::get('/admin/backup/list', [AdminBackupController::class, 'list']);
-    Route::get('/admin/backup/download/{file}', [AdminBackupController::class, 'download']);
+    Route::get('/admin/backup/list', [AdminBackupController::class, 'list'])->middleware('throttle:30,1,backup-list');
+    Route::get('/admin/backup/download/{file}', [AdminBackupController::class, 'download'])->middleware('throttle:30,1,backup-download');
 });
 
 // ── syst-engine passthrough (مطوّرين — خلف المصادقة) ──
