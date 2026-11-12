@@ -49,7 +49,7 @@ class AdminDashboardController extends Controller
             ->values();
 
         // ── توزيع المحاضرات حسب يوم الأسبوع (مخزنة كنص عربي) ──
-        $dayOrder = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+        $dayOrder = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
         $rawDays = Timetable::notArchived()
             ->select('day_of_week', DB::raw('COUNT(*) AS lectures'))
             ->groupBy('day_of_week')

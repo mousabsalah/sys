@@ -38,10 +38,8 @@ class DatabaseDumper implements BackupGateway
         // منع حقن أسطر الأوامر عبر ملف defaults-extra-file — كلمة المرور تُكتب كما هي دون CRLF
         $password = strtr($password, ["\r" => '', "\n" => '']);
 
-        $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'.sql';
-        if (file_exists($dir.DIRECTORY_SEPARATOR.$filename)) {
-            $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'_'.substr(uniqid(), -4).'.sql';
-        }
+        // اسم فريد دائمًا (التاريخ والثانية واللاحقة) — لا سباق على اسم الملف مهما توالى النداء ضمن الثانية
+        $filename = 'aust_graduation_'.now()->format('Y-m-d_His').'_'.substr(uniqid(), -4).'.sql';
         $target = $dir.DIRECTORY_SEPARATOR.$filename;
 
         $candidates = [

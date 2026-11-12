@@ -687,6 +687,64 @@ class AdminSecurityTest extends TestCase
         }
     }
 
+    // ═══ تغطية إصلاحات الجولة الرابعة ═══
+
+    public function test_backup_download_writes_audit_row(): void
+    {
+        $admin = $this->makeUser('admin');
+        $file = 'aust_graduation_2099-01-01_000000.sql';
+        File::ensureDirectoryExists(storage_path('backups'));
+        File::put(storage_path('backups/'.$file), '-- dump');
+
+        try {
+            $this->actingAs($admin)
+                ->get('/api/admin/backup/download/'.$file)
+                ->assertOk();
+
+            $this->assertTrue(DB::table('audit_logs')
+                ->where('action', 'backup.download')
+                ->where('target_type', 'backup')
+                ->exists());
+        } finally {
+            File::delete(storage_path('backups/'.$file));
+        }
+    }
+
+    public function test_plans_store_rejects_empty_items(): void
+    {
+        $admin = $this->makeUser('admin');
+        [, , , $group] = $this->makeAcademicChain();
+
+        $this->actingAs($admin)
+            ->postJson('/api/admin/plans/'.$group->id, ['items' => []])
+            ->assertStatus(422);
+    }
+
+    public function test_backup_bucket_does_not_consume_login_budget(): void
+    {
+        $this->app->instance(BackupGateway::class, new class implements BackupGateway
+        {
+            public function dump(): ?string
+            {
+                return 'aust_graduation_2099-01-01_000000.sql';
+            }
+        });
+
+        $admin = $this->makeUser('admin');
+        $adminToken = $this->postJson('/api/login', ['username' => $admin->username, 'password' => 'Password@123'])->json('token');
+
+        // 6 استدعاءات backup/create مسموحة — السابع يُرفض بـ429
+        $headers = ['Authorization' => 'Bearer '.$adminToken, 'Accept' => 'application/json'];
+        for ($i = 0; $i < 6; $i++) {
+            $this->withHeaders($headers)->postJson('/api/admin/backup/create')->assertOk();
+        }
+        $this->withHeaders($headers)->postJson('/api/admin/backup/create')->assertStatus(429);
+
+        // لكن الدخول بنفس الحساب يبقى يعمل — bucket الدخول منفصل
+        $this->postJson('/api/login', ['username' => $admin->username, 'password' => 'Password@123'])
+            ->assertOk();
+    }
+
     public function test_login_throttle_locks_out_after_repeated_failures(): void
     {
         $user = $this->makeUser('guard');

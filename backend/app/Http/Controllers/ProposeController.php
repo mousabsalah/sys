@@ -76,8 +76,8 @@ class ProposeController extends Controller
     public function store(Request $request)
     {
         $input = $request->validate([
-            'group_id' => ['sometimes', 'integer', Rule::exists('groups', 'id')],
-            'group_ids' => ['sometimes', 'array', 'min:1', 'max:32'],
+            'group_id' => ['required_without:group_ids', 'sometimes', 'integer', Rule::exists('groups', 'id')],
+            'group_ids' => ['required_without:group_id', 'sometimes', 'array', 'min:1', 'max:32'],
             'group_ids.*' => ['integer', Rule::exists('groups', 'id')],
             'course_ids' => ['sometimes', 'array'],
             'course_ids.*' => ['integer', Rule::exists('courses', 'id')],
