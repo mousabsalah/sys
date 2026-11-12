@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuthedApi } from '../api'
+import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type AdminUser = {
   id: number
@@ -43,18 +44,32 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
   const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'dept' as AdminUser['role'], faculty_id: '', batch_id: '' })
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null)
 
+  const seqRef = useRef(0)
+  const abortRef = useRef<AbortController | null>(null)
+
   async function refresh() {
+    // إلغاء الطلب الجاري ومنع نتائج قديمة — الطلبات المتداخلة مرتبة بـ seq
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const seq = ++seqRef.current
+
     setErr(null); setLoading(true)
     try {
       const qs = new URLSearchParams()
       if (debouncedQ) qs.set('q', debouncedQ)
       if (roleFilter) qs.set('role', roleFilter)
       qs.set('status', statusFilter)
-      const data = await call<ListResp>(`/api/admin/users?${qs.toString()}`)
+      const data = await call<ListResp>(`/api/admin/users?${qs.toString()}`, 'GET', undefined, { signal: controller.signal })
+      if (seq !== seqRef.current) return
       setUsers(data.users ?? [])
       setTotalUsers(data.total ?? data.users?.length ?? 0)
-    } catch (e) { setErr((e as Error).message) }
-    finally { setLoading(false) }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return
+      if (seq === seqRef.current) setErr((e as Error).message)
+    } finally {
+      if (seq === seqRef.current) setLoading(false)
+    }
   }
 
   // debounce البحث — 300ms بدل طلب على كل ضغطة زر
@@ -117,7 +132,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
       <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف.</p>
 
       {msg && <div className="alert alert-success py-2">{msg}</div>}
-      {err && <div className="alert alert-danger py-2">{err}</div>}
+      {err && <ErrorRetry message={err} onRetry={refresh} />}
 
       <div className="aust-panel p-3 mb-3 d-flex flex-wrap gap-2 align-items-center">
         <input placeholder="بحث بالاسم أو اسم الدخول أو البريد…" className="form-control" style={{ maxWidth: 320 }} value={q} onChange={(e) => setQ(e.target.value)} aria-label="بحث" />
@@ -186,7 +201,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
             <tr><th>الاسم</th><th>الدخول</th><th>الدور</th><th>الكلية/الدفعة</th><th>آخر دخول</th><th>الحالة</th><th></th></tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={7} className="text-muted">جارٍ التحميل…</td></tr>}
+            {loading && <tr><td colSpan={7}><SkeletonRows rows={3} height={34} /></td></tr>}
             {users.map((u) => (
               <tr key={u.id} style={!u.is_active ? { opacity: 0.6 } : undefined}>
                 <td><strong>{u.name}</strong></td>

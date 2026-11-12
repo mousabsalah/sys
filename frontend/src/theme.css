@@ -142,3 +142,25 @@ body {
 @media print {
   .app-sidebar { display: none !important; }
 }
+
+/* ?? Loading skeleton (aust-skeleton) ??????????????? */
+.aust-skeleton {
+  position: relative;
+  border-radius: 6px;
+  background: #ece6dc;
+  overflow: hidden;
+}
+.aust-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: aust-shimmer 1.4s infinite;
+}
+@keyframes aust-shimmer {
+  to { transform: translateX(-100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aust-skeleton::after { animation: none; transform: none; }
+}

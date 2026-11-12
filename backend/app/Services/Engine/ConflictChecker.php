@@ -8,7 +8,6 @@ use App\Models\CourseFaculty;
 use App\Models\ExamSession;
 use App\Models\Faculty;
 use App\Models\Group;
-use App\Models\GuardLock;
 use App\Models\Hall;
 use App\Models\Semester;
 use App\Models\Timetable;
@@ -245,12 +244,13 @@ class ConflictChecker
                 ->pluck('hall_id'))
             ->unique()->values();
 
-        // VB: نفكر في سجلات القفل الأخيرة لكل قاعة في PHP (واضح وموثوق)
-        $lockedIds = GuardLock::orderByDesc('action_at')->get()
-            ->groupBy('hall_id')
-            ->filter(fn ($locks) => $locks->first()->action === 'lock')
-            ->keys()
-            ->values();
+        // VB: آخر قفل لكل قاعة يُحسم في SQL (index scan) بدل سحب كل التاريخ في PHP
+        $lockedIds = DB::table('guard_locks as g')
+            ->whereIn('g.id', function ($q) {
+                $q->selectRaw('MAX(id)')->from('guard_locks')->groupBy('hall_id');
+            })
+            ->where('g.action', 'lock')
+            ->pluck('g.hall_id');
 
         $free = Hall::whereNotIn('id', $busyHallIds)->whereNotIn('id', $lockedIds)->get();
         $all = Hall::all();

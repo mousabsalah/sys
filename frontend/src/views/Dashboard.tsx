@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { useAuthedApi } from '../api'
 import type { Role } from '../types'
 import type { AdminStats } from './AdminStats'
+import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 const AdminStatsView = lazy(() => import('./AdminStats'))
 
@@ -23,6 +24,7 @@ export default function DashboardView({ call, role }: { call: ReturnType<typeof 
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [statsErr, setStatsErr] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const isAdmin = role === 'admin'
 
   useEffect(() => {
@@ -30,10 +32,10 @@ export default function DashboardView({ call, role }: { call: ReturnType<typeof 
     if (isAdmin) {
       call<AdminStats>('/api/admin/dashboard-stats').then(setStats).catch((e) => setStatsErr((e as Error).message))
     }
-  }, [call, isAdmin])
+  }, [call, isAdmin, reloadKey])
 
-  if (err) return <div className="alert alert-danger">{err}</div>
-  if (!core) return <div>جارٍ التحميل…</div>
+  if (err) return <ErrorRetry message={err} onRetry={() => { setErr(null); setReloadKey((k) => k + 1) }} />
+  if (!core) return <SkeletonRows rows={4} height={80} />
 
   const classicCards: { key: keyof CoreData['kpis']; label: string }[] = [
     { key: 'halls_registered', label: 'القاعات المسجلة' },

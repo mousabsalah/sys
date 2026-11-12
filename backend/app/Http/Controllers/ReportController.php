@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Timetable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -12,9 +13,11 @@ class ReportController extends Controller
     {
         $format = $request->query('format', 'json'); // json|csv
 
-        $rows = DB::table('timetables')
+        // notArchived هنا من النطاق نفسه — toBase() يحوّل لنتائج stdClass النقية
+        $rows = Timetable::notArchived()
             ->join('halls', 'halls.id', '=', 'timetables.hall_id')
             ->whereNull('halls.deleted_at')
+            ->toBase()
             ->select('halls.id', 'halls.name', 'halls.capacity', DB::raw('COUNT(timetables.id) AS lectures'))
             ->groupBy('halls.id', 'halls.name', 'halls.capacity')
             ->orderByDesc('lectures')

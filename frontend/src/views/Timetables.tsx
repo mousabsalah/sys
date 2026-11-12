@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useAuthedApi } from '../api'
+import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 export default function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
   const [groupId, setGroupId] = useState('5')
   const [groups, setGroups] = useState<{ id: number; batch: string; track: string; student_count: number }[]>([])
   const [rows, setRows] = useState<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>([])
   const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     call<{ groups: { id: number; batch: string; track: string; student_count: number }[]; courses: unknown[] }>('/api/admin/propose-timetable/context')
@@ -17,10 +20,12 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
   }, [call])
 
   useEffect(() => {
+    setLoading(true)
     call<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>(`/api/timetables?by=group&id=${groupId}`)
       .then(setRows)
       .catch((e) => setErr((e as Error).message))
-  }, [groupId, call])
+      .finally(() => setLoading(false))
+  }, [groupId, reloadKey, call])
 
   return (
     <>
@@ -36,11 +41,12 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
             : <option value={groupId}>الشعبة #{groupId}</option>}
         </select>
       </div>
-      {err && <div className="alert alert-danger">{err}</div>}
+      {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
       <table className="table table-sm aust-panel">
         <thead className="table-light"><tr><th>الشعبة</th><th>المقرر</th><th>اليوم</th><th>من</th><th>إلى</th><th>القاعة</th></tr></thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan={6} className="text-muted">لا توجد محاضرات لهذه الشعبة</td></tr>}
+          {loading && <tr><td colSpan={6}><SkeletonRows rows={3} height={32} /></td></tr>}
+          {!loading && rows.length === 0 && <tr><td colSpan={6} className="text-muted">لا توجد محاضرات لهذه الشعبة</td></tr>}
           {rows.map((r) => (
             <tr key={r.id}><td>#{r.group_id}</td><td>#{r.course_id}</td><td>{r.day_of_week}</td><td>{r.start_time}</td><td>{r.end_time}</td><td>#{r.hall_id}</td></tr>
           ))}

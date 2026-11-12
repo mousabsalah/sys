@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 
 export const BASE = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8765'
 
-export async function api<T>(path: string, method: string = 'GET', body?: unknown, token?: string | null): Promise<T> {
+export async function api<T>(path: string, method: string = 'GET', body?: unknown, token?: string | null, signal?: AbortSignal): Promise<T> {
   const res = await fetch(BASE + path, {
     method,
     headers: {
@@ -11,6 +11,7 @@ export async function api<T>(path: string, method: string = 'GET', body?: unknow
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
+    signal,
   })
   if (!res.ok) {
     if (res.status === 429) {
@@ -29,8 +30,8 @@ export async function api<T>(path: string, method: string = 'GET', body?: unknow
 
 export function useAuthedApi(token: string | null) {
   return useCallback(
-    <T,>(path: string, method?: string, body?: unknown) =>
-      api<T>(path, method, body, token),
+    <T,>(path: string, method?: string, body?: unknown, opts?: { signal?: AbortSignal }) =>
+      api<T>(path, method, body, token, opts?.signal),
     [token],
   )
 }

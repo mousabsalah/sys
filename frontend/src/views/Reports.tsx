@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { BASE, useAuthedApi } from '../api'
+import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 export default function ReportsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [data, setData] = useState<{utilization: {hall_id:number; hall:string; capacity:number; lectures:number; utilization_pct:number}[]} | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  useEffect(() => { call<typeof data>('/api/reports/utilization').then(setData).catch((e) => setErr((e as Error).message)) }, [call])
-  if (err) return <div className="alert alert-danger">{err}</div>
-  if (!data) return <div>جارٍ التحميل…</div>
+  const [reloadKey, setReloadKey] = useState(0)
+  useEffect(() => {
+    call<typeof data>('/api/reports/utilization')
+      .then(setData)
+      .catch((e) => setErr((e as Error).message))
+  }, [reloadKey, call])
+  if (err) return <ErrorRetry message={err} onRetry={() => { setErr(null); setReloadKey((k) => k + 1) }} />
+  if (!data) return <SkeletonRows rows={5} height={40} />
   return (
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
