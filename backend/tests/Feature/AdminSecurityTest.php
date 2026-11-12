@@ -10,13 +10,16 @@ use App\Models\ExamSession;
 use App\Models\Faculty;
 use App\Models\FacultyEntity;
 use App\Models\Group;
+use App\Models\GroupCourse;
 use App\Models\Hall;
+use App\Models\Period;
 use App\Models\Program;
 use App\Models\Semester;
 use App\Models\Timetable;
 use App\Models\User;
 use App\Services\Backup\BackupGateway;
 use App\Services\Engine\ConflictChecker;
+use App\Services\Engine\EngineClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -764,7 +767,91 @@ class AdminSecurityTest extends TestCase
             $this->postJson('/api/login', ['username' => $user->username, 'password' => 'wrong-pass']);
         }
 
-        $this->postJson('/api/login', ['username' => $user->username, 'password' => 'Password@123'])
-            ->assertStatus(429);
+        $this->postJson('/api/login', ['username' => $user->username, 'password' => 'Password@123'])->assertStatus(429);
+    }
+
+    // ═══ عزل المحرك: شعبة تفشل لا تُسقط الدُفعة ═══
+
+    private function makeTwoGroupChain(): array
+    {
+        $faculty = FacultyEntity::create(['name' => 'كلية الاختبار', 'code' => 'TST', 'description' => null]);
+        $department = Department::create(['faculty_id' => $faculty->id, 'name' => 'قسم الاختبار', 'code' => 'TST-D']);
+        $program = Program::create(['name' => 'بكالوريوس', 'description' => null]);
+        $batch = Batch::create(['name' => 'دفعة اختبار', 'student_count' => 60, 'department_id' => $department->id, 'program_id' => $program->id]);
+        $groupA = Group::create(['batch_id' => $batch->id, 'department_id' => $department->id, 'track' => 'دبلوم', 'student_count' => 30]);
+        $groupB = Group::create(['batch_id' => $batch->id, 'department_id' => $department->id, 'track' => 'بكلاريوس', 'student_count' => 30]);
+
+        Period::create([
+            'program_id' => $program->id,
+            'day_of_week' => 'السبت',
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'label' => 'الفترة الأولى',
+            'sort_order' => 1,
+        ]);
+
+        $course = Course::create(['code' => 'TT100', 'name' => 'مقرر اختباري', 'credit_hours' => 3]);
+        GroupCourse::create(['group_id' => $groupA->id, 'course_id' => $course->id, 'sessions_per_week' => 1]);
+        GroupCourse::create(['group_id' => $groupB->id, 'course_id' => $course->id, 'sessions_per_week' => 1]);
+        $hall = $this->makeHall('قاعة عزل المحرك');
+        [$course2, $lecturer] = $this->makeCourseAndLecturer($department->id);
+
+        return [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer];
+    }
+
+    public function test_engine_failure_only_for_one_group_others_survive(): void
+    {
+        [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer] = $this->makeTwoGroupChain();
+        $deptUser = $this->makeUser('dept');
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $this->mock(EngineClient::class, function ($mock) use ($groupA, $course, $hall, $lecturer) {
+            $mock->shouldReceive('propose')->andReturnUsing(function (array $payload) use ($groupA, $course, $hall, $lecturer) {
+                if ((int) $payload['group']['id'] === $groupA->id) {
+                    throw new \RuntimeException('engine down');
+                }
+
+                return [
+                    'ok' => true,
+                    'status' => 'OPTIMAL',
+                    'placed' => 1,
+                    'assignments' => [
+                        [
+                            'course_id' => $course->id,
+                            'faculty_id' => $lecturer->id,
+                            'day' => 'السبت',
+                            'start_time' => '08:00:00',
+                            'end_time' => '09:30:00',
+                            'hall_id' => $hall->id,
+                            'course_code' => $course->code,
+                        ],
+                    ],
+                    'unplaced' => [],
+                ];
+            });
+        });
+
+        $response = $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
+
+        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1);
+        $summaries = collect($response->json('groups'))->keyBy('group_id');
+        $this->assertSame('ENGINE_ERROR', $summaries->get($groupA->id)['status']);
+        $this->assertSame('OPTIMAL', $summaries->get($groupB->id)['status']);
+    }
+
+    public function test_engine_throws_for_all_groups_returns_503(): void
+    {
+        [$faculty, $department, $groupA, $groupB] = $this->makeTwoGroupChain();
+        $deptUser = $this->makeUser('dept');
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $this->mock(EngineClient::class, function ($mock) {
+            $mock->shouldReceive('propose')->andThrow(new \RuntimeException('engine down'));
+        });
+
+        $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]])
+            ->assertStatus(503);
     }
 }
