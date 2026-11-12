@@ -144,7 +144,7 @@
   - **500 → 422** في الحذف المرتبط (فصول جديدة تربط faculty/department + bookings حين حذف فصل) + `assertAcademicChain` ( batch→department→faculty ) + `assertAcademicTermUnique` على الإنشاء والتعديل + محاذاة القواعد للمخطط (`faculties.description` 255 · `halls.name` 50 · `faculties.name` فريد).
   - **لوحة الأدمن تحترم الأرشفة بالكامل**: كل الإحصاءات (KPIs/per-hall/day/faculty/التركز semesters) تستبعد الفصول المؤرشفة عبر scopes.
   - النسخ التلقائي: BackupGateway قابل للحقن (mysqldump) + backup **قبل** كتابة archived_at + فشل النسخ مسجّل دائمًا في `audit_logs` (`backup.auto_failed`) ولا يرمي أبدًا + throttle (archive 12/د، backup/create 6/د) + أذونات 0700/0600 + أذونات 0600 للملف المؤقت وحذفه بانضباط في `finally`.
-  - Laravel: 36 اختبار PHPUnit (AdminSecurityTest + ExampleTest) — المصادقة، التعطيل، حذف التوكنات، 403/422، تجميد المؤرشف، مسارا نجاح/فشل النسخ، خطة الشعبة، تنزيل النسخ الاحتياطية، throttle الدخول، عزل المحرك (ENGINE_ERROR island).
+  - Laravel: 38 اختبار PHPUnit (AdminSecurityTest + ExampleTest) — المصادقة، التعطيل، حذف التوكنات، 403/422، تجميد المؤرشف، مسارا نجاح/فشل النسخ، خطة الشعبة، تنزيل النسخ الاحتياطية، throttle الدخول، عزل المحرك (ENGINE_ERROR island — فرعا Throwable وok:false).
   - الواجهة: خطأ تحميل لوحة المدير يُظهر الآن مع زر «إعادة المحاولة» · AdminPlans يفصل رسالة الخطأ باللون الأحمر · debounce 300ms في بحث المستخدمين · قوائم من master-data الحية · تأكيد على الأرشفة/الإيقاف/إعادة التعيين · إجمالي الحسابات ظاهر للمدير.
 - **Verified live**: duplicate 422 بأكواد HALL_BUSY/FACULTY_OVERLAP/GROUP_OVERLAP · admin 403 · مدى مقلوب 422 · **أرشفة الفصل ← 201 محاضرة → إلغاء الأرشفة** · guard now=200 · passthrough 401 مع JSON.
 - **مخاطر مقبولة موثقة (للعرض أمام اللجنة على شبكة محلية)**:
@@ -153,6 +153,8 @@
   - الحسابات في الـ seed معروفة (`Admin@123456`…) — **إلزامية تغييرها قبل أي عرض حقيقي**.
   - `APP_DEBUG=false` في `.env` الحالي (مسار dev)؛ أعده `true` فقط محليًا.
   - جدول `propose` متعدد الشعب لا يُنصح بتنفيذه أمام اللجنة (قد يتجاوز مهلة PHP) — استخدم «اقتراح لشعبة واحدة» فقط في العرض.
+  - قاعدة البيانات تُدار اليوم بـ`root` بكلمة مرور فارغة على `127.0.0.1:3306` (XAMPP محلي) — **ليست صالحة لأي شبكة خارج الجهاز**؛ الخادم الإنتاجي يحتاج مستخدم MySQL مخصص بكلمة مرور وصلاحيات محددة على `aust_graduation` فقط.
+  - `config/cors.php` يفتح `allowed_origins => ['*']` — مناسب لمعاينة محلية بالـ token عبر `Authorization` (لا cookies)، لكن يجب تثبيته على أصل الواجهة الحقيقي لأي نشر مشترك.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.
 

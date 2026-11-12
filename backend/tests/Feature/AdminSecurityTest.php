@@ -799,6 +799,66 @@ class AdminSecurityTest extends TestCase
         return [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer];
     }
 
+    public function test_engine_ok_false_for_all_groups_returns_503(): void
+    {
+        [$faculty, $department, $groupA, $groupB] = $this->makeTwoGroupChain();
+        $deptUser = $this->makeUser('dept');
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $this->mock(EngineClient::class, function ($mock) {
+            // CP-SAT فشل عبر HTTP 503 — المحرك لا يرمي، بل يرجع ok:false
+            $mock->shouldReceive('propose')->andReturn(['ok' => false, 'error' => 'محلل CP-SAT فشل في الترميز']);
+        });
+
+        $response = $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]])
+            ->assertStatus(503);
+
+        $this->assertFalse($response->json('ok'));
+        $this->assertNotEmpty($response->json('message_ar'));
+    }
+
+    public function test_engine_ok_false_for_one_group_others_survive(): void
+    {
+        [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer] = $this->makeTwoGroupChain();
+        $deptUser = $this->makeUser('dept');
+        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+
+        $this->mock(EngineClient::class, function ($mock) use ($groupA, $course, $hall, $lecturer) {
+            $mock->shouldReceive('propose')->andReturnUsing(function (array $payload) use ($groupA, $course, $hall, $lecturer) {
+                if ((int) $payload['group']['id'] === $groupA->id) {
+                    return ['ok' => false, 'error' => 'محلل CP-SAT فشل في الترميز'];
+                }
+
+                return [
+                    'ok' => true,
+                    'status' => 'OPTIMAL',
+                    'placed' => 1,
+                    'assignments' => [
+                        [
+                            'course_id' => $course->id,
+                            'faculty_id' => $lecturer->id,
+                            'day' => 'السبت',
+                            'start_time' => '08:00:00',
+                            'end_time' => '09:30:00',
+                            'hall_id' => $hall->id,
+                            'course_code' => $course->code,
+                        ],
+                    ],
+                    'unplaced' => [],
+                ];
+            });
+        });
+
+        $response = $this->actingAs($deptUser)
+            ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
+
+        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true);
+        $summaries = collect($response->json('groups'))->keyBy('group_id');
+        $this->assertSame('ENGINE_ERROR', $summaries->get($groupA->id)['status']);
+        $this->assertSame('OPTIMAL', $summaries->get($groupB->id)['status']);
+    }
+
     public function test_engine_failure_only_for_one_group_others_survive(): void
     {
         [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer] = $this->makeTwoGroupChain();
@@ -834,7 +894,7 @@ class AdminSecurityTest extends TestCase
         $response = $this->actingAs($deptUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
 
-        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1);
+        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true)->assertJsonPath('status', 'BATCH');
         $summaries = collect($response->json('groups'))->keyBy('group_id');
         $this->assertSame('ENGINE_ERROR', $summaries->get($groupA->id)['status']);
         $this->assertSame('OPTIMAL', $summaries->get($groupB->id)['status']);
@@ -850,8 +910,11 @@ class AdminSecurityTest extends TestCase
             $mock->shouldReceive('propose')->andThrow(new \RuntimeException('engine down'));
         });
 
-        $this->actingAs($deptUser)
+        $response = $this->actingAs($deptUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]])
             ->assertStatus(503);
+
+        $this->assertFalse($response->json('ok'));
+        $this->assertNotEmpty($response->json('message_ar'));
     }
 }
