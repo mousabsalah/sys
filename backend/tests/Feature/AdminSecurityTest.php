@@ -24,6 +24,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -759,6 +760,31 @@ class AdminSecurityTest extends TestCase
             ->assertOk();
     }
 
+    // ═══ عقد المحرك — EngineClient يربط HTTP 503 بـ ok:false (لا يرمي) ═══
+
+    public function test_engine_client_maps_503_to_ok_false_not_throw(): void
+    {
+        config(['services.syst_engine.url' => 'http://fake-engine.local']);
+
+        Http::fake(['fake-engine.local/propose' => Http::response(['error' => 'محلل CP-SAT فشل في الترميز'], 503)]);
+
+        $result = (new EngineClient)->propose(['group' => ['id' => 1]]);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('محلل CP-SAT فشل في الترميز', $result['error']);
+    }
+
+    public function test_engine_client_maps_non_503_bad_status_to_exception(): void
+    {
+        config(['services.syst_engine.url' => 'http://fake-engine.local']);
+
+        Http::fake(['fake-engine.local/propose' => Http::response([], 500)]);
+
+        $this->expectException(\RuntimeException::class);
+
+        (new EngineClient)->propose(['group' => ['id' => 1]]);
+    }
+
     public function test_login_throttle_locks_out_after_repeated_failures(): void
     {
         $user = $this->makeUser('guard');
@@ -853,7 +879,7 @@ class AdminSecurityTest extends TestCase
         $response = $this->actingAs($deptUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
 
-        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true);
+        $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true)->assertJsonPath('status', 'BATCH');
         $summaries = collect($response->json('groups'))->keyBy('group_id');
         $this->assertSame('ENGINE_ERROR', $summaries->get($groupA->id)['status']);
         $this->assertSame('OPTIMAL', $summaries->get($groupB->id)['status']);

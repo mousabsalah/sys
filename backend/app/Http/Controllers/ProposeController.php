@@ -209,6 +209,7 @@ class ProposeController extends Controller
             }
             if (! ($result['ok'] ?? false)) {
                 $anyFailure = $result['error'] ?? 'تعذر المحرك — تابع يدويًا';
+                Log::error('[propose] engine فشل (ok:false)', ['group_id' => $gid, 'error' => $result['error'] ?? null]);
                 $groupSummaries[] = ['group_id' => $gid, 'ok' => false, 'status' => 'ENGINE_ERROR', 'placed' => 0, 'batch' => $batch->name, 'track' => $group->track];
 
                 continue;
