@@ -7,7 +7,6 @@ use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -21,8 +20,8 @@ class AdminUsersController extends Controller
     // GET /api/admin/users?q=&role=&status=active|deactivated|all&limit=
     public function index(Request $request)
     {
-        // حسابات المدرسين لا تظهر للمدير — يديرها مجلس المدرسين حصريًا
-        $query = User::query()->orderBy('id')->where('role', '!=', 'lecturer');
+        // حسابات المدرسين والدفعات لا تظهر للمدير — يديرها مجلس المدرسين حصريًا
+        $query = User::query()->orderBy('id')->whereNotIn('role', ['lecturer', 'batch']);
 
         if ($q = trim((string) $request->query('q', ''))) {
             $query->where(function ($w) use ($q) {
@@ -58,6 +57,12 @@ class AdminUsersController extends Controller
     // POST /api/admin/users — إضافة مستخدم
     public function store(Request $request)
     {
+        // حسابات الدفعات والمدرسين تُنشأ عبر مجلس المدرسين حصريًا — رفض مبكر قبل أي تحقق
+        $requestedRole = (string) $request->input('role');
+        if ($requestedRole === 'batch' || $requestedRole === 'lecturer') {
+            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], Response::HTTP_FORBIDDEN);
+        }
+
         $input = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,username'],
@@ -68,13 +73,8 @@ class AdminUsersController extends Controller
             'batch_id' => ['nullable', 'integer', Rule::exists('batches', 'id')],
         ]);
 
-        // اتساق المراجع: batch → دفعة، الباقي بلا قيد (council جامعة كاملة؛ admin/guard مستقلان)
-        if ($input['role'] !== 'batch') {
-            $input['batch_id'] = null; // تنظيف نصي عند إنشاء غير الحسابات الدفعية
-        }
-        if ($input['role'] === 'batch' && ! $input['batch_id']) {
-            throw ValidationException::withMessages(['batch_id' => ['اختار الدفعة للحساب.']]);
-        }
+        // هذه الأداة للأدوار غير المُدارة من المجلس — لا يمكن أن تصل إلى batch هنا
+        $input['batch_id'] = null;
 
         $user = DB::transaction(function () use ($input, $request) {
             $user = User::create($input + ['is_active' => true]);
@@ -90,11 +90,11 @@ class AdminUsersController extends Controller
         return response()->json(['ok' => true, 'user' => $this->userPayload($user)], Response::HTTP_CREATED);
     }
 
-    /** رفض أي وصول للمدير إلى حساب مدرس — هذه ملكية مجلس المدرسين */
+    /** رفض أي وصول للمدير إلى حساب دفعة/مدرس — هذه ملكية مجلس المدرسين */
     private function rejectIfLecturer(User $target): ?Response
     {
-        if ($target->role === 'lecturer') {
-            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], 403);
+        if (in_array($target->role, ['lecturer', 'batch'], true)) {
+            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], 403);
         }
 
         return null;

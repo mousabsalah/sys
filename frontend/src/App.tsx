@@ -18,6 +18,9 @@ const AdminApprovalsView = lazy(() => import('./views/AdminApprovals'))
 const LecturerView = lazy(() => import('./views/LecturerView'))
 const SubstituteRequestsView = lazy(() => import('./views/SubstituteRequestsView'))
 const GuardTodayView = lazy(() => import('./views/GuardToday'))
+const BatchTimetableView = lazy(() => import('./views/BatchTimetable'))
+const BatchExamsView = lazy(() => import('./views/BatchExams'))
+const CouncilBatchAccountsView = lazy(() => import('./views/CouncilBatchAccounts'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
@@ -45,7 +48,7 @@ export default function App() {
   if (!auth) {
     return (
       <Suspense fallback={fallback}>
-        <AuthView onAuthed={(user, token) => { sessionStorage.setItem('aust_token', token); setAuth({ user, token }); setView(user.role === 'guard' ? 'guard-today' : 'dashboard') }} />
+        <AuthView onAuthed={(user, token) => { sessionStorage.setItem('aust_token', token); setAuth({ user, token }); setView(user.role === 'guard' ? 'guard-today' : user.role === 'batch' ? 'batch-timetable' : 'dashboard') }} />
       </Suspense>
     )
   }
@@ -54,7 +57,9 @@ export default function App() {
     ? 'dashboard'
     : auth.user.role === 'guard' && view !== 'guard-today'
       ? 'guard-today' // الحارس: شاشة «قاعات اليوم» فقط
-      : view
+      : auth.user.role === 'batch' && view !== 'batch-timetable' && view !== 'batch-exams'
+        ? 'batch-timetable' // الدفعة: «جدولي» + «جدول الامتحانات» فقط
+        : view
 
   return (
     <Shell user={auth.user} active={activeView} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
@@ -73,6 +78,9 @@ export default function App() {
         {activeView === 'lecturer' && <LecturerView call={call} />}
         {activeView === 'substitute-requests' && <SubstituteRequestsView call={call} />}
         {activeView === 'guard-today' && <GuardTodayView call={call} />}
+        {activeView === 'batch-timetable' && <BatchTimetableView call={call} />}
+        {activeView === 'batch-exams' && <BatchExamsView call={call} />}
+        {activeView === 'council-batch-accounts' && <CouncilBatchAccountsView call={call} />}
         {activeView === 'reports' && <ReportsView call={call} />}
         {activeView === 'admin-users' && <AdminUsersView call={call} />}
         {activeView === 'admin-plans' && <AdminPlansView call={call} />}

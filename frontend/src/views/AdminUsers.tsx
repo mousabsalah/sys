@@ -129,7 +129,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
   return (
     <>
       <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>إدارة المستخدمين</h1>
-      <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف. <span className="text-muted">(حسابات المدرسين تُدار عبر مجلس المدرسين ولا تظهر هنا)</span></p>
+      <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف. <span className="text-muted">(حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين ولا تظهر هنا)</span></p>
 
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={refresh} />}
@@ -141,7 +141,6 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
           <option value="admin">مدير النظام</option>
           <option value="council">مجلس المدرسين</option>
           <option value="guard">حرس</option>
-          <option value="batch">دفعة</option>
         </select>
         <select className="form-select" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="الحالة">
           <option value="all">كل الحالات</option>
@@ -163,15 +162,8 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
               <option value="admin">مدير النظام</option>
               <option value="council">مجلس المدرسين</option>
               <option value="guard">حرس</option>
-              <option value="batch">دفعة</option>
             </select>
             {/* دور المجلس يعمل عبر الجامعة كلها — لا قيد كلية (الجامعة = المقررات والكليات كلها) */}
-            {form.role === 'batch' && (
-              <select className="form-select" value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })} required>
-                <option value="">— اختر الدفعة —</option>
-                {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            )}
             <button className="aust-btn" onClick={create}>إنشاء الحساب</button>
             <button className="aust-btn-outline" onClick={() => setCreating(false)}>إلغاء</button>
           </div>

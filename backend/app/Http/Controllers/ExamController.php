@@ -46,6 +46,18 @@ class ExamController extends Controller
 
         $query = ExamSession::query();
 
+        // ── دور الدفعة: امتحانات شعبه فقط — لا تجاهل لبارامترات الطلب ──
+        if ($user?->role === 'batch') {
+            if (! $user->batch_id) {
+                abort(403, 'هذا الحساب غير مرتبط بدفعة — تواصل مع مجلس المدرسين.');
+            }
+            $groupIds = Group::where('batch_id', (int) $user->batch_id)->pluck('id')->all();
+
+            return $query->whereIn('group_id', $groupIds)
+                ->where('status', '!=', 'pending')
+                ->orderBy('exam_date')->orderBy('start_time')->get();
+        }
+
         // غير مجلس/مدير يرى المعتمد فقط — المسودات للمجلس والمدير
         if (! in_array($user?->role, ['council', 'admin'], true)) {
             $query->where('status', 'approved');

@@ -27,6 +27,7 @@ class User extends Authenticatable
         'last_login_at',
         'is_active',
         'deactivated_at',
+        'notifications_seen_at',
     ];
 
     protected $hidden = [
@@ -45,6 +46,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'deactivated_at' => 'datetime',
+            'notifications_seen_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];

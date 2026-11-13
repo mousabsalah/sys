@@ -135,8 +135,21 @@ class TimetableController extends Controller
             $query->where('academic_term', $term);
         }
 
-        // من يرى المعتمد فقط: غير مجلس/مدير — المسودات يرى فقط صاحبها والمدير
         $privileged = in_array($user?->role, ['council', 'admin'], true);
+
+        // ── دور الدفعة: شعبه المعتمدة + الملغية الموسومة فقط — لا تجاهل لبارامترات الطلب ──
+        if ($user?->role === 'batch') {
+            if (! $user->batch_id) {
+                abort(403, 'هذا الحساب غير مرتبط بدفعة — تواصل مع مجلس المدرسين.');
+            }
+            $groupIds = Group::where('batch_id', (int) $user->batch_id)->pluck('id')->all();
+            $query->whereIn('group_id', $groupIds)
+                ->where('status', '!=', 'pending'); // المعلّقة لا تراها الدفعة أبدًا
+            $rows = $query->orderBy('day_of_week')->orderBy('start_time')->get();
+
+            return response()->json($rows);
+        }
+
         if (! $privileged) {
             $query->where('status', 'approved');
         }

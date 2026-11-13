@@ -1,3 +1,4 @@
+import BatchNotificationsBell from './BatchNotificationsBell'
 import type { AuthUser, Role, ViewName } from '../types'
 
 export function Shell({ user, active, onNav, onLogout, children }: {
@@ -8,17 +9,20 @@ export function Shell({ user, active, onNav, onLogout, children }: {
   children: React.ReactNode
 }) {
   const items: { key: ViewName; label: string; roles: Role[] }[] = [
-    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council', 'batch'] },
-    { key: 'timetables', label: 'الجداول', roles: ['council', 'batch'] },
+    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council'] },
+    { key: 'timetables', label: 'الجداول', roles: ['council'] },
     { key: 'create-timetable', label: 'إعداد الجدول', roles: ['council'] },
     { key: 'propose', label: 'اقتراح تلقائي', roles: ['council'] },
-    { key: 'exams', label: 'الامتحانات', roles: ['council', 'batch'] },
+    { key: 'exams', label: 'الامتحانات', roles: ['council'] },
     { key: 'create-exam', label: 'إعداد امتحان', roles: ['council'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'lecturer'] },
     { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'lecturer'] },
     { key: 'guard-today', label: 'قاعات اليوم', roles: ['guard'] },
+    { key: 'batch-timetable', label: 'جدولي', roles: ['batch'] },
+    { key: 'batch-exams', label: 'جدول الامتحانات', roles: ['batch'] },
     { key: 'create-booking', label: 'حجز قاعة', roles: ['council'] },
     { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
+    { key: 'council-batch-accounts', label: 'حسابات الدفعات', roles: ['council'] },
     { key: 'lecturer', label: 'جدولي', roles: ['lecturer'] },
     { key: 'substitute-requests', label: 'طلبات البدلاء', roles: ['lecturer'] },
     // ── شاشات مدير النظام ──
@@ -52,6 +56,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
             </button>
           ))}
         </nav>
+        {user.role === 'batch' && <BatchNotificationsBell />}
         <div className="mt-auto p-3" style={{borderTop: '1px solid rgba(255,255,255,0.08)'}}>
           <div className="small" style={{color: '#b8c7e3'}}>{user.name}</div>
           <div className="small" style={{color: '#D4822D'}}>{user.role === 'admin' ? 'مدير النظام' : user.role === 'council' ? 'مجلس المدرسين' : user.role === 'guard' ? 'حرس جامعي' : user.role === 'lecturer' ? 'مدرس' : 'دفعة'}</div>

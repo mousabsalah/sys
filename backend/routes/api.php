@@ -7,7 +7,9 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminMasterDataController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BatchController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
@@ -69,6 +71,24 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/halls/{hall}/lock', [GuardController::class, 'lock'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/unlock', [GuardController::class, 'unlock'])->middleware('role:guard,admin');
     Route::get('/locks', [GuardController::class, 'lockLog'])->middleware('role:admin');
+});
+
+// ── مجلس المدرسين: إدارة حسابات الدفعات (دورة كاملة — المدير ممنوع منها) ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/batch-accounts', [CouncilBatchesController::class, 'index']);
+    Route::post('/council/batch-accounts', [CouncilBatchesController::class, 'store']);
+    Route::post('/council/batch-accounts/{user}/deactivate', [CouncilBatchesController::class, 'deactivate']);
+    Route::post('/council/batch-accounts/{user}/reactivate', [CouncilBatchesController::class, 'reactivate']);
+    Route::post('/council/batch-accounts/{user}/reset-password', [CouncilBatchesController::class, 'resetPassword'])->middleware('throttle:10,1,batch-reset');
+});
+
+// ── دور الدفعة: جدوله + جدول امتحاناته + إشعارات تغييرات محاضراته — محصور بدفعته عبر users.batch_id ──
+Route::middleware(['auth:sanctum', 'active', 'role:batch'])->group(function () {
+    Route::get('/batch/timetables', [BatchController::class, 'timetables']);
+    Route::get('/batch/exams', [BatchController::class, 'exams']);
+    Route::get('/batch/notifications', [BatchController::class, 'notifications']);
+    Route::get('/batch/notifications/count', [BatchController::class, 'notificationsCount']);
+    Route::post('/batch/notifications/read', [BatchController::class, 'markNotificationsRead']);
 });
 
 // ── مجلس المدرسين: إدارة المدرسين + ربطهم بالكليات والمقررات ──

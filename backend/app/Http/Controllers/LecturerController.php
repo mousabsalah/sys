@@ -150,6 +150,13 @@ class LecturerController extends Controller
         DB::transaction(function () use ($item, $request) {
             $item->forceFill(['status' => 'approved'])->save();
             $this->audit->log($request, 'timetable.uncancel', 'timetable', $item->id, ['group_id' => $item->group_id]);
+            DB::table('timetable_updates')->insert([
+                'group_id' => $item->group_id,
+                'timetable_id' => $item->id,
+                'update_type' => 'edit',
+                'description' => 'أعاد المدرس تفعيل محاضرته',
+                'created_at' => now(),
+            ]);
         });
 
         return response()->json(['ok' => true, 'timetable' => $item->refresh()]);

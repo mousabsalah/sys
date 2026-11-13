@@ -978,6 +978,7 @@ class AdminSecurityTest extends TestCase
         $batchUser = $this->makeUser('batch');
 
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        $batchUser->forceFill(['batch_id' => $batch->id])->save();
         [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
         $hall = $this->makeHall();
 
@@ -1507,5 +1508,240 @@ class AdminSecurityTest extends TestCase
         } finally {
             $this->travelBack();
         }
+    }
+
+    // ═══ دور الدفعة: الإنشاء بالمجلس، نطاق جدوله، الإشعارات ═══
+
+    public function test_admin_cannot_see_or_touch_batch_accounts(): void
+    {
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+
+        $account = User::create([
+            'name' => 'دفعة ممنوعة',
+            'username' => 'batch.barred',
+            'email' => 'batch.barred@aust.local',
+            'password' => 'Password@123',
+            'role' => 'batch',
+            'batch_id' => $batch->id,
+            'is_active' => true,
+        ]);
+
+        // القائمة تتجاهل الدفعات حتى مع الفلتر
+        $list = $this->authedAs($admin)
+            ->getJson('/api/admin/users?role=batch')
+            ->assertOk()
+            ->json();
+        $this->assertSame(0, (int) $list['total']);
+        $this->assertCount(0, $list['users']);
+
+        // كل الأفعال → 403
+        $this->authedAs($admin)
+            ->putJson('/api/admin/users/'.$account->id, ['name' => 'x'])
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/deactivate')
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/reactivate')
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/reset-password')
+            ->assertStatus(403);
+
+        // admin لا ينشئ حساب دفعة حتى لو مرّ الـpayload جيدًا
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users', [
+                'name' => 'محاولة',
+                'username' => 'batch.attempt',
+                'email' => 'batch.attempt@aust.local',
+                'password' => 'Password@123',
+                'role' => 'batch',
+                'batch_id' => $batch->id,
+            ])
+            ->assertStatus(403);
+
+        $this->assertTrue((bool) $account->fresh()->is_active);
+    }
+
+    public function test_council_manages_batch_account_full_lifecycle(): void
+    {
+        $council = $this->makeUser('council');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+
+        $created = $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts', [
+                'batch_id' => $batch->id,
+                'username' => 'batch.council.test',
+                'password' => 'BatchAcc@123',
+            ])
+            ->assertStatus(201)
+            ->json();
+        $accountId = $created['account']['id'] ?? null;
+        $this->assertNotNull($accountId);
+
+        // الدخول يعمل بدور batch
+        $login = $this->postJson('/api/login', ['username' => 'batch.council.test', 'password' => 'BatchAcc@123'])
+            ->assertOk()
+            ->json();
+        $this->assertSame('batch', $login['user']['role']);
+
+        // إيقاف ← الدخول 422؛ إعادة تفعيل ← الدخول يعمل
+        $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts/'.$accountId.'/deactivate')
+            ->assertOk();
+        $this->postJson('/api/login', ['username' => 'batch.council.test', 'password' => 'BatchAcc@123'])
+            ->assertStatus(422);
+        $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts/'.$accountId.'/reactivate')
+            ->assertOk();
+        $login = $this->postJson('/api/login', ['username' => 'batch.council.test', 'password' => 'BatchAcc@123'])
+            ->assertOk()
+            ->json();
+
+        // reset-password — الرمز القديم يموت وكلمة المرور المؤقتة تعمل
+        $reset = $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts/'.$accountId.'/reset-password')
+            ->assertOk()
+            ->json();
+        $this->assertNotEmpty($reset['temporary_password']);
+        Auth::forgetGuards();
+        $this->withHeaders(['Authorization' => 'Bearer '.$login['token']])
+            ->getJson('/api/me')
+            ->assertStatus(401);
+        $this->postJson('/api/login', ['username' => 'batch.council.test', 'password' => $reset['temporary_password']])
+            ->assertOk();
+
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'batch.account_reset_password')->where('target_id', $accountId)->exists());
+
+        // لا يمكن إنشاء حساب ثانٍ لنفس الدفعة
+        $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts', [
+                'batch_id' => $batch->id,
+                'username' => 'batch.council.second',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_batch_timetables_and_exams_scoped_to_own_batch(): void
+    {
+        [$facultyA, $departmentA, $batchA, $groupA] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($departmentA->id);
+
+        // دفعة ثانية بشعبة وصفوفها
+        $facultyB = FacultyEntity::create(['name' => 'كلية أخرى', 'code' => 'OTH2', 'description' => null]);
+        $departmentB = Department::create(['faculty_id' => $facultyB->id, 'name' => 'هندسة', 'code' => 'ENG2']);
+        $programB = Program::create(['name' => 'دبلوم', 'description' => null]);
+        $batchB = Batch::create(['name' => 'دفعة 2026 ب', 'student_count' => 30, 'department_id' => $departmentB->id, 'program_id' => $programB->id]);
+        $groupB = Group::create(['batch_id' => $batchB->id, 'department_id' => $departmentB->id, 'track' => 'دبلوم', 'student_count' => 30]);
+
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $facultyA->id, 'department_id' => $departmentA->id, 'batch_id' => $batchA->id, 'academic_term' => '2026/1',
+        ]);
+        $hallA = $this->makeHall('قاعة A');
+        $hallB = $this->makeHall('قاعة B');
+        $mine = Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $groupA->id, 'hall_id' => $hallA->id,
+            'day_of_week' => 'السبت', 'start_time' => '08:00:00', 'end_time' => '09:30:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+        $cancelledMine = Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $groupA->id, 'hall_id' => $this->makeHall('قاعة A2')->id,
+            'day_of_week' => 'الأحد', 'start_time' => '08:00:00', 'end_time' => '09:30:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'cancelled',
+        ]);
+        Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $groupB->id, 'hall_id' => $hallB->id,
+            'day_of_week' => 'السبت', 'start_time' => '10:00:00', 'end_time' => '11:30:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+        // صف معلّق لدفعتي — ممنوع ظهوره
+        Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $groupA->id, 'hall_id' => $this->makeHall('قاعة A3')->id,
+            'day_of_week' => 'الثلاثاء', 'start_time' => '12:00:00', 'end_time' => '13:30:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'pending',
+        ]);
+        ExamSession::create([
+            'course_id' => $course->id, 'group_id' => $groupA->id, 'hall_id' => $hallA->id,
+            'exam_date' => '2026-06-01', 'start_time' => '09:00:00', 'end_time' => '11:00:00',
+            'exam_type' => 'نهائي', 'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+        ExamSession::create([
+            'course_id' => $course->id, 'group_id' => $groupB->id, 'hall_id' => $hallB->id,
+            'exam_date' => '2026-06-02', 'start_time' => '09:00:00', 'end_time' => '11:00:00',
+            'exam_type' => 'نهائي', 'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+
+        $batchUser = $this->makeUser('batch');
+        $batchUser->forceFill(['batch_id' => $batchA->id])->save();
+
+        // 1) جدول دفعته: المعتمدة + الملغية — بلا معلّقة وبلا صفوف الدفعة الأخرى
+        $rows = $this->authedAs($batchUser)->getJson('/api/batch/timetables')->assertOk()->json('rows');
+        $this->assertEqualsCanonicalizing([$mine->id, $cancelledMine->id], collect($rows)->pluck('id')->all());
+
+        // 2) حتى مع بارامترات أجنبية — المعرف يُفرض من حسابه
+        $rowsForeign = $this->authedAs($batchUser)
+            ->getJson('/api/timetables?by=batch&id='.$batchB->id)
+            ->assertOk()
+            ->json();
+        $this->assertEqualsCanonicalizing([$mine->id, $cancelledMine->id], collect($rowsForeign)->pluck('id')->all());
+
+        // 3) امتحانات دفعته فقط
+        $exams = $this->authedAs($batchUser)->getJson('/api/batch/exams')->assertOk()->json('rows');
+        $this->assertCount(1, $exams);
+        $examsForeign = $this->authedAs($batchUser)
+            ->getJson('/api/exams?by=batch&id='.$batchB->id)
+            ->assertOk()
+            ->json();
+        $this->assertCount(1, collect($examsForeign)->all());
+    }
+
+    public function test_batch_notifications_feed_and_badge(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+
+        $mine = $this->makeLecturerWithAccount('د. مدرس الدفعة');
+        $lecturerUser = $this->makeAccountFor($mine);
+
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+        ]);
+        $lecture = Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => $mine->id, 'group_id' => $group->id, 'hall_id' => $this->makeHall()->id,
+            'day_of_week' => 'السبت', 'start_time' => '08:00:00', 'end_time' => '09:30:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+
+        $batchUser = $this->makeUser('batch');
+        $batchUser->forceFill(['batch_id' => $batch->id])->save();
+
+        // المدرس يلغي المحاضرة ← دفعة تستلم إشعارًا
+        $this->authedAs($lecturerUser)
+            ->postJson('/api/lecturer/timetables/'.$lecture->id.'/cancel')
+            ->assertOk();
+
+        $count = $this->authedAs($batchUser)
+            ->getJson('/api/batch/notifications/count')
+            ->assertOk()
+            ->json('unread');
+        $this->assertGreaterThanOrEqual(1, $count);
+
+        $feed = $this->authedAs($batchUser)
+            ->getJson('/api/batch/notifications')
+            ->assertOk()
+            ->json('updates');
+        $this->assertNotEmpty($feed);
+        $first = (array) $feed[0];
+        $this->assertSame($group->id, (int) $first['group_id']);
+
+        // تحديد الكل كمقروء ← العداد يصفّر
+        $this->authedAs($batchUser)
+            ->postJson('/api/batch/notifications/read')
+            ->assertOk();
+        $this->assertSame(0, (int) $this->authedAs($batchUser)
+            ->getJson('/api/batch/notifications/count')
+            ->assertOk()
+            ->json('unread'));
     }
 }
