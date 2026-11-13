@@ -129,7 +129,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
   return (
     <>
       <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>إدارة المستخدمين</h1>
-      <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف.</p>
+      <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف. <span className="text-muted">(حسابات المدرسين تُدار عبر مجلس المدرسين ولا تظهر هنا)</span></p>
 
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={refresh} />}
@@ -142,7 +142,6 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
           <option value="council">مجلس المدرسين</option>
           <option value="guard">حرس</option>
           <option value="batch">دفعة</option>
-          <option value="lecturer">مدرس</option>
         </select>
         <select className="form-select" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="الحالة">
           <option value="all">كل الحالات</option>

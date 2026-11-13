@@ -73,6 +73,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 // ── مجلس المدرسين: إدارة المدرسين + ربطهم بالكليات والمقررات ──
 Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
     Route::get('/council/lecturers', [CouncilLecturersController::class, 'index']);
+    Route::post('/council/lecturers/{lecturer}/deactivate', [CouncilLecturersController::class, 'deactivate']);
+    Route::post('/council/lecturers/{lecturer}/reactivate', [CouncilLecturersController::class, 'reactivate']);
+    Route::post('/council/lecturers/{lecturer}/reset-password', [CouncilLecturersController::class, 'resetPassword'])->middleware('throttle:10,1,lecturer-reset');
     Route::post('/council/lecturers', [CouncilLecturersController::class, 'store']);
     Route::put('/council/lecturers/{lecturer}', [CouncilLecturersController::class, 'update']);
     Route::delete('/council/lecturers/{lecturer}', [CouncilLecturersController::class, 'destroy']);

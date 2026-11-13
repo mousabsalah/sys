@@ -12,6 +12,8 @@ type Lecturer = {
   department: string | null
   email: string
   phone: string | null
+  username: string | null
+  account_active: boolean | null
   faculties: { id: number; name: string; code: string }[]
   courses: { id: number; code: string; name: string }[]
   courses_count: number
@@ -27,7 +29,7 @@ type Master = {
 
 const DEGREES: Degree[] = ['معيد', 'محاضر', 'أستاذ مساعد', 'أستاذ مشارك', 'أستاذ']
 
-const emptyForm = { full_name: '', degree: 'معيد' as Degree, email: '', phone: '', department_id: '', faculty_ids: [] as number[] }
+const emptyForm = { full_name: '', degree: 'معيد' as Degree, email: '', phone: '', department_id: '', faculty_ids: [] as number[], username: '', password: '' }
 
 export default function CouncilLecturersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [data, setData] = useState<Master | null>(null)
@@ -39,6 +41,7 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
   const [editing, setEditing] = useState<number | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null)
 
   // لوحة الربط بالمقررات
   const [selected, setSelected] = useState<Lecturer | null>(null)
@@ -57,14 +60,14 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
   }
 
   function startEdit(l: Lecturer) {
-    setForm({ full_name: l.full_name, degree: l.degree ?? 'معيد', email: l.email, phone: l.phone ?? '', department_id: l.department_id ? String(l.department_id) : '', faculty_ids: l.faculties.map((f) => f.id) })
+    setForm({ full_name: l.full_name, degree: l.degree ?? 'معيد', email: l.email, phone: l.phone ?? '', department_id: l.department_id ? String(l.department_id) : '', faculty_ids: l.faculties.map((f) => f.id), username: l.username ?? '', password: '' })
     setEditing(l.id); setShowForm(true); setErr(null)
   }
 
   async function save() {
     setSaving(true); setErr(null); setMsg(null)
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         full_name: form.full_name,
         degree: form.degree,
         email: form.email,
@@ -72,12 +75,20 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
         department_id: form.department_id ? Number(form.department_id) : null,
         faculty_ids: form.faculty_ids,
       }
+      // الحساب يُنشأ عند الإنشاء فقط — لا تعديل عليه من هنا بعد (كلمة المرور عبر زر «كلمة المرور»)
+      if (editing === null) {
+        payload.username = form.username
+        if (form.password) payload.password = form.password
+      }
       if (editing !== null) {
         await call(`/api/council/lecturers/${editing}`, 'PUT', payload)
         setMsg('تم تحديث بيانات المدرس ✓')
       } else {
-        await call('/api/council/lecturers', 'POST', payload)
+        const created = await call<{ ok: boolean; account?: { username: string; temporary_password?: string } }>('/api/council/lecturers', 'POST', payload)
         setMsg('تمت إضافة المدرس ✓')
+        if (created?.account?.temporary_password) {
+          setTempPassword({ username: created.account.username, password: created.account.temporary_password })
+        }
       }
       setShowForm(false)
       await load()
@@ -90,6 +101,33 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
       await call(`/api/council/lecturers/${l.id}`, 'DELETE')
       setMsg('تم حذف المدرس')
       if (selected?.id === l.id) setSelected(null)
+      await load()
+    } catch (e) { setErr((e as Error).message) }
+  }
+
+  async function toggleAccount(l: Lecturer) {
+    if (!l.username) { setErr('هذا المدرس لا يملك حسابًا — أعد إنشاؤه من هذه الشاشة.'); return }
+    const action = l.account_active ? 'deactivate' : 'reactivate'
+    const confirm_ = l.account_active
+      ? `إيقاف حساب «${l.username}»؟ لا يدخل المدرس بعدها حتى يعيد المجلس التفعيل.`
+      : `تفعيل حساب «${l.username}»؟ سيعود المدرس قادرًا على الدخول فورًا.`
+    if (!window.confirm(confirm_)) return
+    setErr(null); setMsg(null)
+    try {
+      await call(`/api/council/lecturers/${l.id}/${action}`, 'POST')
+      setMsg(l.account_active ? 'تم إيقاف حساب المدرس' : 'تم تفعيل حساب المدرس')
+      await load()
+    } catch (e) { setErr((e as Error).message) }
+  }
+
+  async function resetAccountPassword(l: Lecturer) {
+    if (!l.username) { setErr('هذا المدرس لا يملك حسابًا — أعد إنشاؤه من هذه الشاشة.'); return }
+    if (!window.confirm(`توليد كلمة مرور مؤقتة لـ«${l.username}»؟ ستُبطل كل جلساته الحالية فورًا.`)) return
+    setErr(null); setMsg(null)
+    try {
+      const r = await call<{ ok: boolean; username: string; temporary_password: string }>(`/api/council/lecturers/${l.id}/reset-password`, 'POST')
+      setTempPassword({ username: r.username, password: r.temporary_password })
+      setMsg('تم توليد كلمة مرور مؤقتة')
       await load()
     } catch (e) { setErr((e as Error).message) }
   }
@@ -126,6 +164,16 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
       <p className="small text-muted mb-3">المجلس يضيف مدرسين بدرجاتهم العلمية، يربطهم بالكليات (أكثر من كلية)، ويربط كل مدرس بالمواد التي يدرسها (يمكن ربط مدرس بمادتين أو أكثر).</p>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
+      {tempPassword && (
+        <div className="alert alert-warning py-2 d-flex align-items-center justify-content-between gap-2 flex-wrap" role="alert">
+          <span>
+            كلمة المرور المؤقتة للحساب <strong dir="ltr">{tempPassword.username}</strong>:&nbsp;
+            <strong dir="ltr">{tempPassword.password}</strong>
+            {' '}— سُجّلت على هذه الشاشة مرة واحدة فقط، انسخها الآن.
+          </span>
+          <button className="aust-btn-outline btn-sm" onClick={() => setTempPassword(null)}>فهمت</button>
+        </div>
+      )}
 
       <div className="mb-3 d-flex align-items-center gap-2">
         <button className="aust-btn" onClick={startCreate}>+ مدرس جديد</button>
@@ -145,6 +193,14 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
             </div>
             <div className="col-md-3"><input className="form-control" type="email" dir="ltr" placeholder="البريد الإلكتروني" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
             <div className="col-md-3"><input className="form-control" dir="ltr" placeholder="الهاتف (اختياري)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <div className="col-md-3">
+              <input className="form-control" dir="ltr" placeholder="اسم الدخول (للمدرس)" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={editing !== null} required={editing === null} minLength={3} />
+              {editing === null && <div className="form-text">إجباري — المدرس يدخل به للنظام</div>}
+            </div>
+            <div className="col-md-3">
+              <input className="form-control" dir="ltr" type="password" placeholder="كلمة المرور (اختياري)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} disabled={editing !== null} minLength={6} />
+              {editing === null && <div className="form-text">إن تُركت فارغة تُولَّد تلقائيًا وتُعرض مرة واحدة</div>}
+            </div>
             <div className="col-md-3">
               <select className="form-select" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} aria-label="القسم (اختياري)">
                 <option value="">— القسم (اختياري) —</option>
@@ -166,7 +222,7 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
               </div>
             </div>
             <div className="col-12 d-flex gap-2">
-              <button className="aust-btn" disabled={saving || !form.full_name || !form.email || form.faculty_ids.length === 0} onClick={save}>{saving ? '…' : editing !== null ? 'حفظ' : 'إضافة'}</button>
+              <button className="aust-btn" disabled={saving || !form.full_name || !form.email || form.faculty_ids.length === 0 || (editing === null && !form.username)} onClick={save}>{saving ? '…' : editing !== null ? 'حفظ' : 'إضافة'}</button>
               <button className="aust-btn-outline" onClick={() => setShowForm(false)}>إلغاء</button>
             </div>
           </div>
@@ -185,13 +241,23 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
                     <td>
                       <strong>{l.full_name}</strong>
                       <div className="small text-muted" dir="ltr">{l.email}</div>
+                      <div className="small">
+                        {l.username
+                          ? <span dir="ltr" className="text-muted">{l.username}</span>
+                          : <span className="text-muted">بدون حساب</span>}
+                        {' · '}
+                        {l.account_active === true && <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>مفعل</span>}
+                        {l.account_active === false && <span className="badge" style={{ background: '#782B19', color: '#fff' }}>موقوف</span>}
+                      </div>
                     </td>
                     <td>{l.degree ?? '—'}</td>
                     <td className="small">{l.faculties.map((f) => f.name).join('، ') || '—'}</td>
                     <td>{l.courses_count}</td>
-                    <td className="d-flex gap-1">
+                    <td className="d-flex gap-1 flex-wrap">
                       <button className="aust-btn-outline btn-sm" onClick={() => setSelected(l)}>مقرراته</button>
                       <button className="aust-btn-outline btn-sm" onClick={() => startEdit(l)}>تعديل</button>
+                      {l.username && <button className="aust-btn-outline btn-sm" onClick={() => toggleAccount(l)}>{l.account_active ? 'إيقاف الحساب' : 'تفعيل الحساب'}</button>}
+                      {l.username && <button className="aust-btn-outline btn-sm" onClick={() => resetAccountPassword(l)}>كلمة المرور</button>}
                       <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(l)}>حذف</button>
                     </td>
                   </tr>

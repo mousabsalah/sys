@@ -36,7 +36,7 @@ class CouncilLecturersController extends Controller
         // ربط الحسابات — استعلام واحد بدل N+1
         $accounts = User::whereNotNull('lecturer_id')
             ->whereIn('lecturer_id', $lecturers->pluck('id'))
-            ->get(['lecturer_id', 'username'])
+            ->get(['lecturer_id', 'username', 'is_active'])
             ->keyBy('lecturer_id');
 
         $lecturers = $lecturers
@@ -49,6 +49,7 @@ class CouncilLecturersController extends Controller
                 'email' => $f->email,
                 'phone' => $f->phone,
                 'username' => $accounts[$f->id]?->username,
+                'account_active' => $accounts[$f->id]?->is_active,
                 'faculties' => $f->faculties->map(fn (FacultyEntity $fac): array => ['id' => $fac->id, 'name' => $fac->name, 'code' => $fac->code])->values(),
                 'courses' => $f->courses->map(fn (Course $c): array => ['id' => $c->id, 'code' => $c->code, 'name' => $c->name])->values(),
                 'courses_count' => $f->courses_count,
@@ -219,6 +220,75 @@ class CouncilLecturersController extends Controller
         $this->audit->log($request, 'course.unbind', 'lecturer', $item->id, ['course_id' => $course]);
 
         return response()->json(['ok' => true]);
+    }
+
+    // POST /api/council/lecturers/{lecturer}/deactivate — إيقاف حساب المدرس (لا حذف؛ من المجلس فقط)
+    public function deactivate(Request $request, int $lecturer)
+    {
+        $lecturerModel = Faculty::findOrFail($lecturer);
+        $account = User::where('lecturer_id', $lecturerModel->id)->first();
+        if (! $account) {
+            return response()->json(['ok' => false, 'message_ar' => 'لا يوجد حساب لهذا المدرس.'], 422);
+        }
+        if (! $account->is_active) {
+            return response()->json(['ok' => true, 'username' => $account->username, 'already' => true]);
+        }
+
+        DB::transaction(function () use ($account, $request) {
+            $revoked = $account->tokens()->count();
+            $account->tokens()->delete();
+            $account->forceFill(['is_active' => false, 'deactivated_at' => now()])->save();
+            $this->audit->log($request, 'lecturer.deactivate', 'lecturer', $account->lecturer_id, ['username' => $account->username, 'tokens_revoked' => $revoked]);
+        });
+
+        return response()->json(['ok' => true, 'username' => $account->username]);
+    }
+
+    // POST /api/council/lecturers/{lecturer}/reactivate — إعادة تفعيل حساب المدرس
+    public function reactivate(Request $request, int $lecturer)
+    {
+        $lecturerModel = Faculty::findOrFail($lecturer);
+        $account = User::where('lecturer_id', $lecturerModel->id)->first();
+        if (! $account) {
+            return response()->json(['ok' => false, 'message_ar' => 'لا يوجد حساب لهذا المدرس.'], 422);
+        }
+        if ($account->is_active) {
+            return response()->json(['ok' => true, 'username' => $account->username, 'already' => true]);
+        }
+
+        DB::transaction(function () use ($account, $request) {
+            $account->forceFill(['is_active' => true, 'deactivated_at' => null])->save();
+            $this->audit->log($request, 'lecturer.reactivate', 'lecturer', $account->lecturer_id, ['username' => $account->username]);
+        });
+
+        return response()->json(['ok' => true, 'username' => $account->username]);
+    }
+
+    // POST /api/council/lecturers/{lecturer}/reset-password — كلمة مرور مؤقتة (تُعاد مرة واحدة)
+    public function resetPassword(Request $request, int $lecturer)
+    {
+        $lecturerModel = Faculty::findOrFail($lecturer);
+        $account = User::where('lecturer_id', $lecturerModel->id)->first();
+        if (! $account) {
+            return response()->json(['ok' => false, 'message_ar' => 'لا يوجد حساب لهذا المدرس.'], 422);
+        }
+
+        $plain = self::generatePassword(10);
+
+        DB::transaction(function () use ($account, $request, $plain, &$revoked) {
+            $account->password = $plain;
+            $account->save();
+            $revoked = $account->tokens()->count();
+            $account->tokens()->delete();
+            $this->audit->log($request, 'lecturer.reset_password', 'lecturer', $account->lecturer_id, ['username' => $account->username, 'tokens_revoked' => $revoked]);
+        });
+
+        return response()->json([
+            'ok' => true,
+            'username' => $account->username,
+            'temporary_password' => $plain,
+            'message_ar' => 'كلمة المرور المؤقتة (انسيها الآن): '.$plain,
+        ]);
     }
 
     /** كلمة مرور مؤقتة — 10 أحرف */

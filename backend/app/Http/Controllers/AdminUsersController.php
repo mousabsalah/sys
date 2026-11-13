@@ -21,7 +21,8 @@ class AdminUsersController extends Controller
     // GET /api/admin/users?q=&role=&status=active|deactivated|all&limit=
     public function index(Request $request)
     {
-        $query = User::query()->orderBy('id');
+        // حسابات المدرسين لا تظهر للمدير — يديرها مجلس المدرسين حصريًا
+        $query = User::query()->orderBy('id')->where('role', '!=', 'lecturer');
 
         if ($q = trim((string) $request->query('q', ''))) {
             $query->where(function ($w) use ($q) {
@@ -89,10 +90,23 @@ class AdminUsersController extends Controller
         return response()->json(['ok' => true, 'user' => $this->userPayload($user)], Response::HTTP_CREATED);
     }
 
+    /** رفض أي وصول للمدير إلى حساب مدرس — هذه ملكية مجلس المدرسين */
+    private function rejectIfLecturer(User $target): ?Response
+    {
+        if ($target->role === 'lecturer') {
+            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], 403);
+        }
+
+        return null;
+    }
+
     // PUT /api/admin/users/{user} — تعديل بيانات الحساب (لا يغيّر الدور، لا يحذف)
     public function update(Request $request, int $user)
     {
         $target = User::findOrFail($user);
+        if ($reject = $this->rejectIfLecturer($target)) {
+            return $reject;
+        }
 
         $input = $request->validate([
             'name' => ['sometimes', 'string', 'max:150'],
@@ -115,6 +129,10 @@ class AdminUsersController extends Controller
         $target = User::findOrFail($user);
         $me = $request->user();
 
+        if ($reject = $this->rejectIfLecturer($target)) {
+            return $reject;
+        }
+
         if ($target->id === $me->id) {
             return response()->json(['ok' => false, 'message_ar' => 'لا يمكنك تعطيل حسابك أنت.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -133,6 +151,9 @@ class AdminUsersController extends Controller
     public function reactivate(Request $request, int $user)
     {
         $target = User::findOrFail($user);
+        if ($reject = $this->rejectIfLecturer($target)) {
+            return $reject;
+        }
         DB::transaction(function () use ($request, $target) {
             $target->forceFill(['is_active' => true, 'deactivated_at' => null])->save();
             $this->audit->log($request, 'user.reactivate', 'user', $target->id, ['username' => $target->username]);
@@ -145,6 +166,9 @@ class AdminUsersController extends Controller
     public function resetPassword(Request $request, int $user)
     {
         $target = User::findOrFail($user);
+        if ($reject = $this->rejectIfLecturer($target)) {
+            return $reject;
+        }
         $plain = $this->generatePassword(10);
 
         // Laravel Hash + Model cast('password' => 'hashed') → تمرير الـplain سيُخزن مشفّرًا

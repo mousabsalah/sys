@@ -1337,4 +1337,97 @@ class AdminSecurityTest extends TestCase
             ->json();
         $this->assertSame('lecturer', $login['user']['role']);
     }
+
+    public function test_admin_cannot_see_or_touch_lecturer_accounts(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $faculty = $this->makeLecturerWithAccount('د. ممنوع للمدير');
+        $account = $this->makeAccountFor($faculty);
+
+        // قائمة المدير — لا يظهر فيها المدرسون حتى مع فلتر role=lecturer
+        $list = $this->authedAs($admin)
+            ->getJson('/api/admin/users?role=lecturer')
+            ->assertOk()
+            ->json();
+        $this->assertSame(0, (int) $list['total']);
+        $this->assertCount(0, $list['users']);
+
+        // كل أفعال المدير على حساب مدرس → 403، والحساب يبقى كما هو
+        $this->authedAs($admin)
+            ->putJson('/api/admin/users/'.$account->id, ['name' => 'محاولة'])
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/deactivate')
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/reactivate')
+            ->assertStatus(403);
+        $this->authedAs($admin)
+            ->postJson('/api/admin/users/'.$account->id.'/reset-password')
+            ->assertStatus(403);
+
+        $this->assertTrue((bool) $account->fresh()->is_active);
+        $this->assertFalse(DB::table('audit_logs')->where('action', 'user.deactivate')->where('target_id', $account->id)->exists());
+    }
+
+    public function test_council_manages_lecturer_account_full_lifecycle(): void
+    {
+        $council = $this->makeUser('council');
+        $newFaculty = FacultyEntity::create(['name' => 'كلية الدورة', 'code' => 'LCY', 'description' => null]);
+
+        // 1) الإنشاء — كلمة مرور يحددها المجلس
+        $lecturerId = $this->authedAs($council)
+            ->postJson('/api/council/lecturers', [
+                'full_name' => 'د. دورة الحساب',
+                'degree' => 'محاضر',
+                'email' => 'lifecycle@aust.edu.sd',
+                'faculty_ids' => [$newFaculty->id],
+                'username' => 'lifecycle.lecturer',
+                'password' => 'LifeCycle@123',
+            ])
+            ->assertStatus(201)
+            ->json('lecturer.id');
+
+        // 2) الدخول يعمل
+        $this->postJson('/api/login', ['username' => 'lifecycle.lecturer', 'password' => 'LifeCycle@123'])
+            ->assertOk();
+
+        // 3) المجلس يوقف الحساب ← الدخول يصبح مرفوضًا
+        $this->authedAs($council)
+            ->postJson('/api/council/lecturers/'.$lecturerId.'/deactivate')
+            ->assertOk();
+        $this->postJson('/api/login', ['username' => 'lifecycle.lecturer', 'password' => 'LifeCycle@123'])
+            ->assertStatus(422);
+
+        // 4) المجلس يعيد التفعيل ← الدخول يعمل من جديد
+        $this->authedAs($council)
+            ->postJson('/api/council/lecturers/'.$lecturerId.'/reactivate')
+            ->assertOk();
+        $login = $this->postJson('/api/login', ['username' => 'lifecycle.lecturer', 'password' => 'LifeCycle@123'])
+            ->assertOk()
+            ->json();
+        $this->assertSame('lecturer', $login['user']['role']);
+
+        // 5) إعادة كلمة المرور — تُبطل الرمز القديم وتقبل الجديدة
+        $reset = $this->authedAs($council)
+            ->postJson('/api/council/lecturers/'.$lecturerId.'/reset-password')
+            ->assertOk()
+            ->json();
+        $this->assertNotEmpty($reset['temporary_password']);
+
+        $oldToken = $login['token'] ?? null;
+        $this->assertNotNull($oldToken);
+
+        // actingAs يثبت المستخدم داخل جلسة الاختبار — نمسح جوابس الحراس حتى يُعاد فحص الرمز فعليًا
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeaders(['Authorization' => 'Bearer '.$oldToken])
+            ->getJson('/api/me')
+            ->assertStatus(401);
+
+        $this->postJson('/api/login', ['username' => 'lifecycle.lecturer', 'password' => $reset['temporary_password']])
+            ->assertOk();
+
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'lecturer.reset_password')->where('target_id', $lecturerId)->exists());
+    }
 }
