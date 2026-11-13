@@ -19,9 +19,11 @@ use App\Models\Semester;
 use App\Models\SubstituteRequest;
 use App\Models\Timetable;
 use App\Models\User;
+use App\Services\Academic\ArabicDay;
 use App\Services\Backup\BackupGateway;
 use App\Services\Engine\ConflictChecker;
 use App\Services\Engine\EngineClient;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1429,5 +1431,81 @@ class AdminSecurityTest extends TestCase
             ->assertOk();
 
         $this->assertTrue(DB::table('audit_logs')->where('action', 'lecturer.reset_password')->where('target_id', $lecturerId)->exists());
+    }
+
+    public function test_guard_today_hides_occupied_halls_and_lists_free_today_schedule(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00'));
+        try {
+            [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+            [$course] = $this->makeCourseAndLecturer($department->id);
+            $semester = Semester::firstOrCreate([
+                'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+            ]);
+
+            $day = ArabicDay::of(Carbon::parse('2026-11-14'));
+            $today = '2026-11-14';
+            $row = fn (int $hallId, string $start, string $end, string $status = 'approved') => Timetable::create([
+                'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $group->id, 'hall_id' => $hallId,
+                'day_of_week' => $day, 'start_time' => $start, 'end_time' => $end,
+                'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => $status,
+            ]);
+
+            $occupiedByLecture = $this->makeHall('قاعة أ — مشغولة');
+            $row($occupiedByLecture->id, '09:00:00', '10:30:00');                 // الآن → تُخفى
+
+            $occupiedByExam = $this->makeHall('قاعة ب — امتحان الآن');
+            ExamSession::create([
+                'course_id' => $course->id, 'group_id' => $group->id, 'hall_id' => $occupiedByExam->id,
+                'exam_date' => $today, 'start_time' => '09:00:00', 'end_time' => '10:30:00',
+                'exam_type' => 'نهائي', 'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+            ]);                                                                     // الآن → تُخفى
+
+            $cancelledOngoing = $this->makeHall('قاعة ج — ملغية الآن');
+            $row($cancelledOngoing->id, '09:00:00', '10:30:00', 'cancelled');       // ملغية لا تحجب → تظهر
+
+            $endedSlot = $this->makeHall('قاعة د — انتهت محاضرتها');
+            $row($endedSlot->id, '07:00:00', '08:30:00');                             // انتهت → تظهر بـ"انتهت"
+
+            $upcomingSlot = $this->makeHall('قاعة هـ — محاضرة قادمة');
+            $row($upcomingSlot->id, '12:00:00', '13:30:00');                          // قادمة → تظهر بـ"قادمة"
+
+            $emptyDay = $this->makeHall('قاعة و — يومها فارغ');
+
+            $guard = $this->makeUser('guard');
+            $response = $this->authedAs($guard)->getJson('/api/guard/today');
+            $response->assertOk();
+
+            $ids = collect($response->json('halls'))->pluck('id');
+            $this->assertNotContains($occupiedByLecture->id, $ids);
+            $this->assertNotContains($occupiedByExam->id, $ids);
+            $this->assertContains($cancelledOngoing->id, $ids);
+            $this->assertContains($endedSlot->id, $ids);
+            $this->assertContains($upcomingSlot->id, $ids);
+            $this->assertContains($emptyDay->id, $ids);
+            $this->assertSame(2, $response->json('busy_now'));
+            $this->assertSame(4, $response->json('free_now'));
+
+            $ended = collect($response->json('halls'))->firstWhere('id', $endedSlot->id);
+            $this->assertSame('ended', $ended['entries'][0]['state']);
+            $upcoming = collect($response->json('halls'))->firstWhere('id', $upcomingSlot->id);
+            $this->assertSame('upcoming', $upcoming['entries'][0]['state']);
+            $this->assertSame('lecture', $upcoming['entries'][0]['kind']);
+        } finally {
+            $this->travelBack();
+        }
+    }
+
+    public function test_guard_today_is_guard_and_admin_only(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00'));
+        try {
+            $this->authedAs($this->makeUser('batch'))->getJson('/api/guard/today')->assertStatus(403);
+            $this->authedAs($this->makeUser('council'))->getJson('/api/guard/today')->assertStatus(403);
+            $this->authedAs($this->makeUser('lecturer'))->getJson('/api/guard/today')->assertStatus(403);
+            $this->authedAs($this->makeUser('admin'))->getJson('/api/guard/today')->assertOk();
+        } finally {
+            $this->travelBack();
+        }
     }
 }

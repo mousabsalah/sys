@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // ── الحارس ──
     Route::get('/status/now', [GuardController::class, 'nowHalls'])->middleware('role:guard,admin');
+    Route::get('/guard/today', [GuardController::class, 'today'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/lock', [GuardController::class, 'lock'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/unlock', [GuardController::class, 'unlock'])->middleware('role:guard,admin');
     Route::get('/locks', [GuardController::class, 'lockLog'])->middleware('role:admin');

@@ -22,6 +22,139 @@ class GuardController extends Controller
         return response()->json($this->checker->currentFreeHalls());
     }
 
+    // GET /api/guard/today — الحارس: القاعات الحرة الآن فقط (المحاضرات والامتحانات تخصم) + جدول اليوم كاملًا لكل قاعة حرة
+    public function today()
+    {
+        $now = now();
+        $todayStr = $now->toDateString();
+        $todayArabic = ArabicDay::of($now);
+        $nowTime = $now->format('H:i:s');
+
+        // القاعات المشغولة الآن (ملغية لا تحجب) — الحجوزات لا تخصم: الحارس يتعامل مع المحاضرات والامتحانات فقط
+        $busyHallIds = Timetable::notArchived()
+            ->where('status', '!=', 'cancelled')
+            ->where('day_of_week', $todayArabic)
+            ->where('start_time', '<=', $nowTime)->where('end_time', '>', $nowTime)
+            ->pluck('hall_id')
+            ->merge(
+                ExamSession::notArchived()
+                    ->whereDate('exam_date', $todayStr)
+                    ->where('status', '!=', 'cancelled')
+                    ->where('start_time', '<=', $nowTime)->where('end_time', '>', $nowTime)
+                    ->pluck('hall_id')
+            )
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $halls = Hall::orderBy('name')->get();
+        $hallIds = $halls->pluck('id');
+
+        $stateOf = fn (string $start, string $end): string => $nowTime >= substr($end, 0, 8) ? 'ended' : ($nowTime < substr($start, 0, 8) ? 'upcoming' : 'ongoing');
+
+        $lectures = Timetable::notArchived()
+            ->where('day_of_week', $todayArabic)
+            ->whereIn('timetables.hall_id', $hallIds)
+            ->leftJoin('courses', 'courses.id', '=', 'timetables.course_id')
+            ->leftJoin('groups', 'groups.id', '=', 'timetables.group_id')
+            ->leftJoin('batches', 'batches.id', '=', 'groups.batch_id')
+            ->leftJoin('faculty', 'faculty.id', '=', 'timetables.faculty_id')
+            ->select(
+                'timetables.id',
+                'timetables.hall_id',
+                'timetables.start_time',
+                'timetables.end_time',
+                'timetables.status',
+                'courses.code AS course_code',
+                'courses.name AS course_name',
+                'batches.name AS batch',
+                'groups.track AS track',
+                'faculty.full_name AS faculty_name',
+            )
+            ->orderBy('timetables.start_time')
+            ->toBase()
+            ->get()
+            ->map(fn ($r) => [
+                'kind' => 'lecture',
+                'id' => (int) $r->id,
+                'hall_id' => (int) $r->hall_id,
+                'start_time' => (string) $r->start_time,
+                'end_time' => (string) $r->end_time,
+                'status' => (string) $r->status,
+                'label' => 'محاضرة',
+                'course_code' => $r->course_code,
+                'course_name' => $r->course_name,
+                'group' => trim(($r->batch ?? '').' — '.($r->track ?? '')),
+                'with' => $r->faculty_name,
+                'state' => $stateOf((string) $r->start_time, (string) $r->end_time),
+            ]);
+
+        $exams = ExamSession::notArchived()
+            ->whereDate('exam_date', $todayStr)
+            ->where('status', '!=', 'cancelled')
+            ->whereIn('exam_sessions.hall_id', $hallIds)
+            ->leftJoin('courses', 'courses.id', '=', 'exam_sessions.course_id')
+            ->leftJoin('groups', 'groups.id', '=', 'exam_sessions.group_id')
+            ->leftJoin('batches', 'batches.id', '=', 'groups.batch_id')
+            ->select(
+                'exam_sessions.id',
+                'exam_sessions.hall_id',
+                'exam_sessions.start_time',
+                'exam_sessions.end_time',
+                'exam_sessions.status',
+                'exam_sessions.exam_type',
+                'courses.code AS course_code',
+                'courses.name AS course_name',
+                'batches.name AS batch',
+                'groups.track AS track',
+            )
+            ->orderBy('exam_sessions.start_time')
+            ->toBase()
+            ->get()
+            ->map(fn ($r) => [
+                'kind' => 'exam',
+                'id' => (int) $r->id,
+                'hall_id' => (int) $r->hall_id,
+                'start_time' => (string) $r->start_time,
+                'end_time' => (string) $r->end_time,
+                'status' => (string) $r->status,
+                'label' => 'امتحان'.($r->exam_type ? ' — '.$r->exam_type : ''),
+                'course_code' => $r->course_code,
+                'course_name' => $r->course_name,
+                'group' => trim(($r->batch ?? '').' — '.($r->track ?? '')),
+                'with' => null,
+                'state' => $stateOf((string) $r->start_time, (string) $r->end_time),
+            ]);
+
+        $entriesByHall = $lectures->concat($exams)
+            ->groupBy('hall_id')
+            ->map(fn ($items) => $items->sortBy('start_time')->values());
+
+        $free = $halls
+            ->filter(fn (Hall $h) => ! in_array((int) $h->id, $busyHallIds, true))
+            ->map(fn (Hall $h) => [
+                'id' => (int) $h->id,
+                'name' => $h->name,
+                'hall_type' => $h->hall_type,
+                'capacity' => (int) $h->capacity,
+                'equipment' => $h->equipment,
+                'status' => $h->status,
+                'entries' => $entriesByHall->get((int) $h->id, collect())->values()->all(),
+            ])
+            ->values();
+
+        return response()->json([
+            'now' => $now->toDateTimeString(),
+            'day' => $todayArabic,
+            'date' => $todayStr,
+            'total_halls' => $halls->count(),
+            'busy_now' => count($busyHallIds),
+            'free_now' => $free->count(),
+            'halls' => $free,
+        ]);
+    }
+
     // قفل/فتح قاعة — حارس فقط + سجل
     public function lock(Request $request, int $hallId)
     {

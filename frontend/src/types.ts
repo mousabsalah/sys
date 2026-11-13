@@ -11,6 +11,7 @@ export type ViewName =
   | 'bookings'
   | 'create-booking'
   | 'halls-available'
+  | 'guard-today'
   | 'council-lecturers'
   | 'admin-approvals'
   | 'lecturer'

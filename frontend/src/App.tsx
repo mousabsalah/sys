@@ -17,6 +17,7 @@ const CouncilLecturersView = lazy(() => import('./views/CouncilLecturers'))
 const AdminApprovalsView = lazy(() => import('./views/AdminApprovals'))
 const LecturerView = lazy(() => import('./views/LecturerView'))
 const SubstituteRequestsView = lazy(() => import('./views/SubstituteRequestsView'))
+const GuardTodayView = lazy(() => import('./views/GuardToday'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
@@ -44,12 +45,16 @@ export default function App() {
   if (!auth) {
     return (
       <Suspense fallback={fallback}>
-        <AuthView onAuthed={(user, token) => { sessionStorage.setItem('aust_token', token); setAuth({ user, token }); setView('dashboard') }} />
+        <AuthView onAuthed={(user, token) => { sessionStorage.setItem('aust_token', token); setAuth({ user, token }); setView(user.role === 'guard' ? 'guard-today' : 'dashboard') }} />
       </Suspense>
     )
   }
 
-  const activeView = auth.user.role === 'admin' && ADMIN_HIDDEN.has(view) ? 'dashboard' : view
+  const activeView = auth.user.role === 'admin' && ADMIN_HIDDEN.has(view)
+    ? 'dashboard'
+    : auth.user.role === 'guard' && view !== 'guard-today'
+      ? 'guard-today' // الحارس: شاشة «قاعات اليوم» فقط
+      : view
 
   return (
     <Shell user={auth.user} active={activeView} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
@@ -67,6 +72,7 @@ export default function App() {
         {activeView === 'admin-approvals' && <AdminApprovalsView call={call} />}
         {activeView === 'lecturer' && <LecturerView call={call} />}
         {activeView === 'substitute-requests' && <SubstituteRequestsView call={call} />}
+        {activeView === 'guard-today' && <GuardTodayView call={call} />}
         {activeView === 'reports' && <ReportsView call={call} />}
         {activeView === 'admin-users' && <AdminUsersView call={call} />}
         {activeView === 'admin-plans' && <AdminPlansView call={call} />}

@@ -87,7 +87,7 @@ export default function HallsAvailableView({ call, onBook, canBook = true }: { c
               <p className="mb-2 small">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>
               {canBook
                 ? <button className="aust-btn-outline w-100" onClick={() => onBook(h.id)}>احجز</button>
-                : <span className="small text-muted d-block text-center py-2">الاستعلام فقط — الحجز من المدير أو القسم</span>}
+                : <span className="small text-muted d-block text-center py-2">الاستعلام فقط — الحجز عبر مجلس المدرسين / المدير / المدرس</span>}
             </div>
           </div>
         ))}

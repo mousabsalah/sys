@@ -8,14 +8,15 @@ export function Shell({ user, active, onNav, onLogout, children }: {
   children: React.ReactNode
 }) {
   const items: { key: ViewName; label: string; roles: Role[] }[] = [
-    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council', 'guard', 'batch'] },
+    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council', 'batch'] },
     { key: 'timetables', label: 'الجداول', roles: ['council', 'batch'] },
     { key: 'create-timetable', label: 'إعداد الجدول', roles: ['council'] },
     { key: 'propose', label: 'اقتراح تلقائي', roles: ['council'] },
     { key: 'exams', label: 'الامتحانات', roles: ['council', 'batch'] },
     { key: 'create-exam', label: 'إعداد امتحان', roles: ['council'] },
-    { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'guard', 'lecturer'] },
-    { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'guard', 'lecturer'] },
+    { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'lecturer'] },
+    { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'lecturer'] },
+    { key: 'guard-today', label: 'قاعات اليوم', roles: ['guard'] },
     { key: 'create-booking', label: 'حجز قاعة', roles: ['council'] },
     { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
     { key: 'lecturer', label: 'جدولي', roles: ['lecturer'] },
