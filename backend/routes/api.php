@@ -14,6 +14,7 @@ use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\HallsController;
+use App\Http\Controllers\LecturerController;
 use App\Http\Controllers\ProposeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TimetableController;
@@ -56,8 +57,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // ── الحجوزات ──
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::get('/halls/available', [HallsController::class, 'available']);
-    Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,council');
-    Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,council');
+    Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,council,lecturer');
+    Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,council,lecturer');
     Route::post('/timetables/bulk', [TimetableController::class, 'bulkStore'])->middleware('role:council');
     Route::post('/admin/propose-timetable', [ProposeController::class, 'store'])->middleware('role:council');
     Route::get('/admin/propose-timetable/context', [ProposeController::class, 'context'])->middleware('role:council');
@@ -78,6 +79,19 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::get('/council/lecturers/{lecturer}/courses', [CouncilLecturersController::class, 'courses']);
     Route::post('/council/lecturers/{lecturer}/courses/{course}', [CouncilLecturersController::class, 'bindCourse'])->middleware('throttle:30,1,bind');
     Route::delete('/council/lecturers/{lecturer}/courses/{course}', [CouncilLecturersController::class, 'unbindCourse'])->middleware('throttle:30,1,bind');
+});
+
+// ── دور المدرس: جدول شعبه + إلغاء منطقيا + طلبات البدلاء + حجز القاعات ──
+Route::middleware(['auth:sanctum', 'active', 'role:lecturer'])->group(function () {
+    Route::get('/lecturer/groups', [LecturerController::class, 'myGroups']);
+    Route::get('/lecturer/timetables', [LecturerController::class, 'timetables']);
+    Route::post('/lecturer/timetables/{timetable}/cancel', [LecturerController::class, 'cancelLecture']);
+    Route::post('/lecturer/timetables/{timetable}/uncancel', [LecturerController::class, 'uncancelLecture']);
+    Route::get('/lecturer/lecturers', [LecturerController::class, 'groupLecturers']);
+    Route::post('/lecturer/timetables/{timetable}/substitute-request', [LecturerController::class, 'requestSubstitute'])->middleware('throttle:20,1,sub-req');
+    Route::get('/lecturer/substitute-requests', [LecturerController::class, 'substituteRequests']);
+    Route::post('/lecturer/substitute-requests/{request_}/respond', [LecturerController::class, 'respondSubstitute']);
+    Route::post('/lecturer/substitute-requests/{request_}/cancel', [LecturerController::class, 'cancelSubstitute']);
 });
 
 // ── اللوحة والتقارير (مقاسة للمناقشة؛ إثبات: لا قبل تسجيل الدخول) ──

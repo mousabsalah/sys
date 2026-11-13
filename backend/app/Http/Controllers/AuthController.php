@@ -22,6 +22,7 @@ class AuthController extends Controller
             'role' => $u->role,
             'faculty_id' => $u->faculty_id,
             'batch_id' => $u->batch_id,
+            'lecturer_id' => $u->lecturer_id,
             'is_active' => (bool) $u->is_active,
             'deactivated_at' => $u->deactivated_at,
             'last_login_at' => $u->last_login_at,

@@ -6,7 +6,7 @@ type AdminUser = {
   id: number
   name: string
   username: string
-  role: 'admin' | 'council' | 'guard' | 'batch'
+  role: 'admin' | 'council' | 'guard' | 'batch' | 'lecturer'
   faculty_id: number | null
   batch_id: number | null
   is_active: boolean
@@ -26,6 +26,7 @@ const ROLE_LABEL: Record<AdminUser['role'], string> = {
   council: 'مجلس المدرسين',
   guard: 'حرس',
   batch: 'دفعة',
+  lecturer: 'مدرس',
 }
 
 export default function AdminUsersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
@@ -141,6 +142,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
           <option value="council">مجلس المدرسين</option>
           <option value="guard">حرس</option>
           <option value="batch">دفعة</option>
+          <option value="lecturer">مدرس</option>
         </select>
         <select className="form-select" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="الحالة">
           <option value="all">كل الحالات</option>

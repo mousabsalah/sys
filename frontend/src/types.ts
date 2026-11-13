@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'council' | 'guard' | 'batch'
+export type Role = 'admin' | 'council' | 'guard' | 'batch' | 'lecturer'
 
 export type ViewName =
   | 'login'
@@ -13,6 +13,8 @@ export type ViewName =
   | 'halls-available'
   | 'council-lecturers'
   | 'admin-approvals'
+  | 'lecturer'
+  | 'substitute-requests'
   | 'reports'
   | 'admin-users'
   | 'admin-faculties'
@@ -29,6 +31,7 @@ export interface AuthUser {
   role: Role
   faculty_id: number | null
   batch_id: number | null
+  lecturer_id?: number | null
 }
 
 export interface LoginResponse {

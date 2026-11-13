@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +23,7 @@ class User extends Authenticatable
         'role',
         'faculty_id',
         'batch_id',
+        'lecturer_id',
         'last_login_at',
         'is_active',
         'deactivated_at',
@@ -31,6 +33,11 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function lecturer(): BelongsTo
+    {
+        return $this->belongsTo(Faculty::class, 'lecturer_id');
+    }
 
     protected function casts(): array
     {

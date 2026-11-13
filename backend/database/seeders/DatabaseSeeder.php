@@ -202,6 +202,21 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // ── حسابات المدرسين — كل مدرس له حساب دخول (كلمة مرور موحّدة للديمو) ──
+        foreach ($members as $i => [$fullName, $deptIndex, $memberEmail]) {
+            User::create([
+                'name' => $fullName,
+                'username' => explode('@', $memberEmail)[0],
+                'email' => $memberEmail,
+                'password' => Hash::make('Lecturer@123456'),
+                'role' => 'lecturer',
+                'faculty_id' => null,
+                'batch_id' => null,
+                'lecturer_id' => $memberIds[$i],
+                'is_active' => true,
+            ]);
+        }
+
         // ── الخطة الدراسية لكل شعبة (sample) ──
         $this->call(GroupCoursesSeeder::class);
     }

@@ -322,8 +322,8 @@ class ConflictChecker
     {
         $slots = [];
 
-        // الجداول — بدون فصول مؤرشفة، وبنفس الفصل إن حُددت الصيغة، وأعمدة مطلوبة فقط
-        $lectureQuery = Timetable::notArchived()->where('day_of_week', $dayOfWeek)
+        // الجداول — بدون فصول مؤرشفة، وبدون الملغية (الصف الملغية لا تحجز القاعة)
+        $lectureQuery = Timetable::notArchived()->where('status', '!=', 'cancelled')->where('day_of_week', $dayOfWeek)
             ->select('id', 'day_of_week', 'start_time', 'end_time', 'hall_id', 'faculty_id', 'group_id', 'course_id');
         if ($term !== null && $term !== '') {
             $lectureQuery->where('academic_term', $term);

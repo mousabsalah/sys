@@ -15,6 +15,7 @@ use App\Models\Hall;
 use App\Models\Period;
 use App\Models\Program;
 use App\Models\Semester;
+use App\Models\SubstituteRequest;
 use App\Models\Timetable;
 use App\Models\User;
 use App\Services\Backup\BackupGateway;
@@ -1074,13 +1075,14 @@ class AdminSecurityTest extends TestCase
         $other = FacultyEntity::create(['name' => 'كلية أخرى', 'code' => 'OTH', 'description' => null]);
         $third = FacultyEntity::create(['name' => 'كلية ثالثة', 'code' => 'THR', 'description' => null]);
 
-        // إنشاء مدرس بدرجة وربط بكليتين
+        // إنشاء مدرس بدرجة وربط بكليتين وحساب دخول (username إلزامي)
         $response = $this->authedAs($council)
             ->postJson('/api/council/lecturers', [
                 'full_name' => 'د. اختبار المجلس',
                 'degree' => 'أستاذ مشارك',
                 'email' => 'council.test@aust.edu.sd',
                 'faculty_ids' => [$other->id, $third->id],
+                'username' => 'council.test.user',
             ])
             ->assertStatus(201)
             ->json();
@@ -1089,14 +1091,17 @@ class AdminSecurityTest extends TestCase
         $this->assertNotNull($lecturerId);
         $this->assertDatabaseHas('lecturer_faculties', ['lecturer_id' => $lecturerId, 'faculty_id' => $other->id]);
         $this->assertDatabaseHas('lecturer_faculties', ['lecturer_id' => $lecturerId, 'faculty_id' => $third->id]);
+        // الحساب المُنشأ تلقائيًا — بدور lecturer ومربوط بالمدرس
+        $this->assertDatabaseHas('users', ['username' => 'council.test.user', 'role' => 'lecturer', 'lecturer_id' => $lecturerId]);
 
-        // درجة خاطئة → 422
+        // درجة خاطئة → 422 (username مفقود أيضًا هنا)
         $this->authedAs($council)
             ->postJson('/api/council/lecturers', [
                 'full_name' => 'د. خاطئ',
                 'degree' => 'دكتور',
                 'email' => 'bad.degree@aust.edu.sd',
                 'faculty_ids' => [1],
+                'username' => 'bad.degree.user',
             ])
             ->assertStatus(422);
 
@@ -1156,5 +1161,179 @@ class AdminSecurityTest extends TestCase
             'academic_term' => '2026/1',
         ]);
         $this->makeTimetable($this->makeHall('قاعة R13')->id, $group->id, $semester->id, $courseId, $lecturerId);
+    }
+
+    // ═══ دور المدرس: النطاق، الإلغاء، طلبات البدلاء، الحساب عند الإنشاء ═══
+
+    private function makeLecturerWithAccount(string $name = 'د. مدرس اختبار', string $degree = 'أستاذ مساعد'): Faculty
+    {
+        return Faculty::create([
+            'full_name' => $name,
+            'degree' => $degree,
+            'department_id' => null,
+            'email' => uniqid().'@lecturer.test',
+            'phone' => '+249000000000',
+        ]);
+    }
+
+    private function makeAccountFor(Faculty $lecturer, string $role = 'lecturer'): User
+    {
+        return User::create([
+            'name' => $lecturer->full_name,
+            'username' => uniqid('le_'),
+            'email' => uniqid().'@lecturer.test',
+            'password' => 'Password@123',
+            'role' => $role,
+            'is_active' => true,
+            'lecturer_id' => $lecturer->id,
+        ]);
+    }
+
+    public function test_lecturer_timetable_scoped_to_his_groups(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+
+        $mine = $this->makeLecturerWithAccount('د. نطاقي');
+        $other = $this->makeLecturerWithAccount('د. زميله');
+        $myUser = $this->makeAccountFor($mine);
+
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        // زميله يسند صفًا لنفس الشعبة — لكن شعبيته لا تزال صفرًا
+        $foreignRow = $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $other->id);
+        $foreignRow->forceFill(['status' => 'approved'])->save();
+
+        $rows = $this->authedAs($myUser)
+            ->getJson('/api/lecturer/timetables')
+            ->json('rows');
+        $this->assertCount(0, $rows);
+
+        // سجل صفًا لي في نفس الشعبة ← تظهر الشعبة كاملة بصفوفها
+        $myRow = $this->makeTimetable($this->makeHall('قاعة 2')->id, $group->id, $semester->id, $course->id, $mine->id);
+        $myRow->forceFill(['status' => 'approved'])->save();
+        $rows = $this->authedAs($myUser)
+            ->getJson('/api/lecturer/timetables')
+            ->json('rows');
+        $this->assertCount(2, $rows);
+    }
+
+    public function test_lecturer_can_cancel_and_uncancel_only_own_lectures(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+
+        $mine = $this->makeLecturerWithAccount('د. صاحبي');
+        $other = $this->makeLecturerWithAccount('د. زميله');
+        $myUser = $this->makeAccountFor($mine);
+        $otherUser = $this->makeAccountFor($other);
+
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        $own = $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $mine->id);
+        $foreign = $this->makeTimetable($this->makeHall('قاعة زم')->id, $group->id, $semester->id, $course->id, $other->id);
+
+        // الزميل لا يلغي محاضرتي
+        $this->authedAs($otherUser)
+            ->postJson('/api/lecturer/timetables/'.$own->id.'/cancel')
+            ->assertStatus(403);
+
+        // أنا ألغي محاضرتي
+        $this->authedAs($myUser)
+            ->postJson('/api/lecturer/timetables/'.$own->id.'/cancel')
+            ->assertOk();
+        $this->assertSame('cancelled', (string) $own->fresh()->status);
+
+        // التعارض يسمح بالمحاضرة الملغية في نفس القاعة واليوم — نجرّب  slotًا فارغًا لا تتعارض فيه أي قاعدة
+        \App\Models\CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $mine->id]);
+        $response = $this->authedAs($this->makeUser('council'))
+            ->postJson('/api/timetables/check', [
+                'course_id' => $course->id,
+                'faculty_id' => $mine->id,
+                'group_id' => $group->id,
+                'hall_id' => $hall->id,
+                'day_of_week' => 'الأحد',
+                'start_time' => '14:00:00',
+                'end_time' => '15:30:00',
+                'academic_term' => '2026/1',
+            ]);
+        $response->assertStatus(200);
+        $this->assertTrue((bool) $response->json('ok')); // لا تعارض — الشعبة والقاعة والمدرس فارغون يوم الأحد
+
+        // التراجع عن الإلغاء
+        $this->authedAs($myUser)
+            ->postJson('/api/lecturer/timetables/'.$own->id.'/uncancel')
+            ->assertOk();
+        $this->assertSame('approved', (string) $own->fresh()->status);
+    }
+
+    public function test_substitute_request_accept_reassigns_lecture(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+
+        $mine = $this->makeLecturerWithAccount('د. أطلب');
+        $other = $this->makeLecturerWithAccount('د. يحضر');
+        $myUser = $this->makeAccountFor($mine);
+        $otherUser = $this->makeAccountFor($other);
+
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        $lecture = $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $mine->id);
+
+        // البديل يجب أن يدرّس في نفس الشعبة — أضف محاضرة له فيها
+        $this->makeTimetable($this->makeHall('قاعة الزميل')->id, $group->id, $semester->id, $course->id, $other->id);
+
+        $response = $this->authedAs($myUser)
+            ->postJson('/api/lecturer/timetables/'.$lecture->id.'/substitute-request', ['substitute_lecturer_id' => $other->id])
+            ->assertStatus(201);
+
+        $requestId = $response->json('request.id');
+        $this->assertNotNull($requestId);
+
+        // الطلاب الآخرون يرفضون/ولا الأوامر خارج الموقع: البديل وحده يرى طلبه في الوارد
+        $incoming = $this->authedAs($otherUser)
+            ->getJson('/api/lecturer/substitute-requests')
+            ->json('incoming');
+        $this->assertCount(1, $incoming);
+
+        // البديل يقبل → يُعاد إسناد المحاضرة له
+        $this->authedAs($otherUser)
+            ->postJson('/api/lecturer/substitute-requests/'.$requestId.'/respond', ['action' => 'accept'])
+            ->assertOk();
+
+        $this->assertSame($other->id, (int) $lecture->fresh()->faculty_id);
+        $this->assertSame('accepted', (string) SubstituteRequest::find($requestId)?->status);
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'substitute.accept')->exists());
+    }
+
+    public function test_lecturer_account_login_after_council_creates_them(): void
+    {
+        $council = $this->makeUser('council');
+        [$faculty, $department, $batch] = $this->makeAcademicChain();
+        $newFaculty = FacultyEntity::create(['name' => 'كلية المدرسين', 'code' => 'LCT', 'description' => null]);
+
+        $created = $this->authedAs($council)
+            ->postJson('/api/council/lecturers', [
+                'full_name' => 'د. حساب المدرس',
+                'degree' => 'أستاذ مساعد',
+                'email' => 'lect.login@aust.edu.sd',
+                'faculty_ids' => [$newFaculty->id],
+                'username' => 'lect.login.user',
+                'password' => 'Lecturer@123456',
+            ])
+            ->assertStatus(201);
+
+        // الحساب يعمل على الدخول
+        $login = $this->postJson('/api/login', ['username' => 'lect.login.user', 'password' => 'Lecturer@123456'])
+            ->assertOk()
+            ->json();
+        $this->assertSame('lecturer', $login['user']['role']);
     }
 }

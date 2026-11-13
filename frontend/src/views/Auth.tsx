@@ -37,7 +37,7 @@ export default function LoginView({ onAuthed }: { onAuthed: (u: AuthUser, token:
           </div>
           {error && <div className="alert alert-danger py-2 mb-0" role="alert">{error}</div>}
           <button className="aust-btn w-100" disabled={loading}>{loading ? 'جارٍ الدخول…' : 'دخول'}</button>
-          <p className="small text-muted text-center mb-0">الدور يُحدد من الحساب — مدير / مجلس المدرسين / حرس / دفعة</p>
+          <p className="small text-muted text-center mb-0">الدور يُحدد من الحساب — مدير / مجلس المدرسين / حرس / دفعة / مدرس</p>
         </form>
       </section>
     </main>

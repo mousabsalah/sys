@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Faculty;
 use App\Models\FacultyEntity;
+use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,15 @@ class CouncilLecturersController extends Controller
         $lecturers = Faculty::with(['faculties:id,name,code', 'department:id,name', 'courses:id,code,name'])
             ->withCount('courses')
             ->orderBy('full_name')
-            ->get()
+            ->get();
+
+        // ربط الحسابات — استعلام واحد بدل N+1
+        $accounts = User::whereNotNull('lecturer_id')
+            ->whereIn('lecturer_id', $lecturers->pluck('id'))
+            ->get(['lecturer_id', 'username'])
+            ->keyBy('lecturer_id');
+
+        $lecturers = $lecturers
             ->map(fn (Faculty $f): array => [
                 'id' => $f->id,
                 'full_name' => $f->full_name,
@@ -39,6 +48,7 @@ class CouncilLecturersController extends Controller
                 'department' => $f->department?->name,
                 'email' => $f->email,
                 'phone' => $f->phone,
+                'username' => $accounts[$f->id]?->username,
                 'faculties' => $f->faculties->map(fn (FacultyEntity $fac): array => ['id' => $fac->id, 'name' => $fac->name, 'code' => $fac->code])->values(),
                 'courses' => $f->courses->map(fn (Course $c): array => ['id' => $c->id, 'code' => $c->code, 'name' => $c->name])->values(),
                 'courses_count' => $f->courses_count,
@@ -64,9 +74,14 @@ class CouncilLecturersController extends Controller
             'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
             'faculty_ids' => ['required', 'array', 'min:1'],
             'faculty_ids.*' => ['integer', Rule::exists('faculties', 'id')],
+            'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,username'],
+            'password' => ['nullable', 'string', 'min:6', 'max:100'],
         ]);
 
-        $lecturer = DB::transaction(function () use ($input, $request) {
+        $plainPassword = $input['password'] ?? self::generatePassword(10);
+        $accountGenerated = empty($input['password']);
+
+        $lecturer = DB::transaction(function () use ($input, $request, $plainPassword, $accountGenerated) {
             $lecturer = Faculty::create([
                 'full_name' => $input['full_name'],
                 'degree' => $input['degree'],
@@ -75,15 +90,39 @@ class CouncilLecturersController extends Controller
                 'department_id' => $input['department_id'] ?? null,
             ]);
             $lecturer->faculties()->sync(array_map('intval', $input['faculty_ids']));
+
+            // حساب المدرس — دائم عند الإنشاء (اسم المستخدم مطلوب، وكلمة المرور تُولَّد إن تُركت فارغة)
+            $account = User::create([
+                'name' => $lecturer->full_name,
+                'username' => $input['username'],
+                'email' => $lecturer->email,
+                'password' => $plainPassword,
+                'role' => 'lecturer',
+                'faculty_id' => null,
+                'batch_id' => null,
+                'lecturer_id' => $lecturer->id,
+                'is_active' => true,
+            ]);
+
             $this->audit->log($request, 'lecturer.create', 'lecturer', $lecturer->id, [
                 'degree' => $lecturer->degree,
                 'faculty_ids' => $input['faculty_ids'],
+                'account_username' => $account->username,
+                'password_generated' => $accountGenerated,
             ]);
 
-            return $lecturer;
+            return [$lecturer, $account];
         });
 
-        return response()->json(['ok' => true, 'lecturer' => $lecturer->load(['faculties:id,name,code', 'courses:id,code,name'])], Response::HTTP_CREATED);
+        [$lecturer, $account] = $lecturer;
+
+        $payload = ['ok' => true, 'lecturer' => $lecturer->load(['faculties:id,name,code', 'courses:id,code,name'])];
+        $payload['account'] = ['username' => $account->username];
+        if ($accountGenerated) {
+            $payload['account']['temporary_password'] = $plainPassword; // تُعرض مرة واحدة فقط
+        }
+
+        return response()->json($payload, Response::HTTP_CREATED);
     }
 
     // PUT /api/council/lecturers/{lecturer} — تعديل وربط الكليات (sync كامل)
@@ -129,7 +168,13 @@ class CouncilLecturersController extends Controller
             }
 
             $item->delete();
-            $this->audit->log($request, 'lecturer.delete', 'lecturer', $item->id, ['full_name' => $item->full_name]);
+            // تعطيل حساب المدرس أيضًا — لا حساب يتيم بعد الحذف
+            $account = User::where('lecturer_id', $item->id)->first();
+            if ($account) {
+                $account->forceFill(['is_active' => false, 'deactivated_at' => now()])->save();
+                $account->tokens()->delete();
+            }
+            $this->audit->log($request, 'lecturer.delete', 'lecturer', $item->id, ['full_name' => $item->full_name, 'account_deactivated' => (bool) $account]);
 
             return response()->json(['ok' => true]);
         });
@@ -174,5 +219,17 @@ class CouncilLecturersController extends Controller
         $this->audit->log($request, 'course.unbind', 'lecturer', $item->id, ['course_id' => $course]);
 
         return response()->json(['ok' => true]);
+    }
+
+    /** كلمة مرور مؤقتة — 10 أحرف */
+    private static function generatePassword(int $length): string
+    {
+        $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789@$!';
+        $password = '';
+        for ($i = 0; $i < $length; $i++) {
+            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $password;
     }
 }

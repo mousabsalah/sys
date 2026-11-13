@@ -17,7 +17,7 @@ class AdminDashboardController extends Controller
     public function dashboardStats()
     {
         // ── القاعات مع إشغالها (محاضرات/امتحانات/حجوزات غير مؤرشفة) ──
-        $lectures = Timetable::notArchived()
+        $lectures = Timetable::notArchived()->where('status', '!=', 'cancelled')
             ->select('hall_id', DB::raw('COUNT(*) AS lectures'))
             ->groupBy('hall_id')
             ->pluck('lectures', 'hall_id');
@@ -50,7 +50,7 @@ class AdminDashboardController extends Controller
 
         // ── توزيع المحاضرات حسب يوم الأسبوع (مخزنة كنص عربي) ──
         $dayOrder = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
-        $rawDays = Timetable::notArchived()
+        $rawDays = Timetable::notArchived()->where('status', '!=', 'cancelled')
             ->select('day_of_week', DB::raw('COUNT(*) AS lectures'))
             ->groupBy('day_of_week')
             ->pluck('lectures', 'day_of_week');
@@ -60,7 +60,7 @@ class AdminDashboardController extends Controller
         }
 
         // ── حصة كل كلية من المحاضرات (عبر department → faculty) ──
-        $facultyShare = Timetable::notArchived()
+        $facultyShare = Timetable::notArchived()->where('status', '!=', 'cancelled')
             ->join('groups', 'groups.id', '=', 'timetables.group_id')
             ->join('batches', 'batches.id', '=', 'groups.batch_id')
             ->join('departments', 'departments.id', '=', 'batches.department_id')
@@ -72,7 +72,7 @@ class AdminDashboardController extends Controller
 
         // ── نشاط كل فصل دراسي (للرسم الخطي عبر الزمن) — بإحصاءات غير مؤرشفة فقط ──
         $semesterActivity = Semester::withCount([
-            'timetables' => fn ($q) => $q->notArchived(),
+            'timetables' => fn ($q) => $q->notArchived()->where('timetables.status', '!=', 'cancelled'),
             'examSessions' => fn ($q) => $q->notArchived(),
             'bookings' => fn ($q) => $q->active(),
         ])
@@ -100,7 +100,7 @@ class AdminDashboardController extends Controller
             'halls_available_now' => DB::table('halls')->whereNull('deleted_at')->where('status', 'متاحة')->count(),
             'total_students' => (int) DB::table('batches')->sum('student_count'),
             'faculty_members' => DB::table('faculty')->count(),
-            'lectures_total' => Timetable::notArchived()->count(),
+            'lectures_total' => Timetable::notArchived()->where('status', '!=', 'cancelled')->count(),
             'exams_total' => ExamSession::notArchived()->count(),
             'bookings_total' => Booking::active()->count(),
             'batches_count' => DB::table('batches')->count(),
@@ -134,6 +134,7 @@ class AdminDashboardController extends Controller
             ->leftJoin('halls', 'halls.id', '=', 'timetables.hall_id')
             ->leftJoin('faculty', 'faculty.id', '=', 'timetables.faculty_id')
             ->where('timetables.semester_id', $item->id)
+            ->where('timetables.status', '!=', 'cancelled')
             ->select(
                 'timetables.id',
                 'groups.track AS group_track',
