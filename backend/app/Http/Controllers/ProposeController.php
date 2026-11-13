@@ -92,7 +92,7 @@ class ProposeController extends Controller
             ? array_map('intval', $input['group_ids'])
             : [(int) ($input['group_id'] ?? 0)];
 
-        // ── dept scoping: كل شعبة مطلوبة يجب أن تقع داخل نطاق كلية المستخدم ──
+        // ── نطاق المجلس: الجامعة كلها — لا قيد كلية (مجلس المدرسين يدير كل الأقسام) ──
         foreach ($groupIds as $gid) {
             if (! FacultyScope::assertGroupInScope($user, $gid)) {
                 return response()->json([

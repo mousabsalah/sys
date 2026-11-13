@@ -185,8 +185,7 @@ class DatabaseSeeder extends Seeder
         // ── حسابات النظام ──
         $all = [
             ['مدير النظام', 'مدير_النظام', 'admin@aust.edu.sd', 'Admin@123456', 'admin', null, null],
-            ['قسم كلية العلوم', 'قسم_العلوم', 'dept.sci@aust.edu.sd', 'Dept@123456', 'dept', $sci->id, null],
-            ['قسم كلية الهندسة', 'قسم_الهندسة', 'dept.eng@aust.edu.sd', 'Dept@123456', 'dept', $eng->id, null],
+            ['مجلس المدرسين', 'مجلس_المدرسين', 'council@aust.edu.sd', 'Council@123456', 'council', null, null],
             ['الحارس الجامعي', 'حارس_الجامعة', 'guard@aust.edu.sd', 'Guard@123456', 'guard', null, null],
             ['دفعة علوم الحاسوب 2024', 'دفعة_CS2024', 'batch.cs2024@aust.edu.sd', 'Batch@123456', 'batch', null, $batchIds[2]],
         ];

@@ -118,6 +118,7 @@ class ConflictChecker
                 'end_time' => $input['end_time'],
                 'academic_term' => $input['academic_term'],
                 'semester_id' => $semesterId,
+                'status' => 'pending',
             ]);
 
             // سجل تحديثات الدفعة — مصاريف البنية «جديد»
@@ -166,6 +167,7 @@ class ConflictChecker
                 'exam_type' => $input['exam_type'] ?? 'فاينل',
                 'academic_term' => $input['academic_term'],
                 'semester_id' => $semesterId,
+                'status' => 'pending',
             ]);
 
             DB::table('exam_updates')->insert([

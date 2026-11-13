@@ -46,13 +46,9 @@ class ExamController extends Controller
 
         $query = ExamSession::query();
 
-        // dept يرى فقط ضمن نطاق كليته
-        if ($user->role === 'dept') {
-            $scopeIds = FacultyScope::groupIdsFor($user) ?? [];
-            $query->whereIn('group_id', $scopeIds);
-            if ($by === 'group' && $id > 0 && ! in_array($id, $scopeIds, true)) {
-                return response()->json(['ok' => false, 'message_ar' => FacultyScope::deniedMessage()], 403);
-            }
+        // غير مجلس/مدير يرى المعتمد فقط — المسودات للمجلس والمدير
+        if (! in_array($user?->role, ['council', 'admin'], true)) {
+            $query->where('status', 'approved');
         }
 
         switch ($by) {
@@ -61,9 +57,6 @@ class ExamController extends Controller
                 break;
             case 'batch':
                 $groupIds = Group::where('batch_id', $id)->pluck('id')->all();
-                if ($user->role === 'dept') {
-                    $groupIds = array_values(array_intersect($groupIds, FacultyScope::groupIdsFor($user) ?? []));
-                }
                 $query->whereIn('group_id', $groupIds);
                 break;
             case 'group':

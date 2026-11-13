@@ -9,8 +9,20 @@ use Illuminate\Support\Facades\DB;
 class ExamSession extends Model
 {
     protected $fillable = [
-        'course_id', 'group_id', 'hall_id', 'exam_date', 'start_time', 'end_time', 'exam_type', 'academic_term', 'semester_id',
+        'course_id', 'group_id', 'hall_id', 'exam_date', 'start_time', 'end_time', 'exam_type', 'academic_term', 'semester_id', 'status',
     ];
+
+    /** Scope: الامتحانات المعتمدة فقط — يرى غير المجلس/المدير المعتمدة دون غيرها */
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where($query->getModel()->getTable().'.status', 'approved');
+    }
+
+    /** Scope: الامتحانات المعلّقة (بانتظار اعتماد المدير) */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->where($query->getModel()->getTable().'.status', 'pending');
+    }
 
     protected $casts = ['exam_date' => 'date'];
 

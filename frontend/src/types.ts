@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'dept' | 'guard' | 'batch'
+export type Role = 'admin' | 'council' | 'guard' | 'batch'
 
 export type ViewName =
   | 'login'
@@ -11,6 +11,8 @@ export type ViewName =
   | 'bookings'
   | 'create-booking'
   | 'halls-available'
+  | 'council-lecturers'
+  | 'admin-approvals'
   | 'reports'
   | 'admin-users'
   | 'admin-faculties'

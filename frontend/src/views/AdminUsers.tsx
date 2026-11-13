@@ -6,7 +6,7 @@ type AdminUser = {
   id: number
   name: string
   username: string
-  role: 'admin' | 'dept' | 'guard' | 'batch'
+  role: 'admin' | 'council' | 'guard' | 'batch'
   faculty_id: number | null
   batch_id: number | null
   is_active: boolean
@@ -23,7 +23,7 @@ type MasterLite = {
 
 const ROLE_LABEL: Record<AdminUser['role'], string> = {
   admin: 'مدير النظام',
-  dept: 'قسم أكاديمي',
+  council: 'مجلس المدرسين',
   guard: 'حرس',
   batch: 'دفعة',
 }
@@ -31,7 +31,6 @@ const ROLE_LABEL: Record<AdminUser['role'], string> = {
 export default function AdminUsersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [totalUsers, setTotalUsers] = useState(0)
-  const [faculties, setFaculties] = useState<MasterLite['faculties']>([])
   const [batches, setBatches] = useState<MasterLite['batches']>([])
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
@@ -41,7 +40,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
   const [msg, setMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'dept' as AdminUser['role'], faculty_id: '', batch_id: '' })
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: 'council' as AdminUser['role'], faculty_id: '', batch_id: '' })
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null)
 
   const seqRef = useRef(0)
@@ -82,7 +81,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
 
   useEffect(() => {
     call<MasterLite>('/api/admin/master-data')
-      .then((d) => { setFaculties(d.faculties ?? []); setBatches(d.batches ?? []) })
+      .then((d) => { setBatches(d.batches ?? []) })
       .catch(() => { /* تُعرض القوائم فارغة بدل تعطل الصفحة */ })
   }, [call])
 
@@ -139,7 +138,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
         <select className="form-select" style={{ maxWidth: 180 }} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="الدور">
           <option value="">كل الأدوار</option>
           <option value="admin">مدير النظام</option>
-          <option value="dept">قسم أكاديمي</option>
+          <option value="council">مجلس المدرسين</option>
           <option value="guard">حرس</option>
           <option value="batch">دفعة</option>
         </select>
@@ -161,16 +160,11 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
             <input className="form-control" type="password" placeholder="كلمة المرور" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} dir="ltr" required />
             <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as AdminUser['role'] })}>
               <option value="admin">مدير النظام</option>
-              <option value="dept">قسم أكاديمي</option>
+              <option value="council">مجلس المدرسين</option>
               <option value="guard">حرس</option>
               <option value="batch">دفعة</option>
             </select>
-            {form.role === 'dept' && (
-              <select className="form-select" value={form.faculty_id} onChange={(e) => setForm({ ...form, faculty_id: e.target.value })} required>
-                <option value="">— اختر الكلية —</option>
-                {faculties.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-            )}
+            {/* دور المجلس يعمل عبر الجامعة كلها — لا قيد كلية (الجامعة = المقررات والكليات كلها) */}
             {form.role === 'batch' && (
               <select className="form-select" value={form.batch_id} onChange={(e) => setForm({ ...form, batch_id: e.target.value })} required>
                 <option value="">— اختر الدفعة —</option>
@@ -207,11 +201,9 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
                 <td><strong>{u.name}</strong></td>
                 <td dir="ltr">{u.username}</td>
                 <td>{ROLE_LABEL[u.role]}</td>
-                <td>{u.role === 'dept'
-                  ? (faculties.find((f) => f.id === u.faculty_id)?.name ?? '—')
-                  : u.batch_id
-                    ? (batches.find((b) => b.id === u.batch_id)?.name ?? `#${u.batch_id}`)
-                    : '—'}
+                <td>{u.batch_id
+                  ? (batches.find((b) => b.id === u.batch_id)?.name ?? `#${u.batch_id}`)
+                  : '—'}
                 </td>
                 <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('ar-SD') : '—'}</td>
                 <td>

@@ -13,6 +13,8 @@ const CreateExamView = lazy(() => import('./views/CreateExam'))
 const BookingsView = lazy(() => import('./views/Bookings'))
 const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
+const CouncilLecturersView = lazy(() => import('./views/CouncilLecturers'))
+const AdminApprovalsView = lazy(() => import('./views/AdminApprovals'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
@@ -59,6 +61,8 @@ export default function App() {
         {activeView === 'bookings' && <BookingsView call={call} />}
         {activeView === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
         {activeView === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
+        {activeView === 'council-lecturers' && <CouncilLecturersView call={call} />}
+        {activeView === 'admin-approvals' && <AdminApprovalsView call={call} />}
         {activeView === 'reports' && <ReportsView call={call} />}
         {activeView === 'admin-users' && <AdminUsersView call={call} />}
         {activeView === 'admin-plans' && <AdminPlansView call={call} />}

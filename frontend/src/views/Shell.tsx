@@ -8,17 +8,19 @@ export function Shell({ user, active, onNav, onLogout, children }: {
   children: React.ReactNode
 }) {
   const items: { key: ViewName; label: string; roles: Role[] }[] = [
-    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'dept', 'guard', 'batch'] },
-    { key: 'timetables', label: 'الجداول', roles: ['dept', 'batch'] },
-    { key: 'create-timetable', label: 'إعداد الجدول', roles: ['dept'] },
-    { key: 'propose', label: 'اقتراح تلقائي', roles: ['dept'] },
-    { key: 'exams', label: 'الامتحانات', roles: ['dept', 'batch'] },
-    { key: 'create-exam', label: 'إعداد امتحان', roles: ['dept'] },
-    { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'dept', 'guard'] },
-    { key: 'halls-available', label: 'القاعات المتاحة', roles: ['dept', 'guard'] },
-    { key: 'create-booking', label: 'حجز قاعة', roles: ['dept'] },
+    { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council', 'guard', 'batch'] },
+    { key: 'timetables', label: 'الجداول', roles: ['council', 'batch'] },
+    { key: 'create-timetable', label: 'إعداد الجدول', roles: ['council'] },
+    { key: 'propose', label: 'اقتراح تلقائي', roles: ['council'] },
+    { key: 'exams', label: 'الامتحانات', roles: ['council', 'batch'] },
+    { key: 'create-exam', label: 'إعداد امتحان', roles: ['council'] },
+    { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'guard'] },
+    { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'guard'] },
+    { key: 'create-booking', label: 'حجز قاعة', roles: ['council'] },
+    { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
     // ── شاشات مدير النظام ──
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
+    { key: 'admin-approvals', label: 'اعتماد الجداول والامتحانات', roles: ['admin'] },
     { key: 'admin-plans', label: 'الخطط الدراسية', roles: ['admin'] },
     { key: 'admin-users', label: 'إدارة المستخدمين', roles: ['admin'] },
     { key: 'admin-faculties', label: 'إدارة الكليات', roles: ['admin'] },
@@ -49,7 +51,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
         </nav>
         <div className="mt-auto p-3" style={{borderTop: '1px solid rgba(255,255,255,0.08)'}}>
           <div className="small" style={{color: '#b8c7e3'}}>{user.name}</div>
-          <div className="small" style={{color: '#D4822D'}}>{user.role === 'admin' ? 'مدير النظام' : user.role === 'dept' ? 'قسم أكاديمي' : user.role === 'guard' ? 'حرس جامعي' : 'دفعة'}</div>
+          <div className="small" style={{color: '#D4822D'}}>{user.role === 'admin' ? 'مدير النظام' : user.role === 'council' ? 'مجلس المدرسين' : user.role === 'guard' ? 'حرس جامعي' : 'دفعة'}</div>
           <button className="btn btn-sm mt-2 w-100" style={{border: '1px solid #D4822D', color: '#D4822D', background: 'transparent'}} onClick={onLogout}>تسجيل الخروج</button>
         </div>
       </aside>

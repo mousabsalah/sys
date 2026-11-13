@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminApprovalsController;
 use App\Http\Controllers\AdminBackupController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\AdminMasterDataController;
 use App\Http\Controllers\AdminUsersController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\ExamController;
@@ -43,28 +45,39 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:san
 // ── الجداول ──
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/timetables', [TimetableController::class, 'index']);
-    Route::post('/timetables/check', [TimetableController::class, 'check'])->middleware('role:dept');
-    Route::post('/timetables', [TimetableController::class, 'store'])->middleware('role:dept');
+    Route::post('/timetables/check', [TimetableController::class, 'check'])->middleware('role:council');
+    Route::post('/timetables', [TimetableController::class, 'store'])->middleware('role:council');
 
     // ── الامتحانات ──
     Route::get('/exams', [ExamController::class, 'index']);
-    Route::post('/exams/check', [ExamController::class, 'check'])->middleware('role:dept');
-    Route::post('/exams', [ExamController::class, 'store'])->middleware('role:dept');
+    Route::post('/exams/check', [ExamController::class, 'check'])->middleware('role:council');
+    Route::post('/exams', [ExamController::class, 'store'])->middleware('role:council');
 
     // ── الحجوزات ──
     Route::get('/bookings', [BookingController::class, 'index']);
     Route::get('/halls/available', [HallsController::class, 'available']);
-    Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,dept');
-    Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,dept');
-    Route::post('/timetables/bulk', [TimetableController::class, 'bulkStore'])->middleware('role:dept');
-    Route::post('/admin/propose-timetable', [ProposeController::class, 'store'])->middleware('role:dept');
-    Route::get('/admin/propose-timetable/context', [ProposeController::class, 'context'])->middleware('role:dept');
+    Route::post('/bookings/check', [BookingController::class, 'check'])->middleware('role:admin,council');
+    Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:admin,council');
+    Route::post('/timetables/bulk', [TimetableController::class, 'bulkStore'])->middleware('role:council');
+    Route::post('/admin/propose-timetable', [ProposeController::class, 'store'])->middleware('role:council');
+    Route::get('/admin/propose-timetable/context', [ProposeController::class, 'context'])->middleware('role:council');
 
     // ── الحارس ──
     Route::get('/status/now', [GuardController::class, 'nowHalls'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/lock', [GuardController::class, 'lock'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/unlock', [GuardController::class, 'unlock'])->middleware('role:guard,admin');
     Route::get('/locks', [GuardController::class, 'lockLog'])->middleware('role:admin');
+});
+
+// ── مجلس المدرسين: إدارة المدرسين + ربطهم بالكليات والمقررات ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/lecturers', [CouncilLecturersController::class, 'index']);
+    Route::post('/council/lecturers', [CouncilLecturersController::class, 'store']);
+    Route::put('/council/lecturers/{lecturer}', [CouncilLecturersController::class, 'update']);
+    Route::delete('/council/lecturers/{lecturer}', [CouncilLecturersController::class, 'destroy']);
+    Route::get('/council/lecturers/{lecturer}/courses', [CouncilLecturersController::class, 'courses']);
+    Route::post('/council/lecturers/{lecturer}/courses/{course}', [CouncilLecturersController::class, 'bindCourse'])->middleware('throttle:30,1,bind');
+    Route::delete('/council/lecturers/{lecturer}/courses/{course}', [CouncilLecturersController::class, 'unbindCourse'])->middleware('throttle:30,1,bind');
 });
 
 // ── اللوحة والتقارير (مقاسة للمناقشة؛ إثبات: لا قبل تسجيل الدخول) ──
@@ -83,7 +96,14 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     Route::post('/admin/users/{user}/reactivate', [AdminUsersController::class, 'reactivate']);
     Route::post('/admin/users/{user}/reset-password', [AdminUsersController::class, 'resetPassword']);
 
-    // البيانات الرئيسية
+    // اعتماد الجداول والامتحانات المعلّقة (مجلس ينشئ ← المدير يعتمد ← الجميع يرى)
+    Route::get('/admin/approvals', [AdminApprovalsController::class, 'index']);
+    Route::post('/admin/approvals/timetables/{timetable}/approve', [AdminApprovalsController::class, 'approveTimetable']);
+    Route::post('/admin/approvals/timetables/{timetable}/unapprove', [AdminApprovalsController::class, 'unapproveTimetable']);
+    Route::post('/admin/approvals/exams/{exam}/approve', [AdminApprovalsController::class, 'approveExam']);
+    Route::post('/admin/approvals/exams/{exam}/unapprove', [AdminApprovalsController::class, 'unapproveExam']);
+
+    // البيانات الرئيسية والخطط الدراسية (المدير: قراءة/إدارة — منشئ الجداول الوحيد الآن مجلس المدرسين)
     Route::get('/admin/master-data', [AdminController::class, 'masterData']);
     Route::get('/admin/plans', [AdminController::class, 'plansIndex']);
     Route::post('/admin/plans/{group}', [AdminController::class, 'plansStore']);

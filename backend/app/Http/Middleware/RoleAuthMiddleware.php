@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * RoleAuthMiddleware
- * يمنع Dًوورًا معيَّناً من المسارات. يُستدعى بنوع الدور المسموح، مثال: role:admin,dept.
+ * يمنع دورًا معيَّناً من المسارات. يُستدعى بنوع الدور المسموح، مثال: role:admin,council.
  * يُفترض وجود authenticated user (auth:sanctum) مسبقًا.
  */
 class RoleAuthMiddleware

@@ -13,13 +13,21 @@ class Faculty extends Model
 
     protected $table = 'faculty';
 
-    protected $fillable = ['full_name', 'department_id', 'email', 'phone'];
+    protected $fillable = ['full_name', 'degree', 'department_id', 'email', 'phone'];
 
+    /** @return BelongsTo<Department, $this> */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
+    /** @return BelongsToMany<FacultyEntity, $this> */
+    public function faculties(): BelongsToMany
+    {
+        return $this->belongsToMany(FacultyEntity::class, 'lecturer_faculties', 'lecturer_id', 'faculty_id')->withTimestamps();
+    }
+
+    /** @return BelongsToMany<Course, $this> */
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'course_faculty', 'faculty_id', 'course_id');

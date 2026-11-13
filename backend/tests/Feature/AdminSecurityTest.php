@@ -166,13 +166,13 @@ class AdminSecurityTest extends TestCase
         $this->assertSame(0, $target->fresh()->tokens()->count());
     }
 
-    public function test_admin_cannot_create_timetables_but_dept_can(): void
+    public function test_admin_cannot_create_timetables_but_council_can(): void
     {
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
         [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
         $admin = $this->makeUser('admin');
-        $deptUser = $this->makeUser('dept');
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser = $this->makeUser('council');
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
         $hall = $this->makeHall();
 
         $payload = [
@@ -190,21 +190,21 @@ class AdminSecurityTest extends TestCase
             ->postJson('/api/timetables', $payload)
             ->assertStatus(403);
 
-        // dept يمرر — نفكّك المحرك بالمحاكاة (لا نريد HTTP حقيقي إلى syst-engine)
+        // council يمرر — نفكّك المحرك بالمحاكاة (لا نريد HTTP حقيقي إلى syst-engine)
         $this->mock(ConflictChecker::class, function ($mock) {
             $mock->shouldReceive('commitTimetable')->andReturn(['ok' => true, 'timetable' => null]);
         });
 
-        $this->authedAs($deptUser)
+        $this->authedAs($councilUser)
             ->postJson('/api/timetables', $payload)
             ->assertStatus(201);
     }
 
     public function test_non_admin_cannot_reach_admin_routes(): void
     {
-        $deptUser = $this->makeUser('dept');
+        $councilUser = $this->makeUser('council');
 
-        $this->authedAs($deptUser)
+        $this->authedAs($councilUser)
             ->getJson('/api/admin/users')
             ->assertStatus(403);
     }
@@ -695,11 +695,11 @@ class AdminSecurityTest extends TestCase
 
     public function test_propose_requires_group_or_groups(): void
     {
-        $deptUser = $this->makeUser('dept');
+        $councilUser = $this->makeUser('council');
         [$faculty] = $this->makeAcademicChain();
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
-        $this->actingAs($deptUser)
+        $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', [])
             ->assertStatus(422);
     }
@@ -789,17 +789,17 @@ class AdminSecurityTest extends TestCase
 
     public function test_propose_all_skip_still_returns_200_ok_true(): void
     {
-        $deptUser = $this->makeUser('dept');
+        $councilUser = $this->makeUser('council');
         $faculty = FacultyEntity::create(['name' => 'كلية بدون فترات', 'code' => 'NOP', 'description' => null]);
-        $dept = Department::create(['faculty_id' => $faculty->id, 'name' => 'قسم بدون فترات', 'code' => 'NOP-D']);
+        $council = Department::create(['faculty_id' => $faculty->id, 'name' => 'قسم بدون فترات', 'code' => 'NOP-D']);
         // برنامج بلا أية Period مسجلة — propose يجب أن يرجع NO_PERIODS دون استدعاء المحرك
         $program = Program::create(['name' => 'بكالريوس فارغ', 'description' => null]);
-        $batch = Batch::create(['name' => 'دفعة بلا فترات', 'student_count' => 60, 'department_id' => $dept->id, 'program_id' => $program->id]);
-        $group = Group::create(['batch_id' => $batch->id, 'department_id' => $dept->id, 'track' => 'بكلاريوس', 'student_count' => 30]);
+        $batch = Batch::create(['name' => 'دفعة بلا فترات', 'student_count' => 60, 'department_id' => $council->id, 'program_id' => $program->id]);
+        $group = Group::create(['batch_id' => $batch->id, 'department_id' => $council->id, 'track' => 'بكلاريوس', 'student_count' => 30]);
 
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
-        $response = $this->actingAs($deptUser)
+        $response = $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$group->id]]);
 
         $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 0);
@@ -849,15 +849,15 @@ class AdminSecurityTest extends TestCase
     public function test_engine_ok_false_for_all_groups_returns_503(): void
     {
         [$faculty, $department, $groupA, $groupB] = $this->makeTwoGroupChain();
-        $deptUser = $this->makeUser('dept');
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser = $this->makeUser('council');
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
         $this->mock(EngineClient::class, function ($mock) {
             // CP-SAT فشل عبر HTTP 503 — المحرك لا يرمي، بل يرجع ok:false
             $mock->shouldReceive('propose')->andReturn(['ok' => false, 'error' => 'محلل CP-SAT فشل في الترميز']);
         });
 
-        $response = $this->actingAs($deptUser)
+        $response = $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]])
             ->assertStatus(503);
 
@@ -868,8 +868,8 @@ class AdminSecurityTest extends TestCase
     public function test_engine_ok_false_for_one_group_others_survive(): void
     {
         [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer] = $this->makeTwoGroupChain();
-        $deptUser = $this->makeUser('dept');
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser = $this->makeUser('council');
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
         $this->mock(EngineClient::class, function ($mock) use ($groupA, $course, $hall, $lecturer) {
             $mock->shouldReceive('propose')->andReturnUsing(function (array $payload) use ($groupA, $course, $hall, $lecturer) {
@@ -897,7 +897,7 @@ class AdminSecurityTest extends TestCase
             });
         });
 
-        $response = $this->actingAs($deptUser)
+        $response = $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
 
         $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true)->assertJsonPath('status', 'BATCH');
@@ -909,8 +909,8 @@ class AdminSecurityTest extends TestCase
     public function test_engine_failure_only_for_one_group_others_survive(): void
     {
         [$faculty, $department, $groupA, $groupB, $course, $hall, $lecturer] = $this->makeTwoGroupChain();
-        $deptUser = $this->makeUser('dept');
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser = $this->makeUser('council');
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
         $this->mock(EngineClient::class, function ($mock) use ($groupA, $course, $hall, $lecturer) {
             $mock->shouldReceive('propose')->andReturnUsing(function (array $payload) use ($groupA, $course, $hall, $lecturer) {
@@ -938,7 +938,7 @@ class AdminSecurityTest extends TestCase
             });
         });
 
-        $response = $this->actingAs($deptUser)
+        $response = $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]]);
 
         $response->assertOk()->assertJsonPath('ok', true)->assertJsonPath('placed', 1)->assertJsonPath('multi', true)->assertJsonPath('status', 'BATCH');
@@ -950,18 +950,211 @@ class AdminSecurityTest extends TestCase
     public function test_engine_throws_for_all_groups_returns_503(): void
     {
         [$faculty, $department, $groupA, $groupB] = $this->makeTwoGroupChain();
-        $deptUser = $this->makeUser('dept');
-        $deptUser->forceFill(['faculty_id' => $faculty->id])->save();
+        $councilUser = $this->makeUser('council');
+        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
 
         $this->mock(EngineClient::class, function ($mock) {
             $mock->shouldReceive('propose')->andThrow(new \RuntimeException('engine down'));
         });
 
-        $response = $this->actingAs($deptUser)
+        $response = $this->actingAs($councilUser)
             ->postJson('/api/admin/propose-timetable', ['group_ids' => [$groupA->id, $groupB->id]])
             ->assertStatus(503);
 
         $this->assertFalse($response->json('ok'));
         $this->assertNotEmpty($response->json('message_ar'));
+    }
+
+    // ═══ مجلس المدرسين: المعلّقة مخفية عن الدفعة، والاعتماد يفتح الرؤية ═══
+
+    public function test_pending_timetable_hidden_from_batch_until_approved(): void
+    {
+        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
+        $batchUser = $this->makeUser('batch');
+
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall();
+
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+
+        // جدول معلّق ثم جدول معتمد
+        $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id); // status = pending افتراضيًا
+        Timetable::create([
+            'course_id' => $course->id,
+            'faculty_id' => $lecturer->id,
+            'group_id' => $group->id,
+            'hall_id' => $this->makeHall('قاعة معتمدة')->id,
+            'day_of_week' => 'الأحد',
+            'start_time' => '10:00:00',
+            'end_time' => '11:30:00',
+            'academic_term' => '2026/1',
+            'semester_id' => $semester->id,
+            'status' => 'approved',
+        ]);
+
+        // الدفعة يرى المعتمد فقط
+        $batchView = $this->authedAs($batchUser)
+            ->getJson('/api/timetables?by=group&id='.$group->id)
+            ->json();
+        $this->assertCount(1, $batchView);
+
+        // المجلس يرى الكل (معلّق + معتمد)
+        $councilView = $this->authedAs($council)
+            ->getJson('/api/timetables?by=group&id='.$group->id)
+            ->json();
+        $this->assertCount(2, $councilView);
+
+        // المدير يرى الكل + المعلّق في شاشة الاعتماد
+        $adminView = $this->authedAs($admin)
+            ->getJson('/api/timetables?by=group&id='.$group->id)
+            ->json();
+        $this->assertCount(2, $adminView);
+        $pending = $this->authedAs($admin)->getJson('/api/admin/approvals')->json();
+        $this->assertSame(1, $pending['pending_lectures_count']);
+
+        // المدير يعتمد → الدفعة يرى الكل الآن
+        $approvedNow = Timetable::where('status', 'pending')->first();
+        $this->authedAs($admin)
+            ->postJson('/api/admin/approvals/timetables/'.$approvedNow->id.'/approve')
+            ->assertOk();
+
+        $batchView2 = $this->authedAs($batchUser)
+            ->getJson('/api/timetables?by=group&id='.$group->id)
+            ->json();
+        $this->assertCount(2, $batchView2);
+    }
+
+    public function test_admin_approvals_exam_approve_and_unapprove(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall();
+
+        $exam = ExamSession::create([
+            'course_id' => $course->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'exam_date' => now()->addDays(30)->toDateString(),
+            'start_time' => '08:00:00',
+            'end_time' => '09:30:00',
+            'exam_type' => 'نهائي',
+            'academic_term' => '2026/1',
+            'status' => 'pending',
+        ]);
+
+        $pending = $this->authedAs($admin)->getJson('/api/admin/approvals')->json();
+        $this->assertSame(1, $pending['pending_exams_count']);
+
+        $this->authedAs($admin)
+            ->postJson('/api/admin/approvals/exams/'.$exam->id.'/approve')
+            ->assertOk();
+
+        $this->assertSame('approved', (string) $exam->fresh()->status);
+
+        $this->authedAs($admin)
+            ->postJson('/api/admin/approvals/exams/'.$exam->id.'/unapprove')
+            ->assertOk();
+
+        $this->assertSame('pending', (string) $exam->fresh()->status);
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'exam.unapprove')->exists());
+    }
+
+    public function test_council_lecturers_crud_and_course_binding(): void
+    {
+        $council = $this->makeUser('council');
+        $other = FacultyEntity::create(['name' => 'كلية أخرى', 'code' => 'OTH', 'description' => null]);
+        $third = FacultyEntity::create(['name' => 'كلية ثالثة', 'code' => 'THR', 'description' => null]);
+
+        // إنشاء مدرس بدرجة وربط بكليتين
+        $response = $this->authedAs($council)
+            ->postJson('/api/council/lecturers', [
+                'full_name' => 'د. اختبار المجلس',
+                'degree' => 'أستاذ مشارك',
+                'email' => 'council.test@aust.edu.sd',
+                'faculty_ids' => [$other->id, $third->id],
+            ])
+            ->assertStatus(201)
+            ->json();
+
+        $lecturerId = $response['lecturer']['id'] ?? null;
+        $this->assertNotNull($lecturerId);
+        $this->assertDatabaseHas('lecturer_faculties', ['lecturer_id' => $lecturerId, 'faculty_id' => $other->id]);
+        $this->assertDatabaseHas('lecturer_faculties', ['lecturer_id' => $lecturerId, 'faculty_id' => $third->id]);
+
+        // درجة خاطئة → 422
+        $this->authedAs($council)
+            ->postJson('/api/council/lecturers', [
+                'full_name' => 'د. خاطئ',
+                'degree' => 'دكتور',
+                'email' => 'bad.degree@aust.edu.sd',
+                'faculty_ids' => [1],
+            ])
+            ->assertStatus(422);
+
+        // ربط مقرر بالمدرس وفكه
+        $course = $this->makeCourse('C900');
+        $this->authedAs($council)
+            ->postJson('/api/council/lecturers/'.$lecturerId.'/courses/'.$course->id)
+            ->assertOk();
+
+        $bound = $this->authedAs($council)
+            ->getJson('/api/council/lecturers/'.$lecturerId.'/courses')
+            ->json('assigned');
+        $this->assertCount(1, $bound);
+
+        $this->authedAs($council)
+            ->deleteJson('/api/council/lecturers/'.$lecturerId.'/courses/'.$course->id)
+            ->assertOk();
+
+        // مدرس له محاضرات مسندة في مقرر ← فك الربط مرفوض بـ 422 (R13)
+        $mine = $this->authedAs($council)
+            ->postJson('/api/council/lecturers/'.$lecturerId.'/courses/'.$course->id)
+            ->assertOk();
+        $this->makeTimetableForLecturer($lecturerId, $course->id);
+
+        $this->authedAs($council)
+            ->deleteJson('/api/council/lecturers/'.$lecturerId.'/courses/'.$course->id)
+            ->assertStatus(422);
+    }
+
+    public function test_council_lecturer_delete_blocked_by_linked_timetable(): void
+    {
+        $council = $this->makeUser('council');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $semester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall();
+        $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id);
+
+        $this->authedAs($council)
+            ->deleteJson('/api/council/lecturers/'.$lecturer->id)
+            ->assertStatus(422);
+    }
+
+    private function makeTimetableForLecturer(int $lecturerId, int $courseId): void
+    {
+        [, $department, , $group] = $this->makeAcademicChain();
+        $batch = Batch::first();
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => 1,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/1',
+        ]);
+        $this->makeTimetable($this->makeHall('قاعة R13')->id, $group->id, $semester->id, $courseId, $lecturerId);
     }
 }

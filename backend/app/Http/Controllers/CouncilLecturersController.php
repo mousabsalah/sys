@@ -1,0 +1,178 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Course;
+use App\Models\Department;
+use App\Models\Faculty;
+use App\Models\FacultyEntity;
+use App\Services\Audit\AuditLogger;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * CouncilLecturersController — إدارة المدرسين لدور «مجلس المدرسين» (council).
+ * المجلس: يضيف مدرسين بدرجاتهم العلمية، يربطهم بأكثر من كلية (قام بإنشائها المدير)،
+ * ويربطهم بالمواد التي يدرسونها (مدرس بأكثر من مادة، والعكس).
+ */
+class CouncilLecturersController extends Controller
+{
+    public const DEGREES = ['معيد', 'محاضر', 'أستاذ مساعد', 'أستاذ مشارك', 'أستاذ'];
+
+    public function __construct(private AuditLogger $audit) {}
+
+    // GET /api/council/lecturers — كل المدرسين مع كلياتهم ومقرراتهم
+    public function index()
+    {
+        $lecturers = Faculty::with(['faculties:id,name,code', 'department:id,name', 'courses:id,code,name'])
+            ->withCount('courses')
+            ->orderBy('full_name')
+            ->get()
+            ->map(fn (Faculty $f): array => [
+                'id' => $f->id,
+                'full_name' => $f->full_name,
+                'degree' => $f->degree,
+                'department_id' => $f->department_id,
+                'department' => $f->department?->name,
+                'email' => $f->email,
+                'phone' => $f->phone,
+                'faculties' => $f->faculties->map(fn (FacultyEntity $fac): array => ['id' => $fac->id, 'name' => $fac->name, 'code' => $fac->code])->values(),
+                'courses' => $f->courses->map(fn (Course $c): array => ['id' => $c->id, 'code' => $c->code, 'name' => $c->name])->values(),
+                'courses_count' => $f->courses_count,
+            ]);
+
+        return response()->json([
+            'degrees' => self::DEGREES,
+            'faculties' => FacultyEntity::orderBy('id')->get(['id', 'name', 'code']),
+            'departments' => Department::orderBy('id')->get(['id', 'name', 'faculty_id']),
+            'lecturers' => $lecturers,
+            'total' => $lecturers->count(),
+        ]);
+    }
+
+    // POST /api/council/lecturers — إضافة مدرس بدرجته وربطه بكلية (أو أكثر)
+    public function store(Request $request)
+    {
+        $input = $request->validate([
+            'full_name' => ['required', 'string', 'max:100'],
+            'degree' => ['required', Rule::in(self::DEGREES)],
+            'email' => ['required', 'email', 'max:100', 'unique:faculty,email'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            'faculty_ids' => ['required', 'array', 'min:1'],
+            'faculty_ids.*' => ['integer', Rule::exists('faculties', 'id')],
+        ]);
+
+        $lecturer = DB::transaction(function () use ($input, $request) {
+            $lecturer = Faculty::create([
+                'full_name' => $input['full_name'],
+                'degree' => $input['degree'],
+                'email' => $input['email'],
+                'phone' => $input['phone'] ?? null,
+                'department_id' => $input['department_id'] ?? null,
+            ]);
+            $lecturer->faculties()->sync(array_map('intval', $input['faculty_ids']));
+            $this->audit->log($request, 'lecturer.create', 'lecturer', $lecturer->id, [
+                'degree' => $lecturer->degree,
+                'faculty_ids' => $input['faculty_ids'],
+            ]);
+
+            return $lecturer;
+        });
+
+        return response()->json(['ok' => true, 'lecturer' => $lecturer->load(['faculties:id,name,code', 'courses:id,code,name'])], Response::HTTP_CREATED);
+    }
+
+    // PUT /api/council/lecturers/{lecturer} — تعديل وربط الكليات (sync كامل)
+    public function update(Request $request, int $lecturer)
+    {
+        $item = Faculty::findOrFail($lecturer);
+
+        $input = $request->validate([
+            'full_name' => ['sometimes', 'string', 'max:100'],
+            'degree' => ['sometimes', Rule::in(self::DEGREES)],
+            'email' => ['sometimes', 'email', 'max:100', Rule::unique('faculty', 'email')->ignore($item->id)],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'department_id' => ['sometimes', 'nullable', 'integer', Rule::exists('departments', 'id')],
+            'faculty_ids' => ['sometimes', 'array', 'min:1'],
+            'faculty_ids.*' => ['integer', Rule::exists('faculties', 'id')],
+        ]);
+
+        $updated = DB::transaction(function () use ($input, $item, $request) {
+            $item->fill(collect($input)->except('faculty_ids')->toArray());
+            $item->save();
+            if (array_key_exists('faculty_ids', $input)) {
+                $item->faculties()->sync(array_map('intval', $input['faculty_ids']));
+            }
+            $this->audit->log($request, 'lecturer.update', 'lecturer', $item->id, $input);
+
+            return $item;
+        });
+
+        return response()->json(['ok' => true, 'lecturer' => $updated->load(['faculties:id,name,code', 'courses:id,code,name'])]);
+    }
+
+    // DELETE /api/council/lecturers/{lecturer} — حذف محروس (مثل القاعات: لا حذف مع ارتباط)
+    public function destroy(Request $request, int $lecturer)
+    {
+        $item = Faculty::findOrFail($lecturer);
+
+        return DB::transaction(function () use ($request, $item) {
+            if (DB::table('timetables')->where('faculty_id', $item->id)->exists()) {
+                throw ValidationException::withMessages(['lecturer' => ['لا يمكن حذف مدرس له محاضرات مسندة.']]);
+            }
+            if (DB::table('course_faculty')->where('faculty_id', $item->id)->exists()) {
+                throw ValidationException::withMessages(['lecturer' => ['لا يمكن حذف مدرس مرتبط بمقررات — أزِل ربطه أولًا.']]);
+            }
+
+            $item->delete();
+            $this->audit->log($request, 'lecturer.delete', 'lecturer', $item->id, ['full_name' => $item->full_name]);
+
+            return response()->json(['ok' => true]);
+        });
+    }
+
+    // GET /api/council/lecturers/{lecturer}/courses — مقررات المدرس + الكل (للاختيار)
+    public function courses(int $lecturer)
+    {
+        $item = Faculty::with('courses:id,code,name')->findOrFail($lecturer);
+
+        return response()->json([
+            'lecturer' => ['id' => $item->id, 'full_name' => $item->full_name],
+            'assigned' => $item->courses,
+            'courses' => Course::orderBy('code')->get(['id', 'code', 'name']),
+        ]);
+    }
+
+    // POST /api/council/lecturers/{lecturer}/courses/{course} — ربط مدرس بمقرر (أو أكثر)
+    public function bindCourse(Request $request, int $lecturer, int $course)
+    {
+        $item = Faculty::findOrFail($lecturer);
+        Course::findOrFail($course);
+
+        DB::table('course_faculty')->insertOrIgnore(['course_id' => $course, 'faculty_id' => $item->id]);
+        $this->audit->log($request, 'course.bind', 'lecturer', $item->id, ['course_id' => $course]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // DELETE /api/council/lecturers/{lecturer}/courses/{course} — فك الربط (R13)
+    public function unbindCourse(Request $request, int $lecturer, int $course)
+    {
+        $item = Faculty::findOrFail($lecturer);
+
+        if (DB::table('timetables')->where('faculty_id', $item->id)->where('course_id', $course)->exists()) {
+            throw ValidationException::withMessages([
+                'course' => ['لا يمكن فك الربط — للمدرس محاضرات مسندة في هذا المقرر. عدّل المحاضرات أولًا.'],
+            ]);
+        }
+
+        DB::table('course_faculty')->where('faculty_id', $item->id)->where('course_id', $course)->delete();
+        $this->audit->log($request, 'course.unbind', 'lecturer', $item->id, ['course_id' => $course]);
+
+        return response()->json(['ok' => true]);
+    }
+}

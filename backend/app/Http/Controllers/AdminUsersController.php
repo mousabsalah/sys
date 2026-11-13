@@ -62,14 +62,14 @@ class AdminUsersController extends Controller
             'username' => ['required', 'string', 'min:3', 'max:50', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6', 'max:100'],
-            'role' => ['required', Rule::in(['admin', 'dept', 'guard', 'batch'])],
+            'role' => ['required', Rule::in(['admin', 'council', 'guard', 'batch'])],
             'faculty_id' => ['nullable', 'integer', Rule::exists('faculties', 'id')],
             'batch_id' => ['nullable', 'integer', Rule::exists('batches', 'id')],
         ]);
 
-        // اتساق المراجع: dept → faculty، batch → batch
-        if ($input['role'] === 'dept' && ! $input['faculty_id']) {
-            throw ValidationException::withMessages(['faculty_id' => ['اختار الكلية للقسم.']]);
+        // اتساق المراجع: batch → دفعة، الباقي بلا قيد (council جامعة كاملة؛ admin/guard مستقلان)
+        if ($input['role'] !== 'batch') {
+            $input['batch_id'] = null; // تنظيف نصي عند إنشاء غير الحسابات الدفعية
         }
         if ($input['role'] === 'batch' && ! $input['batch_id']) {
             throw ValidationException::withMessages(['batch_id' => ['اختار الدفعة للحساب.']]);

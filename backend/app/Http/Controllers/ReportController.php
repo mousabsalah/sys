@@ -13,8 +13,8 @@ class ReportController extends Controller
     {
         $format = $request->query('format', 'json'); // json|csv
 
-        // notArchived هنا من النطاق نفسه — toBase() يحوّل لنتائج stdClass النقية
-        $rows = Timetable::notArchived()
+        // المعتمدة فقط — أما المعلّقة فلا تُحتسب في الاستخدام (المسودة قد تُرفض)
+        $rows = Timetable::notArchived()->approved()
             ->join('halls', 'halls.id', '=', 'timetables.hall_id')
             ->whereNull('halls.deleted_at')
             ->toBase()

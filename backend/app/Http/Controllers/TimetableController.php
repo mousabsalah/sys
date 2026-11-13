@@ -121,11 +121,11 @@ class TimetableController extends Controller
         return response()->json(['ok' => true, 'created' => $created], 201);
     }
 
-    // GET /api/timetables?by=group&id=3  (يشمل شعب الدفعات؛ dept مقيّد بكليته)
+    // GET /api/timetables?by=group&id=3  (يشمل شعب الدفعات — مجلس/مدير يريان الكل، بما فيه غير المعتمد)
     public function index(Request $request)
     {
         $user = auth()->user();
-        $by = $request->query('by', 'group'); // group|faculty|hall
+        $by = $request->query('by', 'group'); // group|faculty|hall|batch
         $id = (int) $request->query('id', 0);
         $term = $request->query('term');
 
@@ -135,35 +135,27 @@ class TimetableController extends Controller
             $query->where('academic_term', $term);
         }
 
-        // dept يرى فقط ضمن نطاق كليته
-        if ($user->role === 'dept') {
-            $scopeIds = FacultyScope::groupIdsFor($user) ?? [];
-            $query->whereIn('group_id', $scopeIds);
-            if ($by === 'group' && $id > 0 && ! in_array($id, $scopeIds, true)) {
-                return response()->json(['ok' => false, 'message_ar' => FacultyScope::deniedMessage()], 403);
-            }
+        // من يرى المعتمد فقط: غير مجلس/مدير — المسودات يرى فقط صاحبها والمدير
+        $privileged = in_array($user?->role, ['council', 'admin'], true);
+        if (! $privileged) {
+            $query->where('status', 'approved');
         }
 
-        switch ($by) {
-            case 'hall':
-                $query->where('hall_id', $id);
-                break;
-            case 'faculty':
-                $query->where('faculty_id', $id);
-                break;
-            case 'batch':
-                $groupIds = Group::where('batch_id', $id)->pluck('id')->all();
-                if ($user->role === 'dept') {
-                    $groupIds = array_values(array_intersect($groupIds, FacultyScope::groupIdsFor($user) ?? []));
-                }
-                $query->whereIn('group_id', $groupIds);
-                break;
-            case 'group':
-            default:
-                $query->where('group_id', $id);
+        // مجلس يرى الجامعة كلها — لا قيد نطاق
+        if ($by === 'batch') {
+            $groupIds = Group::where('batch_id', $id)->pluck('id')->all();
+            $query->whereIn('group_id', $groupIds);
+        } elseif ($by === 'hall') {
+            $query->where('hall_id', $id);
+        } elseif ($by === 'faculty') {
+            $query->where('faculty_id', $id);
+        } else {
+            $query->where('group_id', $id);
         }
 
-        return $query->orderBy('day_of_week')->orderBy('start_time')->get();
+        $rows = $query->orderBy('day_of_week')->orderBy('start_time')->get();
+
+        return response()->json($rows);
     }
 
     private function validatePayload(Request $request): array
