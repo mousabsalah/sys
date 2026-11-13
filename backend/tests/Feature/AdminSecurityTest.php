@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Batch;
 use App\Models\Booking;
 use App\Models\Course;
+use App\Models\CourseFaculty;
 use App\Models\Department;
 use App\Models\ExamSession;
 use App\Models\Faculty;
@@ -1249,7 +1250,7 @@ class AdminSecurityTest extends TestCase
         $this->assertSame('cancelled', (string) $own->fresh()->status);
 
         // التعارض يسمح بالمحاضرة الملغية في نفس القاعة واليوم — نجرّب  slotًا فارغًا لا تتعارض فيه أي قاعدة
-        \App\Models\CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $mine->id]);
+        CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $mine->id]);
         $response = $this->authedAs($this->makeUser('council'))
             ->postJson('/api/timetables/check', [
                 'course_id' => $course->id,
