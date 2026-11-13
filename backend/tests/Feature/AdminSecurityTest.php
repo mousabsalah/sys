@@ -1420,7 +1420,7 @@ class AdminSecurityTest extends TestCase
         $this->assertNotNull($oldToken);
 
         // actingAs يثبت المستخدم داخل جلسة الاختبار — نمسح جوابس الحراس حتى يُعاد فحص الرمز فعليًا
-        \Illuminate\Support\Facades\Auth::forgetGuards();
+        Auth::forgetGuards();
         $this->withHeaders(['Authorization' => 'Bearer '.$oldToken])
             ->getJson('/api/me')
             ->assertStatus(401);
