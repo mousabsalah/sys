@@ -48,8 +48,8 @@ export default function CouncilCoursesView({ call }: { call: ReturnType<typeof u
 
   async function save() {
     const credit = Number(form.credit_hours)
-    if (!form.code.trim() || !form.name.trim() || !Number.isInteger(credit) || credit < 1 || credit > 12) {
-      setErr('تحقق من الحقول: الكود والاسم إجباريان وعدد الساعات من 1 إلى 12')
+    if (!form.code.trim() || !form.name.trim() || !Number.isInteger(credit) || credit < 1 || credit > 30) {
+      setErr('تحقق من الحقول: الكود والاسم إجباريان وعدد الساعات من 1 إلى 30')
       return
     }
     setSaving(true); setErr(null); setMsg(null)
@@ -96,7 +96,7 @@ export default function CouncilCoursesView({ call }: { call: ReturnType<typeof u
           <div className="d-flex gap-2 flex-wrap">
             <input className="form-control" style={{ maxWidth: 150 }} dir="ltr" placeholder="الكود مثل CS101" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
             <input className="form-control" style={{ maxWidth: 320 }} placeholder="اسم المقرر" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <input className="form-control" style={{ maxWidth: 90 }} type="number" min={1} max={12} dir="ltr" placeholder="ساعات" value={form.credit_hours} onChange={(e) => setForm({ ...form, credit_hours: e.target.value })} />
+            <input className="form-control" style={{ maxWidth: 90 }} type="number" min={1} max={30} dir="ltr" placeholder="ساعات" value={form.credit_hours} onChange={(e) => setForm({ ...form, credit_hours: e.target.value })} />
             <input className="form-control" style={{ maxWidth: 220 }} dir="rtl" placeholder="تجهيزات مطلوبة (اختياري)" value={form.required_equipment} onChange={(e) => setForm({ ...form, required_equipment: e.target.value })} />
             <button className="aust-btn" disabled={saving || !form.code.trim() || !form.name.trim()} onClick={save}>{saving ? '…' : editing !== null ? 'حفظ' : 'إضافة'}</button>
             <button className="aust-btn-outline" onClick={() => { setShowForm(false); setEditing(null) }}>إلغاء</button>

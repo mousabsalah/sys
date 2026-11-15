@@ -45,7 +45,7 @@ class CouncilCoursesController extends Controller
         $input = $request->validate([
             'code' => ['required', 'string', 'max:30', 'unique:courses,code'],
             'name' => ['required', 'string', 'max:150'],
-            'credit_hours' => ['required', 'integer', 'min:1', 'max:12'],
+            'credit_hours' => ['required', 'integer', 'min:1', 'max:30'],
             'required_equipment' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -62,7 +62,7 @@ class CouncilCoursesController extends Controller
         $input = $request->validate([
             'code' => ['sometimes', 'required', 'string', 'max:30', Rule::unique('courses', 'code')->ignore($item->id)],
             'name' => ['sometimes', 'required', 'string', 'max:150'],
-            'credit_hours' => ['sometimes', 'required', 'integer', 'min:1', 'max:12'],
+            'credit_hours' => ['sometimes', 'required', 'integer', 'min:1', 'max:30'],
             'required_equipment' => ['nullable', 'string', 'max:255'],
         ]);
 
