@@ -37,7 +37,7 @@ class CouncilSemestersController extends Controller
                     $state = ($today->between($s->start_date, $s->end_date)) ? 'active' : ($today->lt($s->start_date) ? 'upcoming' : 'ended');
                 } elseif ($s->start_date && $today->lt($s->start_date)) {
                     $state = 'upcoming';
-                } elseif ($s->start_date && ! $s->end_date) {
+                } elseif ($s->start_date) {
                     $state = 'active';
                 } else {
                     $state = 'upcoming';
