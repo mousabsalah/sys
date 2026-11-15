@@ -42,3 +42,6 @@ docs/
 all/*.pdf
 all/*.docx
 all/demo-screenshots/
+
+# Local agent catalog (not part of project source)
+.opencode/
