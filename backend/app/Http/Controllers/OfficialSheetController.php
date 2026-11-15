@@ -62,7 +62,7 @@ class OfficialSheetController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-        if (! is_array($input) || $input === []) {
+        if ($input === []) {
             throw ValidationException::withMessages(['payload' => ['لا توجد تعديلات للحفظ.']]);
         }
 
