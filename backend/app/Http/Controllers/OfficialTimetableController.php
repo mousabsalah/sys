@@ -76,9 +76,9 @@ class OfficialTimetableController
             'institution' => [
                 'university' => 'جامعة الشرق للعلوم والتكنولوجيا',
                 'university_en' => 'Alsharq University of Science and Technology',
-                'college' => $college?->name ?? 'كلية علوم الحاسوب',
+                'college' => data_get($college, 'name', 'كلية علوم الحاسوب'),
                 'college_en' => 'Faculty of Computer Science',
-                'college_code' => $college?->code ?? 'IT',
+                'college_code' => data_get($college, 'code', 'IT'),
             ],
             'rows' => $rows,
             'issued_at' => Carbon::now()->format('Y/m/d').'م',
