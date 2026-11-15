@@ -12,6 +12,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilCoursesController;
 use App\Http\Controllers\CouncilLecturersController;
+use App\Http\Controllers\CouncilSemestersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\ExamController;
@@ -80,6 +81,18 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::post('/council/courses', [CouncilCoursesController::class, 'store']);
     Route::put('/council/courses/{course}', [CouncilCoursesController::class, 'update']);
     Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
+});
+
+// ── مجلس المدرسين: بداية السنة الدراسية (فتحتها بويه — سمسترين متزامنين + إدارة الفصول) — المدير للقراءة فقط ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/semesters', [CouncilSemestersController::class, 'index']);
+    Route::post('/council/semesters/open-year', [CouncilSemestersController::class, 'openYear'])->middleware('throttle:10,1,open-year');
+    Route::post('/council/semesters', [CouncilSemestersController::class, 'store']);
+    Route::put('/council/semesters/{semester}', [CouncilSemestersController::class, 'update']);
+    Route::post('/council/semesters/{semester}/dates', [CouncilSemestersController::class, 'setDates']);
+    Route::post('/council/semesters/{semester}/archive', [CouncilSemestersController::class, 'archive'])->middleware('throttle:12,1,archive');
+    Route::post('/council/semesters/{semester}/unarchive', [CouncilSemestersController::class, 'unarchive']);
+    Route::delete('/council/semesters/{semester}', [CouncilSemestersController::class, 'destroy']);
 });
 
 // ── مجلس المدرسين: إدارة الدفعات الكاملة (برامج + دفعات + شعب + حسابات) — المدير ممنوع منها ──

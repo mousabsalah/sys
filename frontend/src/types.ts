@@ -16,6 +16,7 @@ export type ViewName =
   | 'batch-exams'
   | 'council-batch-accounts'
   | 'council-courses'
+  | 'council-academic-year'
   | 'council-lecturers'
   | 'admin-approvals'
   | 'lecturer'

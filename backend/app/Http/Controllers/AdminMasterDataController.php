@@ -199,8 +199,18 @@ class AdminMasterDataController extends Controller
 
     // ══════════════ الفصول الدراسية (semester) ══════════════
 
+    /** منع المدير من أي كتابة على الفصول — الإدارة للمجلس؛ المدير يقرأ فقط */
+    private function rejectSemesterWriteForAdmin()
+    {
+        return response()->json(['ok' => false, 'message_ar' => 'الفصول الدراسية تُدار عبر مجلس المدرسين — المدير يقرأ فقط.'], Response::HTTP_FORBIDDEN);
+    }
+
+    // POST /api/admin/semesters — إنشاء (مغلق: الإدارة للمجلس)
     public function semesterStore(Request $request)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $input = $request->validate([
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')],
             'department_id' => ['required', 'integer', Rule::exists('departments', 'id')],
@@ -221,6 +231,9 @@ class AdminMasterDataController extends Controller
 
     public function semesterUpdate(Request $request, int $semester)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
             return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشف — السجل التاريخي مجمّد. فكّ الأرشفة أولًا للتعديل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -250,6 +263,9 @@ class AdminMasterDataController extends Controller
 
     public function semesterSetDates(Request $request, int $semester)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
             return response()->json(['ok' => false, 'message_ar' => 'لا يمكن تعديل تواريخ فصل مؤرشف — السجل التاريخي مجمّد.'], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -266,6 +282,9 @@ class AdminMasterDataController extends Controller
 
     public function semesterArchive(Request $request, int $semester)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
             return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشفة بالفعل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -288,6 +307,9 @@ class AdminMasterDataController extends Controller
 
     public function semesterUnarchive(Request $request, int $semester)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $item = Semester::findOrFail($semester);
         DB::transaction(function () use ($item, $request) {
             $item->forceFill(['archived_at' => null])->save();
@@ -299,6 +321,9 @@ class AdminMasterDataController extends Controller
 
     public function semesterDelete(Request $request, int $semester)
     {
+        if ($request->user()?->role === 'admin') {
+            return $this->rejectSemesterWriteForAdmin();
+        }
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
             return response()->json(['ok' => false, 'message_ar' => 'لا يمكن حذف فصل مؤرشف — فكّ الأرشفة أولًا ثم احذف إن لم يكن مرتبطًا.'], Response::HTTP_UNPROCESSABLE_ENTITY);

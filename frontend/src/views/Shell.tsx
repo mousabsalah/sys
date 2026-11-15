@@ -17,6 +17,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'create-exam', label: 'إعداد امتحان', roles: ['council'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'lecturer'] },
     { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'lecturer'] },
+    { key: 'council-academic-year', label: 'بداية السنة الدراسية', roles: ['council'] },
     { key: 'guard-today', label: 'قاعات اليوم', roles: ['guard'] },
     { key: 'batch-timetable', label: 'جدولي', roles: ['batch'] },
     { key: 'batch-exams', label: 'جدول الامتحانات', roles: ['batch'] },
@@ -34,7 +35,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'admin-faculties', label: 'إدارة الكليات', roles: ['admin'] },
     { key: 'admin-departments', label: 'إدارة الأقسام', roles: ['admin'] },
     { key: 'admin-halls', label: 'إدارة القاعات', roles: ['admin'] },
-    { key: 'admin-semesters', label: 'الفصول الدراسية', roles: ['admin'] },
+    { key: 'admin-semesters', label: 'الفصول الدراسية (قراءة فقط)', roles: ['admin'] },
     { key: 'admin-archive', label: 'أرشيف الفصول', roles: ['admin'] },
   ]
 

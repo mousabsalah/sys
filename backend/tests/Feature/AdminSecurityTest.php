@@ -250,7 +250,7 @@ class AdminSecurityTest extends TestCase
 
     public function test_semester_delete_blocked_by_linked_timetable(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
         [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
         $semester = Semester::create([
@@ -262,8 +262,8 @@ class AdminSecurityTest extends TestCase
         $hall = $this->makeHall();
         $this->makeTimetable($hall->id, $group->id, $semester->id, $course->id, $lecturer->id);
 
-        $this->authedAs($admin)
-            ->deleteJson('/api/admin/semesters/'.$semester->id)
+        $this->authedAs($council)
+            ->deleteJson('/api/council/semesters/'.$semester->id)
             ->assertStatus(422);
 
         $this->assertDatabaseHas('semesters', ['id' => $semester->id]);
@@ -271,13 +271,13 @@ class AdminSecurityTest extends TestCase
 
     public function test_semester_create_rejects_broken_academic_chain(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch] = $this->makeAcademicChain();
         $otherFaculty = FacultyEntity::create(['name' => 'كلية الهندسة', 'code' => 'ENG', 'description' => null]);
 
         // قسم لا ينتمي للكلية المختارة
-        $this->authedAs($admin)
-            ->postJson('/api/admin/semesters', [
+        $this->authedAs($council)
+            ->postJson('/api/council/semesters', [
                 'faculty_id' => $otherFaculty->id,
                 'department_id' => $department->id,
                 'batch_id' => $batch->id,
@@ -344,7 +344,7 @@ class AdminSecurityTest extends TestCase
 
     public function test_semester_update_duplicate_term_rejected_but_same_term_allowed(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch] = $this->makeAcademicChain();
 
         $semesterA = Semester::create([
@@ -360,12 +360,12 @@ class AdminSecurityTest extends TestCase
             'academic_term' => '2026/2',
         ]);
 
-        $this->actingAs($admin)
-            ->putJson('/api/admin/semesters/'.$semesterA->id, ['academic_term' => '2026/2'])
+        $this->actingAs($council)
+            ->putJson('/api/council/semesters/'.$semesterA->id, ['academic_term' => '2026/2'])
             ->assertStatus(422);
 
-        $this->actingAs($admin)
-            ->putJson('/api/admin/semesters/'.$semesterA->id, ['academic_term' => '2026/1'])
+        $this->actingAs($council)
+            ->putJson('/api/council/semesters/'.$semesterA->id, ['academic_term' => '2026/1'])
             ->assertOk();
     }
 
@@ -429,7 +429,7 @@ class AdminSecurityTest extends TestCase
 
     public function test_semester_delete_blocked_by_linked_booking_and_exam(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
         [$course] = $this->makeCourseAndLecturer($department->id);
         $semester = Semester::create([
@@ -444,13 +444,13 @@ class AdminSecurityTest extends TestCase
             'date' => '2026-12-01',
             'start_time' => '08:00:00',
             'end_time' => '09:00:00',
-            'user_id' => $admin->id,
+            'user_id' => $council->id,
             'status' => 'confirmed',
             'semester_id' => $semester->id,
         ]);
 
-        $this->actingAs($admin)
-            ->deleteJson('/api/admin/semesters/'.$semester->id)
+        $this->actingAs($council)
+            ->deleteJson('/api/council/semesters/'.$semester->id)
             ->assertStatus(422);
 
         DB::table('bookings')->where('semester_id', $semester->id)->delete();
@@ -467,8 +467,8 @@ class AdminSecurityTest extends TestCase
             'semester_id' => $semester->id,
         ]);
 
-        $this->actingAs($admin)
-            ->deleteJson('/api/admin/semesters/'.$semester->id)
+        $this->actingAs($council)
+            ->deleteJson('/api/council/semesters/'.$semester->id)
             ->assertStatus(422);
     }
 
@@ -488,7 +488,7 @@ class AdminSecurityTest extends TestCase
 
     public function test_archived_semester_is_frozen_for_update_dates_and_delete(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch] = $this->makeAcademicChain();
         $semester = Semester::create([
             'faculty_id' => $faculty->id,
@@ -498,17 +498,17 @@ class AdminSecurityTest extends TestCase
         ]);
         $semester->forceFill(['archived_at' => now()])->save();
 
-        $this->actingAs($admin)
-            ->putJson('/api/admin/semesters/'.$semester->id, ['academic_term' => '2026/9'])
+        $this->actingAs($council)
+            ->putJson('/api/council/semesters/'.$semester->id, ['academic_term' => '2026/9'])
             ->assertStatus(422);
-        $this->actingAs($admin)
-            ->postJson('/api/admin/semesters/'.$semester->id.'/dates', [
+        $this->actingAs($council)
+            ->postJson('/api/council/semesters/'.$semester->id.'/dates', [
                 'start_date' => '2026-01-01',
                 'end_date' => '2026-06-30',
             ])
             ->assertStatus(422);
-        $this->actingAs($admin)
-            ->deleteJson('/api/admin/semesters/'.$semester->id)
+        $this->actingAs($council)
+            ->deleteJson('/api/council/semesters/'.$semester->id)
             ->assertStatus(422);
     }
 
@@ -522,7 +522,7 @@ class AdminSecurityTest extends TestCase
             }
         });
 
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch] = $this->makeAcademicChain();
         $semester = Semester::create([
             'faculty_id' => $faculty->id,
@@ -531,8 +531,8 @@ class AdminSecurityTest extends TestCase
             'academic_term' => '2026/1',
         ]);
 
-        $response = $this->actingAs($admin)
-            ->postJson('/api/admin/semesters/'.$semester->id.'/archive')
+        $response = $this->actingAs($council)
+            ->postJson('/api/council/semesters/'.$semester->id.'/archive')
             ->assertOk()
             ->json();
 
@@ -555,7 +555,7 @@ class AdminSecurityTest extends TestCase
             }
         });
 
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [$faculty, $department, $batch] = $this->makeAcademicChain();
         $semester = Semester::create([
             'faculty_id' => $faculty->id,
@@ -564,8 +564,8 @@ class AdminSecurityTest extends TestCase
             'academic_term' => '2026/1',
         ]);
 
-        $response = $this->actingAs($admin)
-            ->postJson('/api/admin/semesters/'.$semester->id.'/archive')
+        $response = $this->actingAs($council)
+            ->postJson('/api/council/semesters/'.$semester->id.'/archive')
             ->assertOk()
             ->json();
 
@@ -1786,6 +1786,107 @@ class AdminSecurityTest extends TestCase
             ->assertOk();
         $this->assertSame(0, DB::table('groups')->where('batch_id', $createdClean['id'])->count());
         $this->assertTrue(DB::table('audit_logs')->where('action', 'batch.delete')->where('target_id', $createdClean['id'])->exists());
+    }
+
+    public function test_council_opens_academic_year_atomically_and_admin_is_read_only(): void
+    {
+        $council = $this->makeUser('council');
+        $admin = $this->makeUser('admin');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+
+        // فتح السنة: سمسترين لكل دفعة
+        $response = $this->authedAs($council)
+            ->postJson('/api/council/semesters/open-year', [
+                'semesters' => [
+                    ['term' => '2026/1', 'start_date' => '2026-10-01', 'end_date' => '2027-01-15'],
+                    ['term' => '2026/2', 'start_date' => '2027-02-01', 'end_date' => '2027-05-31'],
+                ],
+                'batch_ids' => [$batch->id],
+            ])
+            ->assertStatus(201)
+            ->json();
+
+        $this->assertSame(2, (int) $response['created_count']);
+        $this->assertDatabaseCount('semesters', 2);
+        $this->assertDatabaseHas('semesters', ['batch_id' => $batch->id, 'academic_term' => '2026/1', 'faculty_id' => $faculty->id]);
+        $this->assertDatabaseHas('semesters', ['batch_id' => $batch->id, 'academic_term' => '2026/2']);
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'semester.open_year')->exists());
+
+        // تكرار نفس الصيغتين → 422 مع أسماء الفصول المتعارضة
+        $repeat = $this->authedAs($council)
+            ->postJson('/api/council/semesters/open-year', [
+                'semesters' => [
+                    ['term' => '2026/1', 'start_date' => '2026-10-01', 'end_date' => '2027-01-15'],
+                    ['term' => '2026/2', 'start_date' => '2027-02-01', 'end_date' => '2027-05-31'],
+                ],
+                'batch_ids' => [$batch->id],
+            ])
+            ->assertStatus(422)
+            ->json();
+        $this->assertStringContainsString('2026/1', $repeat['message_ar'] ?? json_encode($repeat));
+
+        // المدير ممنوع من كل عمليات كتابة الفصول — المسارات نفسها موجودة لكنها تُرفض
+        $this->authedAs($admin)
+            ->postJson('/api/admin/semesters', ['faculty_id' => 1, 'department_id' => 1, 'batch_id' => 1, 'academic_term' => '2026/1'])
+            ->assertStatus(403)
+            ->assertJsonPath('message_ar', 'الفصول الدراسية تُدار عبر مجلس المدرسين — المدير يقرأ فقط.');
+        $this->authedAs($admin)->putJson('/api/admin/semesters/1', ['start_date' => '2026-10-01'])->assertStatus(403);
+        $this->authedAs($admin)->postJson('/api/admin/semesters/1/archive')->assertStatus(403);
+        $this->authedAs($admin)->deleteJson('/api/admin/semesters/1')->assertStatus(403);
+
+        // المدير يبقى يقرأ القائمة بنجاح
+        $this->authedAs($admin)->getJson('/api/admin/semesters')->assertOk();
+
+        // معاملة فاشلة: تعديل فصل مؤرشف — يُرفض حتى للمجلس
+        $this->authedAs($council)
+            ->postJson('/api/council/semesters/'.$response['semesters'][0]['id'].'/archive')
+            ->assertOk();
+        $this->authedAs($council)
+            ->putJson('/api/council/semesters/'.$response['semesters'][0]['id'], ['start_date' => '2026-10-02'])
+            ->assertStatus(422);
+        $this->authedAs($council)
+            ->postJson('/api/council/semesters/'.$response['semesters'][0]['id'].'/unarchive')
+            ->assertOk();
+
+        // حذف فصل مرتبط ← 422، والفصل نفسه يبقى
+        $semesterId = (int) $response['semesters'][0]['id'];
+        $this->makeTimetable($this->makeHall()->id, $group->id, $semesterId, $this->makeCourseAndLecturer($department->id)[0]->id, 1);
+        $this->authedAs($council)
+            ->deleteJson('/api/council/semesters/'.$semesterId)
+            ->assertStatus(422);
+        $this->assertDatabaseHas('semesters', ['id' => $semesterId]);
+    }
+
+    public function test_council_semester_state_markers_are_computed(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-14 10:00:00'));
+        try {
+            [$faculty, $department, $batch] = $this->makeAcademicChain();
+            $council = $this->makeUser('council');
+
+            $this->authedAs($council)
+                ->postJson('/api/council/semesters/open-year', [
+                    'semesters' => [
+                        ['term' => '2026/1', 'start_date' => '2026-10-01', 'end_date' => '2027-01-15'],
+                        ['term' => '2027/2', 'start_date' => '2027-02-01', 'end_date' => '2027-05-31'],
+                    ],
+                    'batch_ids' => [$batch->id],
+                ])
+                ->assertStatus(201);
+
+            $data = $this->authedAs($council)
+                ->getJson('/api/council/semesters')
+                ->assertOk()
+                ->json();
+
+            $first = collect($data['semesters'])->firstWhere('academic_term', '2026/1');
+            $second = collect($data['semesters'])->firstWhere('academic_term', '2027/2');
+            $this->assertSame('active', $first['state']);
+            $this->assertSame('upcoming', $second['state']);
+            $this->assertSame($first['id'], $data['active_id']);
+        } finally {
+            $this->travelBack();
+        }
     }
 
     public function test_council_manages_courses_and_guarded_delete(): void
