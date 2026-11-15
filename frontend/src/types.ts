@@ -15,6 +15,7 @@ export type ViewName =
   | 'batch-timetable'
   | 'batch-exams'
   | 'council-batch-accounts'
+  | 'council-courses'
   | 'council-lecturers'
   | 'admin-approvals'
   | 'lecturer'

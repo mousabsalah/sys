@@ -10,6 +10,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CouncilBatchesController;
+use App\Http\Controllers\CouncilCoursesController;
 use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
@@ -71,6 +72,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/halls/{hall}/lock', [GuardController::class, 'lock'])->middleware('role:guard,admin');
     Route::post('/halls/{hall}/unlock', [GuardController::class, 'unlock'])->middleware('role:guard,admin');
     Route::get('/locks', [GuardController::class, 'lockLog'])->middleware('role:admin');
+});
+
+// ── مجلس المدرسين: إدارة المقررات (إضافة/تعديل/حذف محروس) — المدير يقرأ فقط ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/courses', [CouncilCoursesController::class, 'index']);
+    Route::post('/council/courses', [CouncilCoursesController::class, 'store']);
+    Route::put('/council/courses/{course}', [CouncilCoursesController::class, 'update']);
+    Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
 });
 
 // ── مجلس المدرسين: إدارة حسابات الدفعات (دورة كاملة — المدير ممنوع منها) ──

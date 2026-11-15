@@ -22,6 +22,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'batch-exams', label: 'جدول الامتحانات', roles: ['batch'] },
     { key: 'create-booking', label: 'حجز قاعة', roles: ['council'] },
     { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
+    { key: 'council-courses', label: 'إدارة المقررات', roles: ['council'] },
     { key: 'council-batch-accounts', label: 'حسابات الدفعات', roles: ['council'] },
     { key: 'lecturer', label: 'جدولي', roles: ['lecturer'] },
     { key: 'substitute-requests', label: 'طلبات البدلاء', roles: ['lecturer'] },

@@ -14,6 +14,7 @@ const BookingsView = lazy(() => import('./views/Bookings'))
 const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
 const CouncilLecturersView = lazy(() => import('./views/CouncilLecturers'))
+const CouncilCoursesView = lazy(() => import('./views/CouncilCourses'))
 const AdminApprovalsView = lazy(() => import('./views/AdminApprovals'))
 const LecturerView = lazy(() => import('./views/LecturerView'))
 const SubstituteRequestsView = lazy(() => import('./views/SubstituteRequestsView'))
@@ -74,6 +75,7 @@ export default function App() {
         {activeView === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
         {activeView === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
         {activeView === 'council-lecturers' && <CouncilLecturersView call={call} />}
+        {activeView === 'council-courses' && <CouncilCoursesView call={call} />}
         {activeView === 'admin-approvals' && <AdminApprovalsView call={call} />}
         {activeView === 'lecturer' && <LecturerView call={call} />}
         {activeView === 'substitute-requests' && <SubstituteRequestsView call={call} />}

@@ -1696,6 +1696,55 @@ class AdminSecurityTest extends TestCase
         $this->assertCount(1, collect($examsForeign)->all());
     }
 
+    public function test_council_manages_courses_and_guarded_delete(): void
+    {
+        $council = $this->makeUser('council');
+        $admin = $this->makeUser('admin');
+
+        // الدور council فقط — المدير محظور
+        $this->authedAs($admin)
+            ->getJson('/api/council/courses')
+            ->assertStatus(403);
+
+        // إضافة
+        $created = $this->authedAs($council)
+            ->postJson('/api/council/courses', [
+                'code' => 'CS999',
+                'name' => 'مقرر اختبار المجلس',
+                'credit_hours' => 3,
+            ])
+            ->assertStatus(201)
+            ->json('course');
+        $courseId = $created['id'] ?? null;
+        $this->assertNotNull($courseId);
+
+        // تعديل
+        $this->authedAs($council)
+            ->putJson('/api/council/courses/'.$courseId, ['credit_hours' => 4])
+            ->assertOk()
+            ->assertJsonPath('course.credit_hours', 4);
+
+        // تكرار الكود → 422
+        $this->authedAs($council)
+            ->postJson('/api/council/courses', ['code' => 'CS999', 'name' => 'مكرر', 'credit_hours' => 2])
+            ->assertStatus(422);
+
+        // ربط بمدرس ← الحذف ممنوع
+        [, $department] = $this->makeAcademicChain();
+        [, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        CourseFaculty::firstOrCreate(['course_id' => $courseId, 'faculty_id' => $lecturer->id]);
+        $this->authedAs($council)
+            ->deleteJson('/api/council/courses/'.$courseId)
+            ->assertStatus(422);
+
+        // فك الارتباط ← الحذف يعمل
+        CourseFaculty::where('course_id', $courseId)->delete();
+        $this->authedAs($council)
+            ->deleteJson('/api/council/courses/'.$courseId)
+            ->assertOk();
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'course.delete')->where('target_id', $courseId)->exists());
+    }
+
     public function test_batch_notifications_feed_and_badge(): void
     {
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
