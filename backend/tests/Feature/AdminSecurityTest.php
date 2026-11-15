@@ -581,13 +581,13 @@ class AdminSecurityTest extends TestCase
 
     public function test_plans_store_replaces_plan_and_logs_audit(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [, , , $group] = $this->makeAcademicChain();
         $courseA = $this->makeCourse('T100');
         $courseB = $this->makeCourse('T200');
 
-        $this->actingAs($admin)
-            ->postJson('/api/admin/plans/'.$group->id, [
+        $this->actingAs($council)
+            ->postJson('/api/council/plans/'.$group->id, [
                 'items' => [
                     ['course_id' => $courseA->id, 'sessions_per_week' => 4],
                     ['course_id' => $courseB->id, 'sessions_per_week' => 3],
@@ -614,12 +614,12 @@ class AdminSecurityTest extends TestCase
 
     public function test_plans_store_rejects_duplicate_course(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [, , , $group] = $this->makeAcademicChain();
         $course = $this->makeCourse('T100');
 
-        $this->actingAs($admin)
-            ->postJson('/api/admin/plans/'.$group->id, [
+        $this->actingAs($council)
+            ->postJson('/api/council/plans/'.$group->id, [
                 'items' => [
                     ['course_id' => $course->id, 'sessions_per_week' => 4],
                     ['course_id' => $course->id, 'sessions_per_week' => 3],
@@ -731,12 +731,25 @@ class AdminSecurityTest extends TestCase
 
     public function test_plans_store_rejects_empty_items(): void
     {
-        $admin = $this->makeUser('admin');
+        $council = $this->makeUser('council');
         [, , , $group] = $this->makeAcademicChain();
 
-        $this->actingAs($admin)
-            ->postJson('/api/admin/plans/'.$group->id, ['items' => []])
+        $this->actingAs($council)
+            ->postJson('/api/council/plans/'.$group->id, ['items' => []])
             ->assertStatus(422);
+    }
+
+    public function test_plans_store_forbidden_for_admin(): void
+    {
+        $admin = $this->makeUser('admin');
+        [, , , $group] = $this->makeAcademicChain();
+        $course = $this->makeCourse('T100');
+
+        $this->actingAs($admin)
+            ->postJson('/api/council/plans/'.$group->id, [
+                'items' => [['course_id' => $course->id, 'sessions_per_week' => 3]],
+            ])
+            ->assertStatus(403);
     }
 
     public function test_backup_bucket_does_not_consume_login_budget(): void

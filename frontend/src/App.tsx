@@ -15,6 +15,7 @@ const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
 const CouncilLecturersView = lazy(() => import('./views/CouncilLecturers'))
 const CouncilCoursesView = lazy(() => import('./views/CouncilCourses'))
+const CouncilPlansView = lazy(() => import('./views/CouncilPlans'))
 const AdminApprovalsView = lazy(() => import('./views/AdminApprovals'))
 const LecturerView = lazy(() => import('./views/LecturerView'))
 const SubstituteRequestsView = lazy(() => import('./views/SubstituteRequestsView'))
@@ -31,7 +32,7 @@ const AdminDepartmentsView = lazy(() => import('./views/AdminDepartments'))
 const AdminHallsView = lazy(() => import('./views/AdminHalls'))
 const AdminSemestersView = lazy(() => import('./views/AdminSemesters'))
 const AdminArchiveView = lazy(() => import('./views/AdminArchive'))
-const AdminPlansView = lazy(() => import('./views/AdminPlans'))
+
 
 const fallback = (
   <div className="d-flex align-items-center justify-content-center py-5">
@@ -78,6 +79,7 @@ export default function App() {
         {activeView === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}
         {activeView === 'council-lecturers' && <CouncilLecturersView call={call} />}
         {activeView === 'council-courses' && <CouncilCoursesView call={call} />}
+        {activeView === 'council-plans' && <CouncilPlansView call={call} />}
         {activeView === 'admin-approvals' && <AdminApprovalsView call={call} />}
         {activeView === 'lecturer' && <LecturerView call={call} />}
         {activeView === 'substitute-requests' && <SubstituteRequestsView call={call} />}
@@ -89,7 +91,7 @@ export default function App() {
         {activeView === 'council-sheet-editor' && <CouncilSheetEditorView call={call} />}
         {activeView === 'reports' && <ReportsView call={call} />}
         {activeView === 'admin-users' && <AdminUsersView call={call} />}
-        {activeView === 'admin-plans' && <AdminPlansView call={call} />}
+
         {activeView === 'admin-faculties' && <AdminFacultiesView call={call} />}
         {activeView === 'admin-departments' && <AdminDepartmentsView call={call} />}
         {activeView === 'admin-halls' && <AdminHallsView call={call} />}

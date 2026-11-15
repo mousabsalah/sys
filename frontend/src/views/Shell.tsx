@@ -24,6 +24,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'create-booking', label: 'حجز قاعة', roles: ['council'] },
     { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
     { key: 'council-courses', label: 'إدارة المقررات', roles: ['council'] },
+    { key: 'council-plans', label: 'الخطط الدراسية', roles: ['council'] },
     { key: 'council-batch-accounts', label: 'إدارة الدفعات', roles: ['council'] },
     { key: 'council-sheet-editor', label: 'محرر الورقة الرسمية', roles: ['council'] },
     { key: 'lecturer', label: 'جدولي', roles: ['lecturer'] },
@@ -31,7 +32,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     // ── شاشات مدير النظام ──
     { key: 'reports', label: 'التقارير', roles: ['admin'] },
     { key: 'admin-approvals', label: 'اعتماد الجداول والامتحانات', roles: ['admin'] },
-    { key: 'admin-plans', label: 'الخطط الدراسية', roles: ['admin'] },
+
     { key: 'admin-users', label: 'إدارة المستخدمين', roles: ['admin'] },
     { key: 'admin-faculties', label: 'إدارة الكليات', roles: ['admin'] },
     { key: 'admin-departments', label: 'إدارة الأقسام', roles: ['admin'] },

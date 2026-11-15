@@ -12,6 +12,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilCoursesController;
 use App\Http\Controllers\CouncilLecturersController;
+use App\Http\Controllers\CouncilPlansController;
 use App\Http\Controllers\CouncilSemestersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
@@ -83,6 +84,12 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::post('/council/courses', [CouncilCoursesController::class, 'store']);
     Route::put('/council/courses/{course}', [CouncilCoursesController::class, 'update']);
     Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
+});
+
+// ── مجلس المدرسين: الخطط الدراسية (per شعبة — مقررات + حصص أسبوعية) — انتقلت من الأدمن ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/plans', [CouncilPlansController::class, 'plansIndex']);
+    Route::post('/council/plans/{group}', [CouncilPlansController::class, 'plansStore']);
 });
 
 // ── مجلس المدرسين: محرر الورقة الرسمية (كل خصايصها من أعلى لأسفل) ──
@@ -182,10 +189,8 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     Route::post('/admin/approvals/exams/{exam}/approve', [AdminApprovalsController::class, 'approveExam']);
     Route::post('/admin/approvals/exams/{exam}/unapprove', [AdminApprovalsController::class, 'unapproveExam']);
 
-    // البيانات الرئيسية والخطط الدراسية (المدير: قراءة/إدارة — منشئ الجداول الوحيد الآن مجلس المدرسين)
+    // البيانات الرئيسية (قراءة/إدارة — «الخطط الدراسية» انتقلت لمجلس المدرسين)
     Route::get('/admin/master-data', [AdminController::class, 'masterData']);
-    Route::get('/admin/plans', [AdminController::class, 'plansIndex']);
-    Route::post('/admin/plans/{group}', [AdminController::class, 'plansStore']);
 
     // إدارة الكليات والأقسام والقاعات والفصول الدراسية (CRUD كامل + audit)
     Route::post('/admin/faculties', [AdminMasterDataController::class, 'facultyStore']);

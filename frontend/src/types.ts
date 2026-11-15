@@ -16,6 +16,7 @@ export type ViewName =
   | 'batch-exams'
   | 'council-batch-accounts'
   | 'council-courses'
+  | 'council-plans'
   | 'council-academic-year'
   | 'council-sheet-editor'
   | 'council-lecturers'
@@ -29,7 +30,6 @@ export type ViewName =
   | 'admin-halls'
   | 'admin-semesters'
   | 'admin-archive'
-  | 'admin-plans'
 
 export interface AuthUser {
   id: number
