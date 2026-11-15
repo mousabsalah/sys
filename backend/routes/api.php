@@ -19,6 +19,7 @@ use App\Http\Controllers\ExamController;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\HallsController;
 use App\Http\Controllers\LecturerController;
+use App\Http\Controllers\OfficialSheetController;
 use App\Http\Controllers\OfficialTimetableController;
 use App\Http\Controllers\ProposeController;
 use App\Http\Controllers\ReportController;
@@ -82,6 +83,14 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::post('/council/courses', [CouncilCoursesController::class, 'store']);
     Route::put('/council/courses/{course}', [CouncilCoursesController::class, 'update']);
     Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
+});
+
+// ── مجلس المدرسين: محرر الورقة الرسمية (كل خصايصها من أعلى لأسفل) ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/sheet-settings', [OfficialSheetController::class, 'show']);
+    Route::put('/council/sheet-settings', [OfficialSheetController::class, 'store']);
+    Route::post('/council/sheet-settings/logo', [OfficialSheetController::class, 'uploadLogo']);
+    Route::post('/council/sheet-settings/reset', [OfficialSheetController::class, 'reset']);
 });
 
 // ── مجلس المدرسين: ورقة الجدول الرسمية للطباعة (Siegel AUST) ──

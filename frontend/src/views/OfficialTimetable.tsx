@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuthedApi } from '../api'
+import type { SheetConfig } from '../types/sheet'
 import '../official-sheet.css'
 
 type OfficialRow = {
@@ -19,59 +20,56 @@ type OfficialData = {
   group: { id: number; track: string; student_count: number; batch_name: string; program_name: string | null; department_name: string | null }
   semester: string | null
   institution: { university: string; university_en: string; college: string; college_en: string; college_code: string }
+  sheet: SheetConfig
   rows: OfficialRow[]
   issued_at: string
 }
 
-type Period = { index: number; label: string; start: string; end: string }
-
 const DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] as const
 
-const PERIOD_DEFAULTS: Period[] = [
-  { index: 1, label: 'الفترة الأولى', start: '07:00', end: '09:00' },
-  { index: 2, label: 'الفترة الثانية', start: '10:00', end: '12:00' },
-  { index: 3, label: 'الفترة الثالثة', start: '12:00', end: '14:00' },
-]
-
-function pad(n: number) { return String(n).padStart(2, '0') }
-function fmtTime(t: string) { const [h, m] = t.slice(0, 5).split(':').map(Number); return `${pad(h)}:${pad(m)}` }
-
-export function OfficialTimetableSheet({ call, groupId, onClose }: { call: ReturnType<typeof useAuthedApi>; groupId: number; onClose: () => void }) {
+export function OfficialTimetableSheet({
+  call,
+  groupId,
+  onClose,
+  overrideConfig,
+}: {
+  call: ReturnType<typeof useAuthedApi>
+  groupId: number
+  onClose: () => void
+  overrideConfig?: SheetConfig
+}) {
   const [data, setData] = useState<OfficialData | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => { call<OfficialData>(`/api/council/timetables-official?group_id=${groupId}`).then(setData).catch((e) => setErr((e as Error).message)) }, [groupId, call])
 
-  const periods: Period[] = (() => {
-    if (!data || data.rows.length === 0) return PERIOD_DEFAULTS
-    const uniq = new Map<string, { start: string; end: string }>()
-    for (const r of data.rows) {
-      const key = fmtTime(r.start_time)
-      if (!uniq.has(key)) uniq.set(key, { start: fmtTime(r.start_time), end: fmtTime(r.end_time) })
+  const S: SheetConfig | null = overrideConfig ?? (data ? data.sheet : null)
+
+  // Periods: استخدم الأول من إعدادات المستخدم — أو يمكن توسيعها مستقبلًا حسب مدّة الدراسة
+  const periods = (() => {
+    if (!S) return []
+    const out: Array<{ label: string; start: string; end: string }> = []
+    for (let i = 0; i < S.column_count; i++) {
+      out.push({ label: S.period_labels[i] ?? `الفترة ${i + 1}`, start: (S.period_times[i] ?? ['07:00', '09:00'])[0], end: (S.period_times[i] ?? ['07:00', '09:00'])[1] })
     }
-    const sorted = [...uniq.entries()].sort((a, b) => a[1].start.localeCompare(b[1].start)).slice(0, 6)
-    return sorted.map(([, v], i) => ({ index: i + 1, label: `الفترة ${['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'][i]}`, start: v.start, end: v.end }))
+    return out
   })()
 
   const cells = (() => {
-    const map = new Map<string, { start: string; end?: string; course: string; lecturer: string; hall: string; status: string }[]>()
+    const map = new Map<string, Array<{ course: string; lecturer: string; hall: string; status: string }>>()
     if (!data) return map
     for (const r of data.rows) {
       const list = map.get(r.day_of_week) ?? []
-      list.push({ start: fmtTime(r.start_time), end: fmtTime(r.end_time), course: r.course_name, lecturer: r.faculty_name ?? '—', hall: r.hall_name ?? '—', status: r.status })
+      list.push({ course: r.course_name, lecturer: r.faculty_name ?? '—', hall: r.hall_name ?? '—', status: r.status })
       map.set(r.day_of_week, list)
     }
     return map
   })()
 
-  const cellAt = (day: string, periodStart: string) => (cells.get(day) ?? []).find((c) => c.start === periodStart)
-
-  const inst = data?.institution
-  const title = data ? `جدول بكالوريوس ${data.group.program_name ?? 'تقنية المعلومات'} الدفعة (${data.group.student_count})` : 'الجدول'
-  const startNote = data ? `يبدأ العمل بالجدول اعتباراً ${data.issued_at}` : ''
+  const cellAt = (day: string, periodIndex: number) => (cells.get(day) ?? [])[periodIndex]
 
   const sheet = (
-    <div id="official-sheet-root" className="as-sheet" role="dialog" aria-label="الورقة الرسمية للجدول">
+    <div className="as-sheet" id="official-sheet-root" role="dialog" aria-label="الورقة الرسمية للجدول">
       {/* شريط الأدوات — لا يطبع */}
       <div className="as-actions">
         <button onClick={() => window.print()}>🖨️ طباعة / حفظ PDF</button>
@@ -81,62 +79,74 @@ export function OfficialTimetableSheet({ call, groupId, onClose }: { call: Retur
       {err && <div className="alert alert-danger m-3">{err}</div>}
       {!data && !err && <div className="text-center p-5 text-muted">جارٍ تجهيز الورقة الرسمية…</div>}
 
-      {data && (
-        <div className="as-document">
-          {/* الترويسة — الجامعة يمين والكلية يسار (نفس الأصل) */}
-          <header className="as-masthead">
-            <div className="as-college">
-              <img src="/logo-aust.jpg" alt="شعار الجامعة" className="as-masthead-small-logo" />
-              <div className="as-college-name">
-                <div className="ar">{inst?.college ?? 'كلية علوم الحاسوب'}</div>
-                <div className="en">{inst?.college_en ?? 'Faculty of Computer Science'}</div>
+      {S && data && (
+        <div
+          className="as-document"
+          style={{
+            direction: S.direction,
+            fontFamily: S.font_family,
+            padding: `${S.page_margin_mm}mm ${S.page_margin_side_mm}mm`,
+          }}
+        >
+          {/* الترويسة — يمكن إخفاؤها، الشعاران قابلان للرفع أو الافتراضية */}
+          {S.university_enabled && (
+            <header className="as-masthead" style={{ background: S.masthead_bg, borderBottomColor: S.masthead_border }}>
+              <div className="as-college">
+                {S.college_logo_url && <img src={S.college_logo_url} alt="شعار الكلية" className="as-masthead-small-logo" />}
+                <div className="as-college-name">
+                  <div className="ar">{S.college_name_ar}</div>
+                  <div className="en">{S.college_name_en}</div>
+                </div>
               </div>
-            </div>
-            <div className="as-university-crest">
-              <img src="/logo-aust.jpg" alt="AUST" className="as-masthead-logo" />
-            </div>
-            <div className="as-university">
-              <div className="as-university-name">
-                <div className="ar">{inst?.university ?? 'جامعة الشرق للعلوم والتكنولوجيا'}</div>
-                <div className="en">{inst?.university_en ?? 'Alsharq University of Science and Technology'}</div>
+              <div className="as-university-crest">
+                <img src={S.university_logo_url ?? '/logo-aust.jpg'} alt={S.university_name_ar} className="as-masthead-logo" />
               </div>
-              <img src="/logo-aust.jpg" alt="AUST" className="as-masthead-small-logo" style={{ borderRadius: 8, background: '#fff' }} />
-            </div>
-          </header>
+              <div className="as-university">
+                <div className="as-university-name">
+                  <div className="ar">{S.university_name_ar}</div>
+                  <div className="en">{S.university_name_en}</div>
+                </div>
+                <img src="/logo-aust.jpg" alt="" className="as-masthead-small-logo" style={{ borderRadius: 8, background: '#fff', opacity: S.university_logo_url || S.college_logo_url ? 0 : 1 }} aria-hidden="true" />
+              </div>
+            </header>
+          )}
 
           {/* اللافتة */}
-          <h1 className="as-title">{title}</h1>
+          {S.title_enabled && (
+            <h1 className="as-title" style={{
+              fontSize: `${S.title_font_size}px`, fontWeight: S.title_weight,
+              background: S.title_bg, color: S.title_color, borderColor: S.title_border,
+              padding: `${S.title_padding}px 20px`,
+            }}>
+              {S.title_prefix} {S.title_degree_word} {data.group.track} — {data.group.batch_name} ({data.group.student_count} طالبًا)
+            </h1>
+          )}
 
           {/* الجدول */}
-          <table className="as-table" aria-label="جدول المحاضرات الأسبوعي">
+          <table className="as-table" aria-label="جدول المحاضرات الأسبوعي" style={{ borderColor: S.table_border, borderWidth: `${S.table_border_width}px` }}>
             <thead>
               <tr>
-                <th className="as-day-head" style={{ width: 92 }}>
-                  اليوم
-                  <span className="as-period-time">الفترة</span>
-                </th>
-                {periods.map((p) => (
-                  <th key={p.index}>
-                    {p.label}
-                    <span className="as-period-time" dir="ltr">{p.start} — {p.end}</span>
-                  </th>
+                <th className="as-day-head" style={{ background: S.day_bg, color: S.header_color, fontSize: `${S.day_font_size}px`, borderColor: S.table_border, borderWidth: `${S.table_cell_border_width}px` }}>اليوم<span className="as-period-time" style={{ color: S.header_color }}>الفترة</span></th>
+                {periods.map((p, i) => (
+                  <th key={i} style={{ background: S.header_bg, color: S.header_color, fontSize: `${S.header_font_size}px`, borderColor: S.table_border, borderWidth: `${S.table_cell_border_width}px` }}>{p.label}<span className="as-period-time" style={{ color: S.header_color }} dir="ltr">{p.start} — {p.end}</span></th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {DAYS.map((day) => (
                 <tr key={day}>
-                  <th className="as-day-label" scope="row">{day}</th>
-                  {periods.map((p) => {
-                    const slot = cellAt(day, p.start)
+                  <th className="as-day-label" scope="row" style={{ background: S.day_bg, fontSize: `${S.day_font_size}px`, borderColor: S.table_border, borderWidth: `${S.table_cell_border_width}px` }}>{day}</th>
+                  {periods.map((_p, pi) => {
+                    const slot = cellAt(day, pi)
                     return slot ? (
-                      <td key={p.index} className={`as-cell${slot.status === 'cancelled' ? ' as-cell-cancelled' : ''}`}>
+                      <td key={pi} className={`as-cell${slot.status === 'cancelled' ? ' as-cell-cancelled' : ''}`}
+                        style={{ background: slot.status === 'cancelled' ? S.cell_empty_bg : S.cell_bg, height: `${S.cell_height}px`, fontSize: `${S.cell_font_size}px`, borderColor: S.table_border, borderWidth: `${S.table_cell_border_width}px`, color: slot.status === 'cancelled' ? S.cancelled_color : undefined }}>
                         <span className="course">{slot.course}</span>
                         <span className="lecturer">{slot.lecturer}</span>
-                        <span className="hall" dir="rtl">القاعة ({slot.hall})</span>
+                        <span className="hall">القاعة ({slot.hall})</span>
                       </td>
                     ) : (
-                      <td key={p.index} className="as-cell as-cell-empty" aria-label="فراغ" />
+                      <td key={pi} className="as-cell as-cell-empty" style={{ background: S.cell_empty_bg, height: `${S.cell_height}px`, borderColor: S.table_border, borderWidth: `${S.table_cell_border_width}px` }} aria-label="فراغ" />
                     )
                   })}
                 </tr>
@@ -144,44 +154,50 @@ export function OfficialTimetableSheet({ call, groupId, onClose }: { call: Retur
             </tbody>
           </table>
 
-          {/* ملاحظة بدء العمل */}
-          <div className="as-note">• {startNote}</div>
+          {/* ملاحظة */}
+          {S.note_enabled && (
+            <div className="as-note" style={{ fontSize: `${S.note_font_size}px`, fontWeight: S.note_weight }}>• يبدأ العمل بالجدول اعتباراً {data.issued_at}</div>
+          )}
 
-          {/* التوقيعات والأختام */}
-          <div className="as-signatures">
-            <div className="as-sign-block">
-              <div className="as-seal" aria-hidden="true">
-                جامعة الشرق
-                <small>{(inst?.college ?? 'كلية علوم الحاسوب').slice(0, 14)}</small>
-                <small>ALSHARQ UNIV</small>
+          {/* التوقيعات */}
+          {S.signatures_enabled && (
+            <div className="as-signatures">
+              <div className="as-sign-block">
+                <div className="as-seal" aria-hidden="true" style={{ fontSize: `${S.signature_font_size - 2}px` }}>
+                  {S.signature_one_inside_1}
+                  <small>{S.signature_one_inside_2}</small>
+                  <small>{S.signature_one_inside_3}</small>
+                </div>
+                <div className="as-sign-line" style={{ borderTopColor: S.table_border }} />
+                <div className="as-sign-role" style={{ fontSize: `${S.signature_font_size}px` }}>{S.signature_one_label}</div>
               </div>
-              <div className="as-sign-line" />
-              <div className="as-sign-role">مسجل الكلية</div>
-            </div>
-            <div className="as-sign-block">
-              <div className="as-seal" aria-hidden="true">
-                DEAN
-                <small>Faculty of Computer Science</small>
-                <small>ALSHARQ UNIVERSITY OF</small>
+              <div className="as-sign-block">
+                <div className="as-seal" aria-hidden="true" style={{ fontSize: `${S.signature_font_size - 2}px` }}>
+                  {S.signature_two_inside_1}
+                  <small>{S.signature_two_inside_2}</small>
+                  <small>{S.signature_two_inside_3}</small>
+                </div>
+                <div className="as-sign-line" style={{ borderTopColor: S.table_border }} />
+                <div className="as-sign-role" style={{ fontSize: `${S.signature_font_size}px` }}>{S.signature_two_label}</div>
               </div>
-              <div className="as-sign-line" />
-              <div className="as-sign-role">عميد الكلية</div>
             </div>
-          </div>
+          )}
 
           {/* شريط الاتصال */}
-          <footer className="as-contact" dir="rtl">
-            <span className="as-contact-left">جامعة الشرق للعلوم والتكنولوجيا</span>
-            <span className="as-contact-right">
-              <a href="http://www.aust.edu.sd">www.aust.edu.sd</a>
-              <span aria-hidden="true">|</span>
-              <a href="mailto:Computer@aust.edu.sd">Computer@aust.edu.sd</a>
-              <span aria-hidden="true">|</span>
-              <a href="tel:+249154968035" dir="ltr">+249154968035</a>
-              <span aria-hidden="true">|</span>
-              <a href="tel:+249915496335" dir="ltr">+249915496335</a>
-            </span>
-          </footer>
+          {S.contact_enabled && (
+            <footer className="as-contact" style={{ background: S.contact_bg, color: S.contact_color, fontSize: `${S.contact_font_size}px` }} dir="rtl">
+              <span className="as-contact-left" style={{ color: S.contact_color }}>{S.contact_brand}</span>
+              <span className="as-contact-right">
+                <a href={`https://${S.contact_url}`} style={{ color: S.contact_color, textDecoration: 'none' }}>{S.contact_url}</a>
+                <span aria-hidden="true">|</span>
+                <a href={`mailto:${S.contact_email}`} style={{ color: S.contact_color, textDecoration: 'none' }}>{S.contact_email}</a>
+                <span aria-hidden="true">|</span>
+                <a href={`tel:${S.contact_phone1}`} dir="ltr" style={{ color: S.contact_color, textDecoration: 'none' }}>{S.contact_phone1}</a>
+                <span aria-hidden="true">|</span>
+                <a href={`tel:${S.contact_phone2}`} dir="ltr" style={{ color: S.contact_color, textDecoration: 'none' }}>{S.contact_phone2}</a>
+              </span>
+            </footer>
+          )}
         </div>
       )}
     </div>

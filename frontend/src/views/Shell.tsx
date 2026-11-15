@@ -25,6 +25,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'council-lecturers', label: 'إدارة المدرسين', roles: ['council'] },
     { key: 'council-courses', label: 'إدارة المقررات', roles: ['council'] },
     { key: 'council-batch-accounts', label: 'إدارة الدفعات', roles: ['council'] },
+    { key: 'council-sheet-editor', label: 'محرر الورقة الرسمية', roles: ['council'] },
     { key: 'lecturer', label: 'جدولي', roles: ['lecturer'] },
     { key: 'substitute-requests', label: 'طلبات البدلاء', roles: ['lecturer'] },
     // ── شاشات مدير النظام ──

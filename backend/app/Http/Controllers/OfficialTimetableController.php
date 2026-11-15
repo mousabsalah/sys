@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\OfficialSheet\OfficialSheetConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +67,8 @@ class OfficialTimetableController
             ->orderBy('timetables.start_time')
             ->get();
 
+        $sheet = OfficialSheetConfig::read();
+
         $faculty = DB::table('faculty')->orderBy('id')->first(['full_name']);
         $college = DB::table('faculties')->orderBy('id')->first(['name', 'code']);
 
@@ -74,12 +77,13 @@ class OfficialTimetableController
             'group' => $group,
             'semester' => $term,
             'institution' => [
-                'university' => 'جامعة الشرق للعلوم والتكنولوجيا',
-                'university_en' => 'Alsharq University of Science and Technology',
-                'college' => data_get($college, 'name', 'كلية علوم الحاسوب'),
-                'college_en' => 'Faculty of Computer Science',
-                'college_code' => data_get($college, 'code', 'IT'),
+                'university' => $sheet['university_name_ar'] ?? (data_get($college, 'name', 'كلية علوم الحاسوب') ?: 'جامعة الشرق للعلوم والتكنولوجيا'),
+                'university_en' => $sheet['university_name_en'] ?? 'Alsharq University of Science and Technology',
+                'college' => $sheet['college_name_ar'] ?? (data_get($college, 'name', 'كلية علوم الحاسوب') ?: 'كلية علوم الحاسوب'),
+                'college_en' => $sheet['college_name_en'] ?? 'Faculty of Computer Science',
+                'college_code' => $sheet['college_code'] ?? (data_get($college, 'code', 'IT') ?: 'IT'),
             ],
+            'sheet' => $sheet,
             'rows' => $rows,
             'issued_at' => Carbon::now()->format('Y/m/d').'م',
         ]);

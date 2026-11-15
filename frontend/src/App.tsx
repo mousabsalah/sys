@@ -23,6 +23,7 @@ const BatchTimetableView = lazy(() => import('./views/BatchTimetable'))
 const BatchExamsView = lazy(() => import('./views/BatchExams'))
 const CouncilBatchAccountsView = lazy(() => import('./views/CouncilBatchAccounts'))
 const CouncilAcademicYearView = lazy(() => import('./views/CouncilAcademicYear'))
+const CouncilSheetEditorView = lazy(() => import('./views/CouncilSheetEditor'))
 const ReportsView = lazy(() => import('./views/Reports'))
 const AdminUsersView = lazy(() => import('./views/AdminUsers'))
 const AdminFacultiesView = lazy(() => import('./views/AdminFaculties'))
@@ -85,6 +86,7 @@ export default function App() {
         {activeView === 'batch-exams' && <BatchExamsView call={call} />}
         {activeView === 'council-batch-accounts' && <CouncilBatchAccountsView call={call} />}
         {activeView === 'council-academic-year' && <CouncilAcademicYearView call={call} />}
+        {activeView === 'council-sheet-editor' && <CouncilSheetEditorView call={call} />}
         {activeView === 'reports' && <ReportsView call={call} />}
         {activeView === 'admin-users' && <AdminUsersView call={call} />}
         {activeView === 'admin-plans' && <AdminPlansView call={call} />}

@@ -24,6 +24,7 @@ type HallToday = {
   capacity: number
   equipment: string | null
   status: string | null
+  state: 'occupied' | 'free'
   entries: Entry[]
 }
 
@@ -42,7 +43,7 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'empty'>('all')
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'empty' | 'occupied'>('all')
   const seqRef = useRef(0)
 
   async function refresh() {
@@ -74,7 +75,13 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
   if (loading && !data) return <SkeletonCards count={6} />
 
   const halls = (data?.halls ?? []).filter((h) =>
-    filter === 'all' ? true : filter === 'upcoming' ? h.entries.some((e) => e.state === 'upcoming') : h.entries.length === 0,
+    filter === 'all'
+      ? true
+      : filter === 'upcoming'
+        ? h.entries.some((e) => e.state === 'upcoming')
+        : filter === 'occupied'
+          ? h.state === 'occupied'
+          : h.entries.length === 0,
   )
 
   return (
@@ -88,9 +95,11 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
 
       <div className="aust-panel p-3 mb-3 d-flex align-items-center gap-3 flex-wrap">
         <span className="badge fs-6" style={{ background: '#1f7a3d', color: '#fff' }}>{data?.free_now ?? 0} قاعة حرة الآن</span>
-        <span className="small text-muted">من إجمالي {data?.total_halls ?? 0} قاعة ({data?.busy_now ?? 0} مشغولة الآن لا تُعرض)</span>
+        <span className="badge fs-6" style={{ background: '#782B19', color: '#fff' }}>{data?.busy_now ?? 0} مشغولة الآن</span>
+        <span className="small text-muted">من إجمالي {data?.total_halls ?? 0} قاعة</span>
         <div className="ms-auto d-flex gap-1" role="group" aria-label="تصفية القاعات">
           <button className={`btn btn-sm ${filter === 'all' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('all')}>الكل</button>
+          <button className={`btn btn-sm ${filter === 'occupied' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('occupied')}>مشغولة الآن</button>
           <button className={`btn btn-sm ${filter === 'upcoming' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('upcoming')}>بها شيء قادم اليوم</button>
           <button className={`btn btn-sm ${filter === 'empty' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('empty')}>يومها فارغ</button>
         </div>
@@ -99,10 +108,12 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
       {halls.length === 0 && (
         <div className="alert alert-secondary">
           {filter === 'all'
-            ? 'كل القاعات مشغولة الآن بمحاضرة أو امتحان — لا توجد قاعة حرة الآن.'
-            : filter === 'upcoming'
-              ? 'لا توجد قاعة حرة بها محاضرة/امتحان قادم اليوم.'
-              : 'لا توجد قاعة حرة بيومها فارغ تمامًا.'}
+            ? 'لا توجد قاعات في النظام.'
+            : filter === 'occupied'
+              ? 'لا توجد قاعات مشغولة الآن.'
+              : filter === 'upcoming'
+                ? 'لا توجد قاعة بها محاضرة/امتحان قادم اليوم.'
+                : 'لا توجد قاعة يومها فارغ تمامًا.'}
         </div>
       )}
 
@@ -115,7 +126,9 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
                   <h2 className="h5 mb-0" style={{ color: '#0A1D3B' }}>{h.name}</h2>
                   <div className="small text-muted">سعتها <strong>{h.capacity}</strong> مقعد · {h.hall_type}</div>
                 </div>
-                <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>فارغة الآن</span>
+                {h.state === 'occupied'
+                  ? <span className="badge" style={{ background: '#782B19', color: '#fff' }}>مشغولة الآن</span>
+                  : <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>فارغة الآن</span>}
               </div>
               <p className="small mb-2">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>
 

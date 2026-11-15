@@ -22,7 +22,7 @@ class GuardController extends Controller
         return response()->json($this->checker->currentFreeHalls());
     }
 
-    // GET /api/guard/today — الحارس: القاعات الحرة الآن فقط (المحاضرات والامتحانات تخصم) + جدول اليوم كاملًا لكل قاعة حرة
+    // GET /api/guard/today — الحارس: كل القاعات مع حالتها الآن (occupied|free) + جدول اليوم لكل قاعة
     public function today()
     {
         $now = now();
@@ -132,7 +132,6 @@ class GuardController extends Controller
             ->map(fn ($items) => $items->sortBy('start_time')->values());
 
         $free = $halls
-            ->filter(fn (Hall $h) => ! in_array((int) $h->id, $busyHallIds, true))
             ->map(fn (Hall $h) => [
                 'id' => (int) $h->id,
                 'name' => $h->name,
@@ -140,6 +139,8 @@ class GuardController extends Controller
                 'capacity' => (int) $h->capacity,
                 'equipment' => $h->equipment,
                 'status' => $h->status,
+                // 'occupied' | 'free' — القاعة مشغولة الآن بمحاضرة/امتحان جاري
+                'state' => in_array((int) $h->id, $busyHallIds, true) ? 'occupied' : 'free',
                 'entries' => $entriesByHall->get((int) $h->id, collect())->values()->all(),
             ])
             ->values();
@@ -150,7 +151,7 @@ class GuardController extends Controller
             'date' => $todayStr,
             'total_halls' => $halls->count(),
             'busy_now' => count($busyHallIds),
-            'free_now' => $free->count(),
+            'free_now' => $halls->count() - count($busyHallIds),
             'halls' => $free,
         ]);
     }

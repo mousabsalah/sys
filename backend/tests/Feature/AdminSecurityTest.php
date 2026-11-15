@@ -1434,7 +1434,7 @@ class AdminSecurityTest extends TestCase
         $this->assertTrue(DB::table('audit_logs')->where('action', 'lecturer.reset_password')->where('target_id', $lecturerId)->exists());
     }
 
-    public function test_guard_today_hides_occupied_halls_and_lists_free_today_schedule(): void
+    public function test_guard_today_marks_occupied_and_lists_all_halls_with_state(): void
     {
         $this->travelTo(Carbon::parse('2026-11-14 10:00:00'));
         try {
@@ -1453,23 +1453,23 @@ class AdminSecurityTest extends TestCase
             ]);
 
             $occupiedByLecture = $this->makeHall('قاعة أ — مشغولة');
-            $row($occupiedByLecture->id, '09:00:00', '10:30:00');                 // الآن → تُخفى
+            $row($occupiedByLecture->id, '09:00:00', '10:30:00');                 // الآن → 'occupied'
 
             $occupiedByExam = $this->makeHall('قاعة ب — امتحان الآن');
             ExamSession::create([
                 'course_id' => $course->id, 'group_id' => $group->id, 'hall_id' => $occupiedByExam->id,
                 'exam_date' => $today, 'start_time' => '09:00:00', 'end_time' => '10:30:00',
                 'exam_type' => 'نهائي', 'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
-            ]);                                                                     // الآن → تُخفى
+            ]);                                                                     // الآن → 'occupied'
 
             $cancelledOngoing = $this->makeHall('قاعة ج — ملغية الآن');
-            $row($cancelledOngoing->id, '09:00:00', '10:30:00', 'cancelled');       // ملغية لا تحجب → تظهر
+            $row($cancelledOngoing->id, '09:00:00', '10:30:00', 'cancelled');       // ملغية لا تحجب → 'free'
 
             $endedSlot = $this->makeHall('قاعة د — انتهت محاضرتها');
-            $row($endedSlot->id, '07:00:00', '08:30:00');                             // انتهت → تظهر بـ"انتهت"
+            $row($endedSlot->id, '07:00:00', '08:30:00');                             // انتهت → 'free' مع 'ended'
 
             $upcomingSlot = $this->makeHall('قاعة هـ — محاضرة قادمة');
-            $row($upcomingSlot->id, '12:00:00', '13:30:00');                          // قادمة → تظهر بـ"قادمة"
+            $row($upcomingSlot->id, '12:00:00', '13:30:00');                          // قادمة → 'free' مع 'upcoming'
 
             $emptyDay = $this->makeHall('قاعة و — يومها فارغ');
 
@@ -1478,8 +1478,14 @@ class AdminSecurityTest extends TestCase
             $response->assertOk();
 
             $ids = collect($response->json('halls'))->pluck('id');
-            $this->assertNotContains($occupiedByLecture->id, $ids);
-            $this->assertNotContains($occupiedByExam->id, $ids);
+            $this->assertCount(6, $ids); // الآن تظهر كل القاعات مع حالتها
+            $states = collect($response->json('halls'))->pluck('state', 'id');
+            $this->assertSame('occupied', $states[$occupiedByLecture->id]);
+            $this->assertSame('occupied', $states[$occupiedByExam->id]);
+            $this->assertSame('free', $states[$cancelledOngoing->id]);
+            $this->assertSame('free', $states[$endedSlot->id]);
+            $this->assertSame('free', $states[$upcomingSlot->id]);
+            $this->assertSame('free', $states[$emptyDay->id]);
             $this->assertContains($cancelledOngoing->id, $ids);
             $this->assertContains($endedSlot->id, $ids);
             $this->assertContains($upcomingSlot->id, $ids);
