@@ -15,7 +15,7 @@ export type SheetConfig = {
   // اللافتة
   title_enabled: boolean
   title_prefix: string
-  title_degree_word: string
+  title_template: string
   title_font_size: number
   title_weight: number
   title_bg: string
@@ -90,7 +90,7 @@ export const DEFAULT_SHEET_SETTINGS: SheetConfig = {
 
   title_enabled: true,
   title_prefix: 'جدول',
-  title_degree_word: 'بكالوريوس',
+  title_template: '{prefix} شعبة {track} — دفعة {batch} ({count} طالبًا)',
   title_font_size: 20,
   title_weight: 800,
   title_bg: '#ffffff',

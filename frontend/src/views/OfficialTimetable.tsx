@@ -27,6 +27,21 @@ type OfficialData = {
 
 const DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'] as const
 
+/** بناء عنوان الورقة من النمط — {prefix} {track} {batch} {count} {program} */
+function renderTitle(
+  template: string,
+  S: SheetConfig,
+  data: { group: { track: string; batch_name: string; student_count: number; program_name: string | null } },
+) {
+  const out = template
+    .replaceAll('{prefix}', S.title_prefix)
+    .replaceAll('{track}', data.group.track)
+    .replaceAll('{batch}', data.group.batch_name)
+    .replaceAll('{count}', String(data.group.student_count))
+    .replaceAll('{program}', data.group.program_name ?? '')
+  return out.replace(/\s{2,}/g, ' ').trim()
+}
+
 export function OfficialTimetableSheet({
   call,
   groupId,
@@ -92,33 +107,32 @@ export function OfficialTimetableSheet({
           {S.university_enabled && (
             <header className="as-masthead" style={{ background: S.masthead_bg, borderBottomColor: S.masthead_border }}>
               <div className="as-college">
-                {S.college_logo_url && <img src={S.college_logo_url} alt="شعار الكلية" className="as-masthead-small-logo" />}
+                {S.college_logo_url && <img src={S.college_logo_url} alt="شعار الكلية" className="as-masthead-small-logo" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />}
                 <div className="as-college-name">
                   <div className="ar">{S.college_name_ar}</div>
                   <div className="en">{S.college_name_en}</div>
                 </div>
               </div>
               <div className="as-university-crest">
-                <img src={S.university_logo_url ?? '/logo-aust.jpg'} alt={S.university_name_ar} className="as-masthead-logo" />
+                <img src={S.university_logo_url ?? '/logo-aust.jpg'} alt={S.university_name_ar} className="as-masthead-logo" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
               </div>
               <div className="as-university">
                 <div className="as-university-name">
                   <div className="ar">{S.university_name_ar}</div>
                   <div className="en">{S.university_name_en}</div>
                 </div>
-                <img src="/logo-aust.jpg" alt="" className="as-masthead-small-logo" style={{ borderRadius: 8, background: '#fff', opacity: S.university_logo_url || S.college_logo_url ? 0 : 1 }} aria-hidden="true" />
               </div>
             </header>
           )}
 
-          {/* اللافتة */}
+          {/* اللافتة — النص يُبنى من نمط العنوان ({prefix} {track} {batch} {count} {program}) */}
           {S.title_enabled && (
             <h1 className="as-title" style={{
               fontSize: `${S.title_font_size}px`, fontWeight: S.title_weight,
               background: S.title_bg, color: S.title_color, borderColor: S.title_border,
               padding: `${S.title_padding}px 20px`,
             }}>
-              {S.title_prefix} {S.title_degree_word} {data.group.track} — {data.group.batch_name} ({data.group.student_count} طالبًا)
+              {renderTitle(S.title_template, S, data)}
             </h1>
           )}
 

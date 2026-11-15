@@ -20,7 +20,7 @@ class OfficialSheetController extends Controller
     /** قائمة مسارات الارتباط (string|null) — لا غيرها يقبل أو يُحفظ */
     private const STRING_KEYS = [
         'university_name_ar', 'university_name_en', 'college_name_ar', 'college_name_en', 'college_code',
-        'title_prefix', 'title_degree_word',
+        'title_prefix', 'title_template',
         'signature_one_label', 'signature_one_inside_1', 'signature_one_inside_2', 'signature_one_inside_3',
         'signature_two_label', 'signature_two_inside_1', 'signature_two_inside_2', 'signature_two_inside_3',
         'contact_brand', 'contact_phone1', 'contact_phone2', 'contact_email', 'contact_url',

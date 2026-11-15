@@ -28,7 +28,7 @@ final class OfficialSheetConfig
             // ── اللافتة (عنوان الجدول) ──
             'title_enabled' => true,
             'title_prefix' => 'جدول',
-            'title_degree_word' => 'بكالوريوس',
+            'title_template' => '{prefix} شعبة {track} — دفعة {batch} ({count} طالبًا)',
             'title_font_size' => 20,
             'title_weight' => 800,
             'title_bg' => '#ffffff',

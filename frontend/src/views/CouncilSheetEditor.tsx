@@ -165,7 +165,7 @@ export default function CouncilSheetEditorView({ call }: { call: ReturnType<type
           <Toggle label="إظهار اللافتة" checked={draft.title_enabled} onChange={(v) => set('title_enabled', v)} />
           <div className="row g-2">
             <div className="col-md-3"><Field label="الكلمة الأولى"><input className="form-control" value={draft.title_prefix} onChange={(e) => set('title_prefix', e.target.value)} placeholder="جدول" /></Field></div>
-            <div className="col-md-3"><Field label="الدرجة"><input className="form-control" value={draft.title_degree_word} onChange={(e) => set('title_degree_word', e.target.value)} placeholder="بكالوريوس" /></Field></div>
+            <div className="col-md-3"><Field label="نمط العنوان" hint="{prefix} · {track} · {batch} · {count} · {program}"><input className="form-control" dir="rtl" value={draft.title_template} onChange={(e) => set('title_template', e.target.value)} placeholder="{prefix} شعبة {track} — دفعة {batch} ({count} طالبًا)" /></Field></div>
             <div className="col-md-3"><NumInput label="حجم الخط" value={draft.title_font_size} onChange={(v) => set('title_font_size', v)} min={10} max={40} suffix="px" /></div>
             <div className="col-md-3"><NumInput label="السمك" value={draft.title_weight} onChange={(v) => set('title_weight', v)} min={100} max={900} /></div>
           </div>
