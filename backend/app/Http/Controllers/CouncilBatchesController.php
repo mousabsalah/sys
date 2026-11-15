@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\Group;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
@@ -18,13 +19,21 @@ class CouncilBatchesController extends Controller
 {
     public function __construct(private AuditLogger $audit) {}
 
-    // GET /api/council/batch-accounts — كل الدفعات + حسابها (إن وُجد)
+    // GET /api/council/batch-accounts — كل الدفعات + شعبها + حسابها (إن وُجد) + مرجعيات الإدارة
     public function index()
     {
         $batches = DB::table('batches')
             ->leftJoin('departments', 'departments.id', '=', 'batches.department_id')
+            ->leftJoin('programs', 'programs.id', '=', 'batches.program_id')
+            ->whereNull('batches.deleted_at')
             ->orderBy('batches.id')
-            ->get(['batches.id', 'batches.name', 'batches.student_count', 'departments.name AS department']);
+            ->get(['batches.id', 'batches.name', 'batches.student_count', 'batches.program_id', 'batches.department_id',
+                'departments.name AS department', 'programs.name AS program']);
+
+        $groups = DB::table('groups')
+            ->whereIn('batch_id', $batches->pluck('id'))
+            ->get(['id', 'batch_id', 'track', 'student_count'])
+            ->groupBy('batch_id');
 
         $accounts = DB::table('users')
             ->where('role', 'batch')
@@ -35,7 +44,15 @@ class CouncilBatchesController extends Controller
             'id' => (int) $b->id,
             'name' => (string) $b->name,
             'student_count' => (int) $b->student_count,
+            'program_id' => (int) $b->program_id,
+            'program' => $b->program,
             'department' => $b->department,
+            'department_id' => (int) $b->department_id,
+            'groups' => collect($groups->get((int) $b->id, []))->map(fn ($g) => [
+                'id' => (int) $g->id,
+                'track' => (string) $g->track,
+                'student_count' => (int) $g->student_count,
+            ])->values()->all(),
             'account' => isset($accounts[$b->id]) ? [
                 'id' => (int) $accounts[$b->id]->id,
                 'username' => (string) $accounts[$b->id]->username,
@@ -44,7 +61,137 @@ class CouncilBatchesController extends Controller
             ] : null,
         ])->values();
 
-        return response()->json(['batches' => $rows]);
+        return response()->json([
+            'batches' => $rows,
+            'departments' => DB::table('departments')->orderBy('id')->get(['id', 'name']),
+            'programs' => DB::table('programs')->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    // POST /api/council/programs — إضافة برنامج (للدفعات الجديدة إن لم يوجد مناسب)
+    public function storeProgram(Request $request)
+    {
+        $input = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $program = DB::table('programs')->insertGetId([
+            'name' => $input['name'],
+            'description' => $input['description'] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->audit->log($request, 'program.create', 'program', (int) $program, ['name' => $input['name']]);
+
+        return response()->json(['ok' => true, 'program' => ['id' => (int) $program, 'name' => $input['name']]], Response::HTTP_CREATED);
+    }
+
+    // POST /api/council/batches — إنشاء دفعة + شعبها تلقائيًا (حصة بالنصف لكل مسار، والباقي لأول مسار)
+    public function storeBatch(Request $request)
+    {
+        $departmentIds = DB::table('departments')->pluck('id')->all();
+        $input = $request->validate([
+            'name' => ['required', 'string', 'max:50'],
+            'student_count' => ['required', 'integer', 'min:1', 'max:10000'],
+            'program_id' => ['required', 'integer', Rule::exists('programs', 'id')],
+            'department_id' => ['nullable', 'integer', Rule::exists('departments', 'id')],
+            'tracks' => ['required', 'array', 'min:1'],
+            'tracks.*' => ['string', Rule::in(['دبلوم', 'بكلاريوس'])],
+        ]);
+
+        $departmentId = $input['department_id'] ?? (count($departmentIds) === 1 ? $departmentIds[0] : null);
+        if (! $departmentId) {
+            return response()->json(['ok' => false, 'message_ar' => 'يوجد أكثر من قسم — اختر القسم للدفعة.'], 422);
+        }
+
+        $tracks = array_values(array_unique($input['tracks']));
+        $total = (int) $input['student_count'];
+        $count = count($tracks);
+        // دبلوم أولًا يأخذ حصته كاملة + الباقي — ثم بكلاريوس (ترتيب عربي معلن)
+        usort($tracks, fn ($a, $b) => ($a === 'دبلوم' ? 0 : 1) <=> ($b === 'دبلوم' ? 0 : 1));
+        $shares = [];
+        $base = intdiv($total, $count);
+        $remainder = $total - $base * $count;
+        foreach ($tracks as $i => $track) {
+            $shares[$track] = $base + ($i === 0 ? $remainder : 0);
+        }
+
+        $batch = DB::transaction(function () use ($input, $request, $departmentId, $shares, $total) {
+            $batch = Batch::create([
+                'name' => $input['name'],
+                'student_count' => $total,
+                'department_id' => $departmentId,
+                'program_id' => (int) $input['program_id'],
+            ]);
+
+            foreach ($shares as $track => $share) {
+                Group::create([
+                    'batch_id' => $batch->id,
+                    'track' => $track,
+                    'student_count' => $share,
+                ]);
+            }
+
+            $this->audit->log($request, 'batch.create', 'batch', $batch->id, [
+                'name' => $batch->name,
+                'student_count' => $total,
+                'tracks' => array_keys($shares),
+                'program_id' => $batch->program_id,
+            ]);
+
+            return $batch;
+        });
+
+        return response()->json(['ok' => true, 'batch' => [
+            'id' => $batch->id,
+            'name' => $batch->name,
+            'student_count' => $batch->student_count,
+            'tracks' => array_keys($shares),
+        ]], Response::HTTP_CREATED);
+    }
+
+    // PUT /api/council/batches/{batch} — تعديل الاسم وسعة الدفعة (لا تعديل للشعب هنا)
+    public function updateBatch(Request $request, int $batch)
+    {
+        $item = Batch::findOrFail($batch);
+        $input = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:50'],
+            'student_count' => ['sometimes', 'required', 'integer', 'min:1', 'max:10000'],
+        ]);
+
+        $item->fill($input)->save();
+        $this->audit->log($request, 'batch.update', 'batch', $item->id, $input);
+
+        return response()->json(['ok' => true]);
+    }
+
+    // DELETE /api/council/batches/{batch} — حذف محروس (لا حذف مع أي استخدام). الشعب تنحذف معها (cascade)
+    public function destroyBatch(Request $request, int $batch)
+    {
+        $item = Batch::findOrFail($batch);
+        $groupIds = DB::table('groups')->where('batch_id', $item->id)->pluck('id');
+
+        $usage = [
+            'timetables' => DB::table('timetables')->whereIn('group_id', $groupIds)->count(),
+            'exam_sessions' => DB::table('exam_sessions')->whereIn('group_id', $groupIds)->count(),
+            'group_courses' => DB::table('group_courses')->whereIn('group_id', $groupIds)->count(),
+            'accounts' => DB::table('users')->where('batch_id', $item->id)->count(),
+            'semesters' => DB::table('semesters')->where('batch_id', $item->id)->count(),
+        ];
+        $used = array_filter($usage, fn ($n) => $n > 0);
+        if ($used) {
+            $parts = array_map(fn ($k, $n) => $n.' × '.$k, array_keys($used), array_values($used));
+
+            return response()->json(['ok' => false, 'message_ar' => 'لا يمكن حذف الدفعة: مرتبطة بـ '.implode('، ', $parts).' — أزل الروابط أولًا.'], 422);
+        }
+
+        $this->audit->log($request, 'batch.delete', 'batch', $item->id, ['name' => $item->name, 'student_count' => $item->student_count]);
+        // حذف حازم — DB cascade تحذف الشعب معها (لا يمكن الوصول هنا إلا مع صفر استخدام طرف شعبها)
+        $item->forceDelete();
+
+        return response()->json(['ok' => true]);
     }
 
     // POST /api/council/batch-accounts — إنشاء حساب دفعة (username إلزامي، كلمة المرور تُولَّد إن تُركت فارغة)

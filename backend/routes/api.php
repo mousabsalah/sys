@@ -82,9 +82,13 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
 });
 
-// ── مجلس المدرسين: إدارة حسابات الدفعات (دورة كاملة — المدير ممنوع منها) ──
+// ── مجلس المدرسين: إدارة الدفعات الكاملة (برامج + دفعات + شعب + حسابات) — المدير ممنوع منها ──
 Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
     Route::get('/council/batch-accounts', [CouncilBatchesController::class, 'index']);
+    Route::post('/council/programs', [CouncilBatchesController::class, 'storeProgram']);
+    Route::post('/council/batches', [CouncilBatchesController::class, 'storeBatch']);
+    Route::put('/council/batches/{batch}', [CouncilBatchesController::class, 'updateBatch']);
+    Route::delete('/council/batches/{batch}', [CouncilBatchesController::class, 'destroyBatch']);
     Route::post('/council/batch-accounts', [CouncilBatchesController::class, 'store']);
     Route::post('/council/batch-accounts/{user}/deactivate', [CouncilBatchesController::class, 'deactivate']);
     Route::post('/council/batch-accounts/{user}/reactivate', [CouncilBatchesController::class, 'reactivate']);

@@ -1696,6 +1696,98 @@ class AdminSecurityTest extends TestCase
         $this->assertCount(1, collect($examsForeign)->all());
     }
 
+    public function test_council_creates_batch_with_tracks_and_splits_students(): void
+    {
+        $council = $this->makeUser('council');
+        $admin = $this->makeUser('admin');
+
+        // قسم محدد للاختبار
+        [$facultyA, $departmentA] = $this->makeAcademicChain();
+
+        // برنامج جديد (لا برامج في القاعدة)
+        $programId = $this->authedAs($council)
+            ->postJson('/api/council/programs', ['name' => 'بكالوريوس تقنية المعلومات'])
+            ->assertStatus(201)
+            ->json('program.id');
+
+        // البرنامج إجباري (ناقصة) + المسار إجباري (ناقصة)
+        $this->authedAs($council)
+            ->postJson('/api/council/batches', ['name' => 'دفعة 2026', 'student_count' => 41, 'tracks' => ['دبلوم'], 'department_id' => $departmentA->id])
+            ->assertStatus(422);
+        $this->authedAs($council)
+            ->postJson('/api/council/batches', ['name' => 'دفعة 2026', 'student_count' => 41, 'program_id' => $programId, 'department_id' => $departmentA->id])
+            ->assertStatus(422);
+
+        // إنشاء الدفعة بمسارين
+        $created = $this->authedAs($council)
+            ->postJson('/api/council/batches', [
+                'name' => 'دفعة 2026',
+                'student_count' => 41,
+                'program_id' => $programId,
+                'department_id' => $departmentA->id,
+                'tracks' => ['دبلوم', 'بكلاريوس'],
+            ])
+            ->assertStatus(201)
+            ->json('batch');
+
+        // انقسمت بالتساوي مع الباقي للدبلوم (21 + 20)
+        $groups = \DB::table('groups')->where('batch_id', $created['id'])->orderBy('track')->get();
+        $this->assertCount(2, $groups);
+        $dip = $groups->firstWhere('track', 'دبلوم');
+        $bac = $groups->firstWhere('track', 'بكلاريوس');
+        $this->assertSame(21, (int) $dip->student_count);
+        $this->assertSame(20, (int) $bac->student_count);
+        $this->assertSame(2, \DB::table('groups')->where('batch_id', $created['id'])->count());
+        $this->assertTrue(\DB::table('audit_logs')->where('action', 'batch.create')->where('target_id', $created['id'])->exists());
+
+        $departmentA = Department::firstOrFail();
+
+        // المدير ممنوع
+        $this->authedAs($admin)
+            ->postJson('/api/council/batches', ['name' => 'x', 'student_count' => 10, 'program_id' => $programId, 'tracks' => ['دبلوم'], 'department_id' => $departmentA->id])
+            ->assertStatus(403);
+    }
+
+    public function test_council_delete_batch_guarded_when_linked(): void
+    {
+        $council = $this->makeUser('council');
+
+        $programId = $this->authedAs($council)
+            ->postJson('/api/council/programs', ['name' => 'لحذف-اختبار'])
+            ->json('program.id');
+        [$facultyA, $departmentA] = $this->makeAcademicChain();
+        $created = $this->authedAs($council)
+            ->postJson('/api/council/batches', ['name' => 'دفعة للحذف', 'student_count' => 30, 'program_id' => $programId, 'department_id' => $departmentA->id, 'tracks' => ['دبلوم']])
+            ->assertStatus(201)
+            ->json('batch');
+        $batchId = $created['id'];
+
+        // إنشاء حساب ← الحذف ممنوع
+        $this->authedAs($council)
+            ->postJson('/api/council/batch-accounts', ['batch_id' => $batchId, 'username' => 'batch.delete.me', 'password' => 'Batch@123456'])
+            ->assertStatus(201);
+        $this->authedAs($council)
+            ->deleteJson('/api/council/batches/'.$batchId)
+            ->assertStatus(422);
+
+        // حساب لا يمكن إزالته لعدم وجود unlink — إذن نتحقق أن الرسالة تحتوي اسم الارتباط «accounts»
+        $refusal = $this->authedAs($council)
+            ->deleteJson('/api/council/batches/'.$batchId)
+            ->json();
+        $this->assertStringContainsString('accounts', json_encode($refusal));
+
+        // دفعة نظيفة تمامًا (بلا أي استخدام) ← الحذف يعمل وتُحذف شعبها معها
+        $createdClean = $this->authedAs($council)
+            ->postJson('/api/council/batches', ['name' => 'دفعة نظيفة', 'student_count' => 20, 'program_id' => $programId, 'department_id' => $departmentA->id, 'tracks' => ['دبلوم']])
+            ->assertStatus(201)
+            ->json('batch');
+        $this->authedAs($council)
+            ->deleteJson('/api/council/batches/'.$createdClean['id'])
+            ->assertOk();
+        $this->assertSame(0, DB::table('groups')->where('batch_id', $createdClean['id'])->count());
+        $this->assertTrue(DB::table('audit_logs')->where('action', 'batch.delete')->where('target_id', $createdClean['id'])->exists());
+    }
+
     public function test_council_manages_courses_and_guarded_delete(): void
     {
         $council = $this->makeUser('council');
