@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthedApi } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
+import { OfficialTimetableSheet } from './OfficialTimetable'
 
 export default function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
   const [groupId, setGroupId] = useState('5')
@@ -8,6 +9,7 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
   const [rows, setRows] = useState<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showOfficial, setShowOfficial] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -31,7 +33,10 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <h1 className="h3 fw-bold mb-0" style={{color: '#0A1D3B'}}>الجداول</h1>
-        <button className="aust-btn" onClick={onNew}>+ إعداد الجدول</button>
+        <div className="d-flex gap-2">
+          <button className="aust-btn-outline" onClick={() => setShowOfficial(true)}>📄 الورقة الرسمية</button>
+          <button className="aust-btn" onClick={onNew}>+ إعداد الجدول</button>
+        </div>
       </div>
       <div className="aust-panel p-3 mb-3 d-flex gap-2">
         <label className="form-label m-0 align-self-center" htmlFor="grp">الشعبة:</label>
@@ -52,6 +57,7 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
           ))}
         </tbody>
       </table>
+      {showOfficial && <OfficialTimetableSheet call={call} groupId={Number(groupId)} onClose={() => setShowOfficial(false)} />}
     </>
   )
 }

@@ -1,0 +1,292 @@
+/* ═══════════════════════════════════════════════════════════════
+   الورقة الرسمية AUST — نفس شكل الجداول الأصلية للجامعة (صورة مرجعية
+   من جامعة الشرق للعلوم والتكنولوجيا، كلية علوم الحاسوب):
+   ترويسة كلية/جامعة + عنوان مؤطر + جدول عريض + توقيعات + شريط اتصال.
+   كل الألوان درجات رمادية على ورق أبيض — بشكل الطباعة الفعلي.
+   ═══════════════════════════════════════════════════════════════ */
+
+.as-sheet {
+  direction: rtl;
+  color: #0a0a0a;
+  background: #ffffff;
+  font-family: "Noto Kufi Arabic", "Noto Naskh Arabic", "Simplified Arabic", "Traditional Arabic", Tahoma, serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* زر التحكم (لا يطبع) */
+.as-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px;
+}
+.as-actions button {
+  font-family: "Noto Kufi Arabic", Tahoma, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 10px 22px;
+  border: 2px solid #0A1D3B;
+  background: #0A1D3B;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.as-actions button.secondary {
+  background: #fff;
+  color: #0A1D3B;
+}
+
+/* ── حجم الورقة على الشاشة ── */
+.as-document {
+  width: min(794px, 100%);         /* A4 @ 96dpi */
+  min-height: 1123px;              /* 297mm @ 96dpi */
+  background: #fff;
+  margin: 0 auto;
+  border: 1px solid #ddd;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  padding: 18px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── الترويسة ── */
+.as-masthead {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2.5px solid #0a0a0a;
+  padding-bottom: 12px;
+}
+.as-college, .as-university {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.as-university { justify-content: flex-end; }
+.as-masthead-logo {
+  height: 78px;
+  width: auto;
+  object-fit: contain;
+}
+.as-masthead-small-logo {
+  height: 62px;
+  width: auto;
+  object-fit: contain;
+}
+.as-college-name, .as-university-name {
+  line-height: 1.35;
+}
+.as-college-name .ar, .as-university-name .ar {
+  font-size: 19px;
+  font-weight: 800;
+}
+.as-college-name .en, .as-university-name .en {
+  direction: ltr;
+  text-align: left;
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 13px;
+  letter-spacing: .2px;
+  color: #111;
+}
+.as-college-name .en { text-align: right; }
+.as-university-crest { justify-content: center; }
+.as-university-crest img {
+  height: 86px;
+  width: auto;
+}
+
+/* ── اللافتة (عنوان الجدول) ── */
+.as-title {
+  border: 3px solid #0a0a0a;
+  padding: 8px 20px 9px;
+  text-align: center;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 auto;
+  max-width: 660px;
+}
+
+/* ── الجدول ── */
+.as-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2.4px solid #0a0a0a;
+  table-layout: fixed;
+}
+.as-table th, .as-table td {
+  border: 1.4px solid #0a0a0a;
+  text-align: center;
+  vertical-align: middle;
+  padding: 10px 6px;
+}
+.as-table thead th {
+  background: #b8b8b8;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 12px 6px;
+  line-height: 1.15;
+}
+.as-day-head {
+  background: #d8d8d8 !important;
+}
+.as-day-label {
+  background: #d8d8d8;
+  font-size: 21px;
+  font-weight: 800;
+  padding: 8px 6px;
+  width: 90px;
+}
+.as-cell {
+  height: 108px;
+  padding: 8px 6px !important;
+}
+.as-cell .course {
+  display: block;
+  font-size: 16.5px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.as-cell .lecturer {
+  display: block;
+  font-size: 15px;
+  color: #111;
+}
+.as-cell .hall {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: .3px;
+}
+.as-cell-empty {
+  background: #e2e2e2;
+}
+.as-cell-cancelled { color: #555; }
+.as-cell-cancelled .course { text-decoration: line-through 2px; }
+.as-cell-cancelled .lecturer::after { content: " — ملغية"; }
+.as-period-time {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #111;
+  margin-top: 2px;
+}
+
+/* ── ملاحظة الدوام ── */
+.as-note {
+  font-size: 16.5px;
+  font-weight: 800;
+  padding: 2px 4px;
+}
+
+/* ── التوقيعات والأختام ── */
+.as-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 40px;
+  padding: 10px 30px 0;
+}
+.as-sign-block {
+  text-align: center;
+}
+.as-sign-line {
+  border-top: 1px solid #0a0a0a;
+  width: 78%;
+  margin: 34px auto 8px;
+}
+.as-sign-role {
+  font-size: 16px;
+  font-weight: 800;
+}
+.as-seal {
+  margin: 0 auto;
+  width: 116px;
+  height: 116px;
+  border: 3px double #0a0a0a;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #0a0a0a;
+  transform: rotate(-6deg);
+  opacity: .93;
+}
+.as-seal small { font-size: 6.5px; }
+
+/* ── شريط الاتصال السفلي ── */
+.as-contact {
+  background: #101010;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 10px;
+  padding: 6px 10px;
+  margin-top: auto;
+}
+.as-contact-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+.as-contact-right {
+  direction: ltr;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.as-contact a { color: #fff; text-decoration: none; }
+.as-contact-ic {
+  width: 12px;
+  height: 12px;
+  fill: #fff;
+}
+
+/* ── الجذر على الشاشة: طبقة معاينة داكنة، الورقة فوقها ── */
+#official-sheet-root {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(10, 29, 59, 0.55);
+  overflow: auto;
+  padding: 14px 12px 46px;
+}
+
+@media print {
+  #root { display: none !important; }
+  #official-sheet-root {
+    position: static;
+    z-index: auto;
+    background: transparent;
+    overflow: visible;
+    padding: 0;
+  }
+  @page { size: A4 portrait; margin: 9mm 10mm; }
+  .as-actions { display: none !important; }
+  .as-document {
+    box-shadow: none;
+    border: none;
+    width: auto;
+    min-height: auto;
+    margin: 0;
+    padding: 0;
+    gap: 8px;
+  }
+  .as-masthead-logo { height: 70px; }
+  .as-table thead th { font-size: 18px; }
+  .as-cell { height: 96px; }
+  .as-cell .course { font-size: 15px; }
+}

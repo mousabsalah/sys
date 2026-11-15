@@ -1889,6 +1889,39 @@ class AdminSecurityTest extends TestCase
         }
     }
 
+    public function test_council_official_timetable_sheet_returns_enriched_payload(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course] = $this->makeCourseAndLecturer($department->id);
+        $council = $this->makeUser('council');
+        $batch->forceFill(['student_count' => 40])->save();
+        $semester = Semester::firstOrCreate([
+            'faculty_id' => $faculty->id, 'department_id' => $department->id, 'batch_id' => $batch->id, 'academic_term' => '2026/1',
+        ]);
+        $hall = $this->makeHall('مدرج أ');
+        $mine = Timetable::create([
+            'course_id' => $course->id, 'faculty_id' => 1, 'group_id' => $group->id, 'hall_id' => $hall->id,
+            'day_of_week' => 'الاثنين', 'start_time' => '07:00:00', 'end_time' => '09:00:00',
+            'academic_term' => '2026/1', 'semester_id' => $semester->id, 'status' => 'approved',
+        ]);
+
+        $payload = $this->authedAs($council)
+            ->getJson('/api/council/timetables-official?group_id='.$group->id)
+            ->assertOk()
+            ->json();
+
+        $this->assertSame($group->id, (int) $payload['group']['id']);
+        $this->assertSame('2026/1', $payload['semester']);
+        $this->assertCount(1, $payload['rows']);
+        $this->assertSame($hall->name, $payload['rows'][0]['hall_name']);
+        $this->assertSame($course->code, $payload['rows'][0]['course_code']);
+
+        // admin ممنوع والبيانات نفسها لا تظهر
+        $this->authedAs($this->makeUser('admin'))
+            ->getJson('/api/council/timetables-official?group_id='.$group->id)
+            ->assertStatus(403);
+    }
+
     public function test_council_manages_courses_and_guarded_delete(): void
     {
         $council = $this->makeUser('council');

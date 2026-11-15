@@ -19,6 +19,7 @@ use App\Http\Controllers\ExamController;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\HallsController;
 use App\Http\Controllers\LecturerController;
+use App\Http\Controllers\OfficialTimetableController;
 use App\Http\Controllers\ProposeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TimetableController;
@@ -81,6 +82,11 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::post('/council/courses', [CouncilCoursesController::class, 'store']);
     Route::put('/council/courses/{course}', [CouncilCoursesController::class, 'update']);
     Route::delete('/council/courses/{course}', [CouncilCoursesController::class, 'destroy']);
+});
+
+// ── مجلس المدرسين: ورقة الجدول الرسمية للطباعة (Siegel AUST) ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/timetables-official', [OfficialTimetableController::class, 'show']);
 });
 
 // ── مجلس المدرسين: بداية السنة الدراسية (فتحتها بويه — سمسترين متزامنين + إدارة الفصول) — المدير للقراءة فقط ──
