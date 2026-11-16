@@ -66,7 +66,7 @@ export default function BatchNotificationsBell() {
     <div className="p-2 pt-0 position-relative">
       <button
         className="btn btn-sm w-100 position-relative"
-        style={{ border: '1px solid #D4822D', color: '#D4822D', background: 'transparent' }}
+        style={{ border: '1px solid #9C4D20', color: '#9C4D20', background: 'transparent' }}
         onClick={toggle}
         aria-label="إشعارات محاضرات دفعتك"
         aria-expanded={open}
@@ -88,7 +88,7 @@ export default function BatchNotificationsBell() {
         >
           <div className="d-flex align-items-center justify-content-between mb-2">
             <strong style={{ color: '#0A1D3B' }}>آخر التغييرات</strong>
-            <button className="btn btn-link btn-sm p-0" style={{ color: '#D4822D' }} onClick={markAllRead}>تحديد الكل كمقروء</button>
+            <button className="btn btn-link btn-sm p-0" style={{ color: '#9C4D20' }} onClick={markAllRead}>تحديد الكل كمقروء</button>
           </div>
           {err && <div className="alert alert-danger py-1 small">{err}</div>}
           {!err && items === null && <div className="text-muted small p-2">جارٍ التحميل…</div>}

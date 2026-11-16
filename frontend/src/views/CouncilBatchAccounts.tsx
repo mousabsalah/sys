@@ -225,7 +225,7 @@ export default function CouncilBatchAccountsView({ call }: { call: ReturnType<ty
                     </span>
                   ) : (
                     <><strong>{b.name}</strong>
-                      <button className="btn btn-link btn-sm p-0 ms-1" style={{ color: '#D4822D' }} onClick={() => { setEditing(b.id); setEditForm({ name: b.name, student_count: String(b.student_count) }) }}>تعديل</button>
+                      <button className="btn btn-link btn-sm p-0 ms-1" style={{ color: '#9C4D20' }} onClick={() => { setEditing(b.id); setEditForm({ name: b.name, student_count: String(b.student_count) }) }}>تعديل</button>
                     </>
                   )}
                 </td>

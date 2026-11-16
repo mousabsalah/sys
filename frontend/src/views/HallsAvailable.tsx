@@ -81,7 +81,7 @@ export default function HallsAvailableView({ call, onBook, canBook = true }: { c
             <div className="aust-panel p-3 h-100">
               <div className="d-flex justify-content-between align-items-start">
                 <h2 className="h5 mb-1" style={{color: '#0A1D3B'}}>{h.name}</h2>
-                <span className="badge" style={{background: '#D4822D', color: '#fff'}}>{h.hall_type}</span>
+                <span className="badge" style={{background: '#9C4D20', color: '#fff'}}>{h.hall_type}</span>
               </div>
               <p className="mb-1 small text-muted">سعتها: <strong>{h.capacity}</strong> مقعدًا</p>
               <p className="mb-2 small">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>

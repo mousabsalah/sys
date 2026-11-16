@@ -22,9 +22,9 @@ export default function LoginView({ onAuthed }: { onAuthed: (u: AuthUser, token:
     <main className="min-vh-100 d-flex align-items-center justify-content-center" style={{background: 'linear-gradient(140deg,#0A1D3B 0%, #782B19 100%)'}}>
       <section className="aust-panel p-4 p-md-5" style={{minWidth: 380, maxWidth: 440, width: '100%'}}>
         <div className="text-center mb-4">
-          <img src="/logo-aust.jpg" alt="شعار AUST" width="96" height="96" className="rounded mb-3" />
+          <img src="/logo-aust.jpg" alt="شعار جامعة الشرق للعلوم والتكنولوجيا" width="96" height="96" className="rounded mb-3" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
           <h1 className="h4 fw-bold mb-1" style={{color: '#0A1D3B'}}>نظام إدارة القاعات والجداول الأكاديمية</h1>
-          <p className="small text-muted mb-0">جامعة الشرق الأهلية للعلوم والتكنولوجيا</p>
+          <p className="small text-muted mb-0">جامعة الشرق للعلوم والتكنولوجيا</p>
         </div>
         <form className="d-flex flex-column gap-3" onSubmit={submit}>
           <div>

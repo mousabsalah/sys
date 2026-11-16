@@ -47,9 +47,9 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     <div className="d-flex min-vh-100" style={{background: 'var(--aust-bg)'}}>
       <aside className="app-sidebar d-flex flex-column" style={{width: 248}}>
         <div className="app-logo d-flex align-items-center gap-2 p-3">
-          <img src="/logo-aust.jpg" alt="AUST" width="44" height="44" className="rounded" />
+          <img src="/logo-aust.jpg" alt="شعار جامعة الشرق للعلوم والتكنولوجيا" width="44" height="44" className="rounded" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
           <div>
-            <div className="fw-bold" style={{color: '#fff', fontSize: 14, lineHeight: 1.15}}>جامعة الشرق الأهلية للعلوم والتكنولوجيا</div>
+            <div className="fw-bold" style={{color: '#fff', fontSize: 14, lineHeight: 1.15}}>جامعة الشرق للعلوم والتكنولوجيا</div>
             <div className="small" style={{color: '#D4822D'}}>AUST</div>
           </div>
         </div>
