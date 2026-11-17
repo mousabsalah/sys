@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Group;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
-use App\Services\Access\FacultyScope;
 use App\Services\Engine\ConflictChecker;
 use App\Support\Defaults;
 use Illuminate\Http\Request;
@@ -62,16 +61,6 @@ class TimetableController extends Controller
             'assignments.*.academic_term' => ['sometimes', 'string', 'max:20'],
             'assignments.*.course_code' => ['sometimes', 'string', 'max:20'],
         ]);
-
-        $user = auth()->user();
-        foreach ($input['assignments'] as $i => $item) {
-            if (! FacultyScope::assertGroupInScope($user, (int) $item['group_id'])) {
-                return response()->json([
-                    'ok' => false,
-                    'message_ar' => FacultyScope::deniedMessage()." (السطر #{$i})",
-                ], 403);
-            }
-        }
 
         $conflicts = [];
         $created = 0;
@@ -185,11 +174,6 @@ class TimetableController extends Controller
             'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'academic_term' => ['sometimes', 'string', 'max:20'],
         ]);
-
-        $user = $request->user();
-        if ($user && ! FacultyScope::assertGroupInScope($user, (int) $input['group_id'])) {
-            abort(403, FacultyScope::deniedMessage());
-        }
 
         return $input;
     }

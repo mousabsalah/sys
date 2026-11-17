@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ExamSession;
 use App\Models\Group;
-use App\Services\Access\FacultyScope;
 use App\Services\Engine\ConflictChecker;
 use App\Support\Defaults;
 use Illuminate\Http\Request;
@@ -92,11 +91,6 @@ class ExamController extends Controller
             'exam_type' => ['sometimes', 'in:اختبار قصير,ميدترم,فاينل'],
             'academic_term' => ['sometimes', 'string', 'max:20'],
         ]);
-
-        $user = $request->user();
-        if ($user && ! FacultyScope::assertGroupInScope($user, (int) $input['group_id'])) {
-            abort(403, FacultyScope::deniedMessage());
-        }
 
         return $input;
     }

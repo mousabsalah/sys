@@ -32,8 +32,21 @@ final class ArabicDay
         return self::MAP[$d->dayOfWeek];
     }
 
-    /** قائمة الأيام بالترتيب الأكاديمي — لتحقق whereIn أو الحقن في واجهات */
-    /** @return array<int, string> */
+    /**
+     * CASE SQL للترتيب الأكاديمي للشُعب (دبلوم أولاً ثم بكالوريوس/بكلاريوس ثم البقية).
+     *
+     * @param  string  $column  اسم العمود (مملي بصيغة table.column)
+     */
+    public static function groupTrackOrderSql(string $column): string
+    {
+        return "CASE {$column} WHEN 'دبلوم' THEN 1 WHEN 'بكلاريوس' THEN 2 ELSE 3 END";
+    }
+
+    /**
+     * قائمة أيام الدراسة بالترتيب الأكاديمي، كما تُحقن في قوائم الاختيارات.
+     *
+     * @return array<int, string>
+     */
     public static function orderedStudyDays(): array
     {
         return self::ORDERED_STUDY_DAYS;
