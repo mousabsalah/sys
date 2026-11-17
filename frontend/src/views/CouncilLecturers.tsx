@@ -3,35 +3,9 @@ import useSeqGuard from '../components/useSeqGuard'
 import TempPasswordAlert from '../components/TempPasswordAlert'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
-
-type Degree = 'معيد' | 'محاضر' | 'أستاذ مساعد' | 'أستاذ مشارك' | 'أستاذ'
-
-type Lecturer = {
-  id: number
-  full_name: string
-  degree: Degree | null
-  department_id: number | null
-  department: string | null
-  email: string
-  phone: string | null
-  username: string | null
-  account_active: boolean | null
-  faculties: { id: number; name: string; code: string }[]
-  courses: { id: number; code: string; name: string }[]
-  courses_count: number
-}
-
-type Master = {
-  degrees: Degree[]
-  faculties: { id: number; name: string; code: string }[]
-  departments: { id: number; name: string; faculty_id: number }[]
-  lecturers: Lecturer[]
-  total: number
-}
-
-const DEGREES: Degree[] = ['معيد', 'محاضر', 'أستاذ مساعد', 'أستاذ مشارك', 'أستاذ']
-
-const emptyForm = { full_name: '', degree: 'معيد' as Degree, email: '', phone: '', department_id: '', faculty_ids: [] as number[], username: '', password: '' }
+import LecturerForm from './LecturerForm'
+import LecturersTable from './LecturersTable'
+import { emptyForm, type Lecturer, type LecturerFormState, type Master } from './CouncilLecturersTypes'
 
 export default function CouncilLecturersView({ call }: { call: Call }) {
   const [data, setData] = useState<Master | null>(null)
@@ -41,7 +15,7 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<number | null>(null)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState<LecturerFormState>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [tempPassword, setTempPassword] = useState<{ username: string; password: string } | null>(null)
 
@@ -185,90 +159,12 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
       </div>
 
       {showForm && (
-        <div className="aust-panel p-3 mb-3">
-          <h2 className="h5 mb-2" style={{ color: '#782B19' }}>{editing !== null ? 'تعديل بيانات المدرس' : 'إضافة مدرس'}</h2>
-          <div className="row g-2">
-            <div className="col-md-6"><input className="form-control" placeholder="الاسم الكامل" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required /></div>
-            <div className="col-md-3">
-              <select className="form-select" value={form.degree} onChange={(e) => setForm({ ...form, degree: e.target.value as Degree })} aria-label="الدرجة العلمية">
-                {DEGREES.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div className="col-md-3"><input className="form-control" type="email" dir="ltr" placeholder="البريد الإلكتروني" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
-            <div className="col-md-3"><input className="form-control" dir="ltr" placeholder="الهاتف (اختياري)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-            <div className="col-md-3">
-              <input className="form-control" dir="ltr" placeholder="اسم الدخول (للمدرس)" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={editing !== null} required={editing === null} minLength={3} />
-              {editing === null && <div className="form-text">إجباري — المدرس يدخل به للنظام</div>}
-            </div>
-            <div className="col-md-3">
-              <input className="form-control" dir="ltr" type="password" placeholder="كلمة المرور (اختياري)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} disabled={editing !== null} minLength={6} />
-              {editing === null && <div className="form-text">إن تُركت فارغة تُولَّد تلقائيًا وتُعرض مرة واحدة</div>}
-            </div>
-            <div className="col-md-3">
-              <select className="form-select" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} aria-label="القسم (اختياري)">
-                <option value="">— القسم (اختياري) —</option>
-                {data.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
-            <div className="col-12">
-              <label className="form-label mb-1">الكليات المرتبطة بها (اختر واحدًا أو أكثر):</label>
-              <div className="d-flex flex-wrap gap-2">
-                {data.faculties.map((f) => {
-                  const checked = form.faculty_ids.includes(f.id)
-                  return (
-                    <label key={f.id} className="border rounded px-2 py-1 small" style={{ cursor: 'pointer', background: checked ? '#0A1D3B' : '#fff', color: checked ? '#fff' : '#0A1D3B' }}>
-                      <input type="checkbox" className="d-none" checked={checked} onChange={() => setForm({ ...form, faculty_ids: checked ? form.faculty_ids.filter((id) => id !== f.id) : [...form.faculty_ids, f.id] })} />
-                      {f.name}
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="col-12 d-flex gap-2">
-              <button className="aust-btn" disabled={saving || !form.full_name || !form.email || form.faculty_ids.length === 0 || (editing === null && !form.username)} onClick={save}>{saving ? '…' : editing !== null ? 'حفظ' : 'إضافة'}</button>
-              <button className="aust-btn-outline" onClick={() => setShowForm(false)}>إلغاء</button>
-            </div>
-          </div>
-        </div>
+        <LecturerForm editing={editing} departments={data.departments} faculties={data.faculties} form={form} saving={saving} onChange={setForm} onSave={save} onCancel={() => setShowForm(false)} />
       )}
 
       <div className="row g-3">
         <div className="col-md-7">
-          <div className="table-responsive">
-            <table className="table table-sm aust-panel align-middle">
-              <thead className="table-light"><tr><th>#</th><th>المدرس</th><th>الدرجة</th><th>الكليات</th><th>مقررات</th><th></th></tr></thead>
-              <tbody>
-                {data.lecturers.map((l) => (
-                  <tr key={l.id} className={selectedFresh?.id === l.id ? 'table-active' : undefined}>
-                    <td>#{l.id}</td>
-                    <td>
-                      <strong>{l.full_name}</strong>
-                      <div className="small text-muted" dir="ltr">{l.email}</div>
-                      <div className="small">
-                        {l.username
-                          ? <span dir="ltr" className="text-muted">{l.username}</span>
-                          : <span className="text-muted">بدون حساب</span>}
-                        {' · '}
-                        {l.account_active === true && <span className="badge aust-badge-ok">مفعل</span>}
-                        {l.account_active === false && <span className="badge aust-badge-danger">موقوف</span>}
-                      </div>
-                    </td>
-                    <td>{l.degree ?? '—'}</td>
-                    <td className="small">{l.faculties.map((f) => f.name).join('، ') || '—'}</td>
-                    <td>{l.courses_count}</td>
-                    <td className="d-flex gap-1 flex-wrap">
-                      <button className="aust-btn-outline btn-sm" onClick={() => setSelected(l)}>مقرراته</button>
-                      <button className="aust-btn-outline btn-sm" onClick={() => startEdit(l)}>تعديل</button>
-                      {l.username && <button className="aust-btn-outline btn-sm" onClick={() => toggleAccount(l)}>{l.account_active ? 'إيقاف الحساب' : 'تفعيل الحساب'}</button>}
-                      {l.username && <button className="aust-btn-outline btn-sm" onClick={() => resetAccountPassword(l)}>كلمة المرور</button>}
-                      <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(l)}>حذف</button>
-                    </td>
-                  </tr>
-                ))}
-                {data.lecturers.length === 0 && <tr><td colSpan={6} className="text-muted">لا يوجد مدرسون — أضف أول مدرس من الزر أعلاه</td></tr>}
-              </tbody>
-            </table>
-          </div>
+          <LecturersTable lecturers={data.lecturers} selectedId={selectedFresh?.id ?? null} onPick={setSelected} onEdit={startEdit} onToggleAccount={toggleAccount} onResetPassword={resetAccountPassword} onRemove={remove} />
         </div>
 
         <div className="col-md-5">

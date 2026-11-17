@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { type Call } from '../api'
 import type { SheetConfig } from '../types/sheet'
@@ -61,16 +61,16 @@ export function OfficialTimetableSheet({
   const S: SheetConfig | null = overrideConfig ?? (data ? data.sheet : null)
 
   // Periods: استخدم الأول من إعدادات المستخدم — أو يمكن توسيعها مستقبلًا حسب مدّة الدراسة
-  const periods = (() => {
+  const periods = useMemo(() => {
     if (!S) return []
     const out: Array<{ label: string; start: string; end: string }> = []
     for (let i = 0; i < S.column_count; i++) {
       out.push({ label: S.period_labels[i] ?? `الفترة ${i + 1}`, start: (S.period_times[i] ?? ['07:00', '09:00'])[0], end: (S.period_times[i] ?? ['07:00', '09:00'])[1] })
     }
     return out
-  })()
+  }, [S])
 
-  const cells = (() => {
+  const cells = useMemo(() => {
     const map = new Map<string, Array<{ course: string; lecturer: string; hall: string; status: string }>>()
     if (!data) return map
     for (const r of data.rows) {
@@ -79,7 +79,7 @@ export function OfficialTimetableSheet({
       map.set(r.day_of_week, list)
     }
     return map
-  })()
+  }, [data])
 
   const cellAt = (day: string, periodIndex: number) => (cells.get(day) ?? [])[periodIndex]
 

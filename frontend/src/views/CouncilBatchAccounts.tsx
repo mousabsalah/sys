@@ -3,21 +3,9 @@ import useSeqGuard from '../components/useSeqGuard'
 import TempPasswordAlert from '../components/TempPasswordAlert'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
-
-type Account = { id: number; username: string; is_active: boolean; last_login_at: string | null }
-type GroupChip = { id: number; track: string; student_count: number }
-type BatchRow = {
-  id: number
-  name: string
-  student_count: number
-  program_id: number
-  program: string | null
-  department: string | null
-  department_id: number
-  groups: GroupChip[]
-  account: Account | null
-}
-type Master = { batches: BatchRow[]; departments: { id: number; name: string }[]; programs: { id: number; name: string }[] }
+import BatchCreateForm from './BatchCreateForm'
+import BatchRowAccountCell from './BatchRowAccountCell'
+import type { BatchRow, CreateFormState, Master } from './CouncilBatchAccountsTypes'
 
 export default function CouncilBatchAccountsView({ call }: { call: Call }) {
   const [rows, setRows] = useState<BatchRow[]>([])
@@ -31,7 +19,7 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
 
   // نموذج «دفعة جديدة»
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', student_count: '40', دبلوم: true, بكلاريوس: true, program_id: '', department_id: '' })
+  const [form, setForm] = useState<CreateFormState>({ name: '', student_count: '40', دبلوم: true, بكلاريوس: true, program_id: '', department_id: '' })
   const [newProgram, setNewProgram] = useState('')
   const [creatingProgram, setCreatingProgram] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -39,11 +27,6 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
   // نموذج «تعديل الدفعة» (اسم + سعة فقط — الشعب تُحدَّد عند الإنشاء)
   const [editing, setEditing] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ name: '', student_count: '' })
-
-  // نموذج «إنشاء حساب» لكل دفعة
-  const [formFor, setFormFor] = useState<number | null>(null)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
 
   const { next, isCurrent } = useSeqGuard()
 
@@ -123,20 +106,19 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
     } catch (e) { setErr((e as Error).message) }
   }
 
-  async function createAccount(batch: BatchRow) {
-    if (!username.trim()) { setErr('اسم الدخول إجباري'); return }
+  async function createAccount(batch: BatchRow, username: string, password: string): Promise<boolean> {
     setSaving(true); setErr(null); setMsg(null)
     try {
       const r = await call<{ ok: boolean; account?: { username: string; temporary_password?: string } }>('/api/council/batch-accounts', 'POST', {
         batch_id: batch.id,
-        username: username.trim(),
+        username,
         ...(password ? { password } : {}),
       })
       setMsg(`تم إنشاء حساب «${batch.name}» ✓`)
       if (r?.account?.temporary_password) setTempPassword({ username: r.account.username, password: r.account.temporary_password })
-      setFormFor(null); setUsername(''); setPassword('')
       await load()
-    } catch (e) { setErr((e as Error).message) } finally { setSaving(false) }
+      return true
+    } catch (e) { setErr((e as Error).message); return false } finally { setSaving(false) }
   }
 
   async function toggleAccount(row: BatchRow) {
@@ -186,27 +168,7 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
 
       {/* ── نموذج دفعة جديدة ── */}
       {showCreate && (
-        <div className="aust-panel p-3 mb-3">
-          <h2 className="h6 fw-bold mb-2 aust-h2">دفعة جديدة</h2>
-          <div className="d-flex gap-2 flex-wrap align-items-center">
-            <input className="form-control" style={{ maxWidth: 200 }} placeholder="اسم الدفعة مثل دفعة 2026" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <input className="form-control" style={{ maxWidth: 130 }} type="number" min={1} dir="ltr" placeholder="السعة" value={form.student_count} onChange={(e) => setForm({ ...form, student_count: e.target.value })} />
-            <label className="form-check-label d-flex align-items-center gap-1"><input type="checkbox" className="form-check-input m-0" checked={form.دبلوم} onChange={(e) => setForm({ ...form, دبلوم: e.target.checked })} /> دبلوم</label>
-            <label className="form-check-label d-flex align-items-center gap-1"><input type="checkbox" className="form-check-input m-0" checked={form.بكلاريوس} onChange={(e) => setForm({ ...form, بكلاريوس: e.target.checked })} /> بكلاريوس</label>
-            <select className="form-select" style={{ maxWidth: 220 }} value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} aria-label="القسم">
-              <option value="">— اختر القسم —</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <select className="form-select" style={{ maxWidth: 220 }} value={form.program_id} onChange={(e) => setForm({ ...form, program_id: e.target.value })} aria-label="البرنامج">
-              <option value="">— اختر البرنامج —</option>
-              {programs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <input className="form-control" style={{ maxWidth: 200 }} placeholder="برنامج جديد (اتركه اختياريًا للدفعات الفارغة)" value={newProgram} onChange={(e) => setNewProgram(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createProgram() } }} />
-            <button className="aust-btn-outline btn-sm" disabled={creatingProgram || !newProgram.trim()} onClick={createProgram}>{creatingProgram ? '…' : '+ برنامج'}</button>
-            <button className="aust-btn" disabled={saving || !form.name.trim() || !(form.دبلوم || form.بكلاريوس) || !form.program_id} onClick={createBatch}>{saving ? '…' : 'إنشاء'}</button>
-          </div>
-          <p className="small text-muted mt-2 mb-0">بالشعبة المحددة — تُنشأ شعبة لكل مسار وتُقسم السعة بالتساوي (الباقي للدبلوم). إذا لم تجد البرنامج المطلوب في القائمة، أكتب اسمه في الحقل يمينها واضغط «+ برنامج».</p>
-        </div>
+        <BatchCreateForm departments={departments} programs={programs} form={form} onChange={setForm} newProgram={newProgram} onNewProgramChange={setNewProgram} creatingProgram={creatingProgram} onCreateProgram={createProgram} saving={saving} onSubmit={createBatch} />
       )}
 
       {/* ── جدول الدفعات ── */}
@@ -234,7 +196,7 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
                 <td>{b.student_count}</td>
                 <td>
                   {b.groups.map((g) => (
-                    <span key={g.id} className="badge me-1" style={{ background: '#0A1D3B', color: '#fff' }}>{g.track} × {g.student_count}</span>
+                    <span key={g.id} className="badge me-1 aust-badge-navy">{g.track} × {g.student_count}</span>
                   ))}
                 </td>
                 <td dir="ltr" className="small">{b.account?.username ?? <span className="text-muted">— لم يُنشأ بعد</span>}</td>
@@ -246,22 +208,7 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
                     : <span className="badge aust-badge-neutral">بدون حساب</span>}
                 </td>
                 <td className="d-flex gap-1 flex-wrap">
-                  {b.account ? (
-                    <>
-                      <button className="aust-btn-outline btn-sm" onClick={() => toggleAccount(b)}>{b.account.is_active ? 'إيقاف' : 'تفعيل'}</button>
-                      <button className="aust-btn-outline btn-sm" onClick={() => resetAccountPassword(b)}>كلمة المرور</button>
-                    </>
-                  ) : formFor === b.id ? (
-                    <span className="d-flex gap-1 align-items-center flex-wrap">
-                      <input className="form-control form-control-sm" style={{ width: 150 }} dir="ltr" placeholder="اسم الدخول" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
-                      <input className="form-control form-control-sm" style={{ width: 150 }} dir="ltr" type="password" placeholder="كلمة المرور (اختياري)" value={password} onChange={(e) => setPassword(e.target.value)} />
-                      <button className="aust-btn btn-sm" disabled={saving || !username.trim()} onClick={() => createAccount(b)}>{saving ? '…' : 'إنشاء'}</button>
-                      <button className="aust-btn-outline btn-sm" onClick={() => { setFormFor(null); setUsername(''); setPassword('') }}>إلغاء</button>
-                    </span>
-                  ) : (
-                    <button className="aust-btn btn-sm" onClick={() => { setFormFor(b.id); setUsername(''); setPassword(''); setErr(null) }}>إنشاء حساب</button>
-                  )}
-                  <button className="aust-btn-danger-outline btn-sm" onClick={() => deleteBatch(b)}>حذف</button>
+                  <BatchRowAccountCell batch={b} saving={saving} onToggle={toggleAccount} onResetPassword={resetAccountPassword} onCreateAccount={createAccount} onDelete={deleteBatch} />
                 </td>
               </tr>
             ))}

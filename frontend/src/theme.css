@@ -133,6 +133,7 @@ body {
 .aust-btn-danger-outline:hover { background: #fbeae5; color: var(--aust-dark-brown); }
 
 /* ── AUST شارة الحالة — بدل ~20 hex inline متكرر ── */
+.aust-badge-navy { background: var(--aust-navy); color: #fff; }
 .aust-badge-ok { background: var(--aust-ok) !important; color: #fff !important; }
 .aust-badge-danger { background: var(--aust-dark-brown) !important; color: #fff !important; }
 .aust-badge-neutral { background: var(--aust-muted) !important; color: #fff !important; }
