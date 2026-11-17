@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
-export default function CreateTimetableView({ call, onDone }: { call: ReturnType<typeof useAuthedApi>, onDone: () => void }) {
+export default function CreateTimetableView({ call, onDone }: { call: Call, onDone: () => void }) {
   const [form, setForm] = useState({ course_id: 1, faculty_id: 1, group_id: 1, hall_id: 1, day_of_week: 'السبت', start_time: '11:30:00', end_time: '13:30:00', academic_term: '2026/1' })
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

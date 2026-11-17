@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import type { SheetConfig } from '../types/sheet'
 import '../official-sheet.css'
 
@@ -48,7 +48,7 @@ export function OfficialTimetableSheet({
   onClose,
   overrideConfig,
 }: {
-  call: ReturnType<typeof useAuthedApi>
+  call: Call
   groupId: number
   onClose: () => void
   overrideConfig?: SheetConfig

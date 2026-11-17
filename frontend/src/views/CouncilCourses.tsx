@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type CourseRow = {
@@ -16,7 +16,7 @@ type CourseRow = {
 
 const emptyForm = { code: '', name: '', credit_hours: '3', required_equipment: '' }
 
-export default function CouncilCoursesView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilCoursesView({ call }: { call: Call }) {
   const [rows, setRows] = useState<CourseRow[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)

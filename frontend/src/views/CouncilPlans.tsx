@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
 type PlanList = {
   groups: { id: number; batch_id: number; track: string; student_count: number; batch: { name: string } }[]
@@ -7,7 +7,7 @@ type PlanList = {
   courses: { id: number; code: string; name: string; credit_hours: number }[]
 }
 
-export default function CouncilPlansView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilPlansView({ call }: { call: Call }) {
   const [courses, setCourses] = useState<PlanList['courses']>([])
   const [data, setData] = useState<PlanList | null>(null)
   const [err, setErr] = useState<string | null>(null)

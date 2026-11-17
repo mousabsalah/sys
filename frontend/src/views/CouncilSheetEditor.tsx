@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BASE, useAuthedApi } from '../api'
+import { BASE, type Call } from '../api'
 import type { SheetConfig } from '../types/sheet'
 import { OfficialTimetableSheet } from './OfficialTimetable'
 
@@ -37,7 +37,7 @@ function NumInput({ label, value, onChange, min, max, suffix }: { label: string;
   )
 }
 
-export default function CouncilSheetEditorView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilSheetEditorView({ call }: { call: Call }) {
   const [draft, setDraft] = useState<SheetConfig | null>(null)
   const [saved, setSaved] = useState<SheetConfig | null>(null)
   const [err, setErr] = useState<string | null>(null)

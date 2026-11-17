@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type Account = { id: number; username: string; is_active: boolean; last_login_at: string | null }
@@ -17,7 +17,7 @@ type BatchRow = {
 }
 type Master = { batches: BatchRow[]; departments: { id: number; name: string }[]; programs: { id: number; name: string }[] }
 
-export default function CouncilBatchAccountsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilBatchAccountsView({ call }: { call: Call }) {
   const [rows, setRows] = useState<BatchRow[]>([])
   const [departments, setDepartments] = useState<Master['departments']>([])
   const [programs, setPrograms] = useState<Master['programs']>([])

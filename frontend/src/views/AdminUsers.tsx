@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type AdminUser = {
@@ -29,7 +29,7 @@ const ROLE_LABEL: Record<AdminUser['role'], string> = {
   lecturer: 'مدرس',
 }
 
-export default function AdminUsersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminUsersView({ call }: { call: Call }) {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [totalUsers, setTotalUsers] = useState(0)
   const [batches, setBatches] = useState<MasterLite['batches']>([])

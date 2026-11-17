@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
-export default function CreateBookingView({ call, onDone, hallId }: { call: ReturnType<typeof useAuthedApi>, onDone: () => void, hallId: number | null }) {
+export default function CreateBookingView({ call, onDone, hallId }: { call: Call, onDone: () => void, hallId: number | null }) {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [from, setFrom] = useState('13:00:00')
   const [to, setTo] = useState('15:00:00')

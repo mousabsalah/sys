@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 import { OfficialTimetableSheet } from './OfficialTimetable'
 
-export default function TimetablesView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
+export default function TimetablesView({ call, onNew }: { call: Call, onNew: () => void }) {
   const [groupId, setGroupId] = useState('5')
   const [groups, setGroups] = useState<{ id: number; batch: string; track: string; student_count: number }[]>([])
   const [rows, setRows] = useState<{id:number; course_id:number; faculty_id:number; group_id:number; hall_id:number; day_of_week:string; start_time:string; end_time:string}[]>([])
@@ -13,7 +13,7 @@ export default function TimetablesView({ call, onNew }: { call: ReturnType<typeo
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    call<{ groups: { id: number; batch: string; track: string; student_count: number }[]; courses: unknown[] }>('/api/admin/propose-timetable/context')
+    call<{ groups: { id: number; batch: string; track: string; student_count: number }[] }>('/api/admin/propose-timetable/context')
       .then((d) => {
         setGroups(d.groups)
         setGroupId((cur) => (d.groups.some((g) => String(g.id) === cur) ? cur : String(d.groups[0]?.id ?? cur)))

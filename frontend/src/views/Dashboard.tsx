@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import type { Role } from '../types'
 import type { AdminStats } from './AdminStats'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
@@ -19,7 +19,7 @@ const statsFallback = (
   </div>
 )
 
-export default function DashboardView({ call, role }: { call: ReturnType<typeof useAuthedApi>; role?: Role }) {
+export default function DashboardView({ call, role }: { call: Call; role?: Role }) {
   const [core, setCore] = useState<CoreData | null>(null)
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [statsErr, setStatsErr] = useState<string | null>(null)

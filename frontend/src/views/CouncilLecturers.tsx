@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type Degree = 'معيد' | 'محاضر' | 'أستاذ مساعد' | 'أستاذ مشارك' | 'أستاذ'
@@ -31,7 +31,7 @@ const DEGREES: Degree[] = ['معيد', 'محاضر', 'أستاذ مساعد', '�
 
 const emptyForm = { full_name: '', degree: 'معيد' as Degree, email: '', phone: '', department_id: '', faculty_ids: [] as number[], username: '', password: '' }
 
-export default function CouncilLecturersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilLecturersView({ call }: { call: Call }) {
   const [data, setData] = useState<Master | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -284,7 +284,7 @@ export default function CouncilLecturersView({ call }: { call: ReturnType<typeof
 
 function LecturerCoursesPanel({ lecturer, call, onAdd, onRemove }: {
   lecturer: Lecturer
-  call: ReturnType<typeof useAuthedApi>
+  call: Call
   onAdd: (lecturer: Lecturer, courseId: number) => void
   onRemove: (lecturer: Lecturer, courseId: number) => void
 }) {

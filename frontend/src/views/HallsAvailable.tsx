@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonCards, ErrorRetry } from '../components/LoadState'
 
-export default function HallsAvailableView({ call, onBook, canBook = true }: { call: ReturnType<typeof useAuthedApi>, onBook: (hallId: number) => void, canBook?: boolean }) {
+export default function HallsAvailableView({ call, onBook, canBook = true }: { call: Call, onBook: (hallId: number) => void, canBook?: boolean }) {
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
   const [from, setFrom] = useState('09:00:00')

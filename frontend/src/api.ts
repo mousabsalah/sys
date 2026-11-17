@@ -35,3 +35,6 @@ export function useAuthedApi(token: string | null) {
     [token],
   )
 }
+
+/** النوع الموحّد لمعامل `call` في كل الشاشات — بدل إعادة كتابة الإمضاء في 30 ملفًا */
+export type Call = ReturnType<typeof useAuthedApi>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type Row = {
@@ -18,7 +18,7 @@ type Row = {
 }
 type Payload = { batch: { id: number; name: string }; rows: Row[] }
 
-export default function BatchExamsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function BatchExamsView({ call }: { call: Call }) {
   const [data, setData] = useState<Payload | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
 type Faculty = { id: number; name: string; code: string; description?: string | null }
 type Master = { faculties: Faculty[] }
 
 const empty = { name: '', code: '', description: '' }
 
-export default function AdminFacultiesView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminFacultiesView({ call }: { call: Call }) {
   const [faculties, setFaculties] = useState<Faculty[]>([])
   const [form, setForm] = useState(empty)
   const [editing, setEditing] = useState<number | null>(null)

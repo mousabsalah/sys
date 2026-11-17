@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
 type ProposalAssignment = {
   course_id: number; code: string; name: string
@@ -22,7 +22,7 @@ type ProposeContext = {
   plans: Record<number, PlanItem[]>
 }
 
-export default function ProposeView({ call, onAdopted }: { call: ReturnType<typeof useAuthedApi>; onAdopted: () => void }) {
+export default function ProposeView({ call, onAdopted }: { call: Call; onAdopted: () => void }) {
   const [ctx, setCtx] = useState<ProposeContext | null>(null)
   const [ctxErr, setCtxErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'single' | 'all'>('single')

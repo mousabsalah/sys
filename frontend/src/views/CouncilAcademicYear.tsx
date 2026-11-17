@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type State = 'active' | 'upcoming' | 'ended' | 'archived'
@@ -33,7 +33,7 @@ const stateBadge = (s: State): { text: string; bg: string } => (s === 'active' ?
   : s === 'ended' ? { text: 'انتهى', bg: '#6c757d' }
   : { text: 'مؤرشف', bg: '#782B19' })
 
-export default function CouncilAcademicYearView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function CouncilAcademicYearView({ call }: { call: Call }) {
   const [rows, setRows] = useState<SemesterRow[]>([])
   const [activeId, setActiveId] = useState<number | null>(null)
   const [batches, setBatches] = useState<BatchOption[]>([])
@@ -115,8 +115,7 @@ export default function CouncilAcademicYearView({ call }: { call: ReturnType<typ
   }
 
   async function archive(s: SemesterRow) {
-    const backup = true // أرشفة تقوم معًا مع نسخة احتياطية تلقائية
-    if (!window.confirm(`أرشفة فصل «${s.academic_term}» (${s.batch} / ${s.department ?? ''})؟\nستُجمّد محاضراته وامتحاناته ولن تحجب الجدولة، وستُنشأ نسخة احتياطية${backup ? ' تلقائيًا' : ''}.`)) return
+    if (!window.confirm(`أرشفة فصل «${s.academic_term}» (${s.batch} / ${s.department ?? ''})؟\nستُجمّد محاضراته وامتحاناته ولن تحجب الجدولة، وستُنشأ نسخة احتياطية تلقائيًا.`)) return
     setBusy(true); setErr(null); setMsg(null)
     try {
       const r = await call<{ ok: boolean; backup: string | null }>(`/api/council/semesters/${s.id}/archive`, 'POST')

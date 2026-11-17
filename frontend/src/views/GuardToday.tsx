@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonCards, ErrorRetry } from '../components/LoadState'
 
 type Entry = {
@@ -38,7 +38,7 @@ type Payload = {
   halls: HallToday[]
 }
 
-export default function GuardTodayView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function GuardTodayView({ call }: { call: Call }) {
   const [data, setData] = useState<Payload | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)

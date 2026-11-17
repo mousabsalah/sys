@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
-export default function ExamsView({ call, onNew }: { call: ReturnType<typeof useAuthedApi>, onNew: () => void }) {
+export default function ExamsView({ call, onNew }: { call: Call, onNew: () => void }) {
   const [groupId, setGroupId] = useState('1')
   const [rows, setRows] = useState<{id:number; course_id:number; group_id:number; hall_id:number; exam_date:string; start_time:string; end_time:string; exam_type:string}[]>([])
   const [err, setErr] = useState<string | null>(null)

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
-export default function BookingsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function BookingsView({ call }: { call: Call }) {
   const [rows, setRows] = useState<{id:number; hall_id:number; date:string; start_time:string; end_time:string; activity_name?:string}[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)

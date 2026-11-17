@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type LectureMini = {
@@ -33,7 +33,7 @@ function LectureRow({ lecture }: { lecture: LectureMini | null }) {
   return <span>{lecture.day_of_week} · <span dir="ltr">{lecture.start_time.slice(0, 5)}–{lecture.end_time.slice(0, 5)}</span></span>
 }
 
-export default function SubstituteRequestsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function SubstituteRequestsView({ call }: { call: Call }) {
   const [data, setData] = useState<Payload | null>(null)
   const [tab, setTab] = useState<'incoming' | 'outgoing'>('incoming')
   const [err, setErr] = useState<string | null>(null)

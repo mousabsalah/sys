@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
-export default function CreateExamView({ call, onDone }: { call: ReturnType<typeof useAuthedApi>, onDone: () => void }) {
+export default function CreateExamView({ call, onDone }: { call: Call, onDone: () => void }) {
   const [form, setForm] = useState({ course_id: 1, group_id: 1, hall_id: 1, exam_date: '2026-11-25', start_time: '09:00:00', end_time: '11:00:00', exam_type: 'فاينل', academic_term: '2026/1' })
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

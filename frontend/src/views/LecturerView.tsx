@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type GroupInfo = { id: number; batch: string; track: string; student_count: number; department: string }
@@ -22,7 +22,7 @@ type Row = {
 
 type SubstituteTarget = { id: number; full_name: string; degree: string | null; email: string; phone: string | null }
 
-export default function LecturerView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function LecturerView({ call }: { call: Call }) {
   const [groups, setGroups] = useState<GroupInfo[]>([])
   const [groupId, setGroupId] = useState<number | 'all'>('all')
   const [rows, setRows] = useState<Row[]>([])

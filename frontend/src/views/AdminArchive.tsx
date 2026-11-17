@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
 type Semester = {
   id: number
@@ -31,7 +31,7 @@ type ArchivedResp = {
   exams: { id: number; course_code: string | null; course_name: string | null; exam_date: string; start_time: string; end_time: string; hall_name: string | null; group_id: number; group_track: string }[]
 }
 
-export default function AdminArchiveView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminArchiveView({ call }: { call: Call }) {
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<ArchivedResp | null>(null)

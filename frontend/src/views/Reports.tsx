@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BASE, useAuthedApi } from '../api'
+import { BASE, type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
-export default function ReportsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function ReportsView({ call }: { call: Call }) {
   const [data, setData] = useState<{utilization: {hall_id:number; hall:string; capacity:number; lectures:number; utilization_pct:number}[]} | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)

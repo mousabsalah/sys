@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 
 type Hall = { id: number; name: string; capacity: number; hall_type: string; status: string; equipment?: string | null }
 type Master = { halls: Hall[] }
@@ -9,7 +9,7 @@ const empty = { name: '', capacity: '50', hall_type: 'قاعة', status: 'متا
 
 const statusColor: Record<string, string> = { 'متاحة': '#1f7a3d', 'صيانة': '#B26225', 'مغلقة': '#782B19' }
 
-export default function AdminHallsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminHallsView({ call }: { call: Call }) {
   const [halls, setHalls] = useState<Hall[]>([])
   const [form, setForm] = useState(empty)
   const [editing, setEditing] = useState<number | null>(null)

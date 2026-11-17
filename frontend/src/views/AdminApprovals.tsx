@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAuthedApi } from '../api'
+import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type PendingLecture = {
@@ -39,7 +39,7 @@ type ApprovalsResponse = {
   pending_exams_count: number
 }
 
-export default function AdminApprovalsView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminApprovalsView({ call }: { call: Call }) {
   const [data, setData] = useState<ApprovalsResponse | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState<string | null>(null)

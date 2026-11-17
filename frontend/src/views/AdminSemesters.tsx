@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BASE, useAuthedApi } from '../api'
+import { BASE, type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
 type Semester = {
@@ -19,7 +19,7 @@ type Semester = {
 
 type BackupRow = { file: string; size_kb: number; created_at: string }
 
-export default function AdminSemestersView({ call }: { call: ReturnType<typeof useAuthedApi> }) {
+export default function AdminSemestersView({ call }: { call: Call }) {
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [backups, setBackups] = useState<BackupRow[]>([])
   const [err, setErr] = useState<string | null>(null)
