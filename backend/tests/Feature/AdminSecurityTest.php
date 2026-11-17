@@ -752,6 +752,55 @@ class AdminSecurityTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_bulk_store_creates_commits_atomically_and_rolls_back_on_conflict(): void
+    {
+        $council = $this->makeUser('council');
+        [, $department, , $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall('قاعة الاختبار الجماعي');
+
+        // ربط المقرر بالمدرس — شرط R13
+        CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $lecturer->id]);
+
+        $day = ArabicDay::of(Carbon::parse('2026-11-14'));
+        $assignments = [
+            ['course_id' => $course->id, 'faculty_id' => $lecturer->id, 'group_id' => $group->id, 'hall_id' => $hall->id, 'day_of_week' => $day, 'start_time' => '07:00:00', 'end_time' => '09:00:00', 'course_code' => $course->code],
+            ['course_id' => $course->id, 'faculty_id' => $lecturer->id, 'group_id' => $group->id, 'hall_id' => $hall->id, 'day_of_week' => $day, 'start_time' => '10:00:00', 'end_time' => '12:00:00', 'course_code' => $course->code],
+        ];
+
+        $this->authedAs($council)
+            ->postJson('/api/timetables/bulk', ['assignments' => $assignments])
+            ->assertCreated()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('created', 2);
+
+        $this->assertSame(2, Timetable::where('hall_id', $hall->id)->count());
+    }
+
+    public function test_bulk_store_blocks_all_when_any_row_conflicts(): void
+    {
+        $council = $this->makeUser('council');
+        [, $department, , $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        $hall = $this->makeHall('قاعة الاختبار المتعارض');
+
+        CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $lecturer->id]);
+
+        $day = ArabicDay::of(Carbon::parse('2026-11-14'));
+        $payload = [
+            ['course_id' => $course->id, 'faculty_id' => $lecturer->id, 'group_id' => $group->id, 'hall_id' => $hall->id, 'day_of_week' => $day, 'start_time' => '07:00:00', 'end_time' => '09:00:00'],
+            ['course_id' => $course->id, 'faculty_id' => $lecturer->id, 'group_id' => $group->id, 'hall_id' => $hall->id, 'day_of_week' => $day, 'start_time' => '07:00:00', 'end_time' => '09:00:00'],  // نفس الفترة — تعارض قاعة
+        ];
+
+        $response = $this->authedAs($council)
+            ->postJson('/api/timetables/bulk', ['assignments' => $payload])
+            ->assertStatus(422)
+            ->json();
+
+        $this->assertFalse($response['ok'] ?? true);
+        $this->assertSame(0, Timetable::where('hall_id', $hall->id)->count()); // لم يُحفظ أي سطر (الكل أو لا شيء)
+    }
+
     public function test_backup_bucket_does_not_consume_login_budget(): void
     {
         $this->app->instance(BackupGateway::class, new class implements BackupGateway

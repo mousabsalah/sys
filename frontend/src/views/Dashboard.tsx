@@ -3,6 +3,7 @@ import { type Call } from '../api'
 import type { Role } from '../types'
 import type { AdminStats } from './AdminStats'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
+import useSeqGuard from '../components/useSeqGuard'
 
 const AdminStatsView = lazy(() => import('./AdminStats'))
 
@@ -27,12 +28,19 @@ export default function DashboardView({ call, role }: { call: Call; role?: Role 
   const [reloadKey, setReloadKey] = useState(0)
   const isAdmin = role === 'admin'
 
+  const { next, isCurrent } = useSeqGuard()
+
   useEffect(() => {
-    call<CoreData>('/api/dashboard').then(setCore).catch((e) => setErr((e as Error).message))
+    const seq = next()
+    call<CoreData>('/api/dashboard')
+      .then((d) => { if (isCurrent(seq)) setCore(d) })
+      .catch((e) => { if (isCurrent(seq)) setErr((e as Error).message) })
     if (isAdmin) {
-      call<AdminStats>('/api/admin/dashboard-stats').then(setStats).catch((e) => setStatsErr((e as Error).message))
+      call<AdminStats>('/api/admin/dashboard-stats')
+        .then((d) => { if (isCurrent(seq)) setStats(d) })
+        .catch((e) => { if (isCurrent(seq)) setStatsErr((e as Error).message) })
     }
-  }, [call, isAdmin, reloadKey])
+  }, [call, isAdmin, reloadKey, isCurrent, next])
 
   if (err) return <ErrorRetry message={err} onRetry={() => { setErr(null); setReloadKey((k) => k + 1) }} />
   if (!core) return <SkeletonRows rows={4} height={80} />
@@ -49,10 +57,10 @@ export default function DashboardView({ call, role }: { call: Call; role?: Role 
   return (
     <>
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h1 className="h3 fw-bold mb-0" style={{ color: C.navy }}>
+        <h1 className="h3 fw-bold mb-0 aust-h1">
           {isAdmin ? 'لوحة تحكم مدير النظام' : 'لوحة التحكم'}
         </h1>
-        {isAdmin && stats && <span className="badge" style={{ background: C.navy, color: '#fff' }}>{stats.kpis.groups_count} شعبة · {stats.kpis.batches_count} دفعة · {stats.kpis.courses_count} مقرر</span>}
+        {isAdmin && stats && <span className="badge aust-badge-navy">{stats.kpis.groups_count} شعبة · {stats.kpis.batches_count} دفعة · {stats.kpis.courses_count} مقرر</span>}
       </div>
 
       {/* ── المؤشرات + الخريطة والرسوم (المدير فقط)؛ بقية الأدوار تحصل على شريط كلاسيكي ── */}
