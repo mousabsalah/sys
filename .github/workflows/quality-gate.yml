@@ -71,12 +71,12 @@ jobs:
         with:
           go-version: '1.27'
 
-      - name: Go build & vet
+      - name: Go build & vet & tests (with coverage)
         working-directory: engine
         run: |
           go build ./...
           go vet ./...
-          go test ./...
+          go test ./... -cover
 
   frontend:
     runs-on: ubuntu-latest
