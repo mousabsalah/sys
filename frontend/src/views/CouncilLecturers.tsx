@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import useSeqGuard from '../components/useSeqGuard'
+import TempPasswordAlert from '../components/TempPasswordAlert'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
@@ -46,11 +48,19 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
   // لوحة الربط بالمقررات
   const [selected, setSelected] = useState<Lecturer | null>(null)
 
+  const { next, isCurrent } = useSeqGuard()
+
   async function load() {
+    const seq = next()
     try {
-      setData(await call<Master>('/api/council/lecturers'))
+      const d = await call<Master>('/api/council/lecturers')
+      if (!isCurrent(seq)) return
+      setData(d)
       setErr(null)
-    } catch (e) { setErr((e as Error).message) }
+    } catch (e) {
+      if (!isCurrent(seq)) return
+      setErr((e as Error).message)
+    }
   }
 
   useEffect(() => { load() }, [reloadKey, call])
@@ -160,19 +170,12 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>إدارة المدرسين</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">إدارة المدرسين</h1>
       <p className="small text-muted mb-3">المجلس يضيف مدرسين بدرجاتهم العلمية، يربطهم بالكليات (أكثر من كلية)، ويربط كل مدرس بالمواد التي يدرسها (يمكن ربط مدرس بمادتين أو أكثر).</p>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
       {tempPassword && (
-        <div className="alert alert-warning py-2 d-flex align-items-center justify-content-between gap-2 flex-wrap" role="alert">
-          <span>
-            كلمة المرور المؤقتة للحساب <strong dir="ltr">{tempPassword.username}</strong>:&nbsp;
-            <strong dir="ltr">{tempPassword.password}</strong>
-            {' '}— سُجّلت على هذه الشاشة مرة واحدة فقط، انسخها الآن.
-          </span>
-          <button className="aust-btn-outline btn-sm" onClick={() => setTempPassword(null)}>فهمت</button>
-        </div>
+        <TempPasswordAlert username={tempPassword.username} password={tempPassword.password} onClose={() => setTempPassword(null)} />
       )}
 
       <div className="mb-3 d-flex align-items-center gap-2">
@@ -246,8 +249,8 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
                           ? <span dir="ltr" className="text-muted">{l.username}</span>
                           : <span className="text-muted">بدون حساب</span>}
                         {' · '}
-                        {l.account_active === true && <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>مفعل</span>}
-                        {l.account_active === false && <span className="badge" style={{ background: '#782B19', color: '#fff' }}>موقوف</span>}
+                        {l.account_active === true && <span className="badge aust-badge-ok">مفعل</span>}
+                        {l.account_active === false && <span className="badge aust-badge-danger">موقوف</span>}
                       </div>
                     </td>
                     <td>{l.degree ?? '—'}</td>
@@ -258,7 +261,7 @@ export default function CouncilLecturersView({ call }: { call: Call }) {
                       <button className="aust-btn-outline btn-sm" onClick={() => startEdit(l)}>تعديل</button>
                       {l.username && <button className="aust-btn-outline btn-sm" onClick={() => toggleAccount(l)}>{l.account_active ? 'إيقاف الحساب' : 'تفعيل الحساب'}</button>}
                       {l.username && <button className="aust-btn-outline btn-sm" onClick={() => resetAccountPassword(l)}>كلمة المرور</button>}
-                      <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(l)}>حذف</button>
+                      <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(l)}>حذف</button>
                     </td>
                   </tr>
                 ))}

@@ -54,7 +54,7 @@ export default function AdminHallsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{ color: '#0A1D3B' }}>إدارة القاعات والمعامل</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">إدارة القاعات والمعامل</h1>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <div className="alert alert-danger py-2">{err}</div>}
 
@@ -97,7 +97,7 @@ export default function AdminHallsView({ call }: { call: Call }) {
                 <td className="small text-muted">{h.equipment ?? '—'}</td>
                 <td className="d-flex gap-1">
                   <button className="aust-btn-outline btn-sm" onClick={() => { setEditing(h.id); setForm({ name: h.name, capacity: String(h.capacity), hall_type: h.hall_type, status: h.status, equipment: h.equipment ?? '' }) }}>تعديل</button>
-                  <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(h)}>حذف</button>
+                  <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(h)}>حذف</button>
                 </td>
               </tr>
             ))}

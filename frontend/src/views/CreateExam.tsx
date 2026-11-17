@@ -28,7 +28,7 @@ export default function CreateExamView({ call, onDone }: { call: Call, onDone: (
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>إعداد الامتحان</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">إعداد الامتحان</h1>
       <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={check}>
         <div><label className="form-label" htmlFor="ce">المقرر</label><input id="ce" type="number" className="form-control" value={form.course_id} onChange={(e) => setForm({ ...form, course_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="ge2">الدفعة/الشعبة</label><input id="ge2" type="number" className="form-control" value={form.group_id} onChange={(e) => setForm({ ...form, group_id: Number(e.target.value) })} /></div>

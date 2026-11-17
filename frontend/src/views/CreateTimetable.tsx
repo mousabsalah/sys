@@ -28,7 +28,7 @@ export default function CreateTimetableView({ call, onDone }: { call: Call, onDo
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>إعداد الجدول</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">إعداد الجدول</h1>
       <form className="aust-panel p-3 d-grid gap-2" style={{gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))'}} onSubmit={check}>
         <div><label className="form-label" htmlFor="c">المقرر</label><input id="c" type="number" className="form-control" value={form.course_id} onChange={(e) => setForm({ ...form, course_id: Number(e.target.value) })} /></div>
         <div><label className="form-label" htmlFor="f">عضو هيئة التدريس</label><input id="f" type="number" className="form-control" value={form.faculty_id} onChange={(e) => setForm({ ...form, faculty_id: Number(e.target.value) })} /></div>

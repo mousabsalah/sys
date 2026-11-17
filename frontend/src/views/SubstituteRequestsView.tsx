@@ -75,7 +75,7 @@ export default function SubstituteRequestsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>طلبات البدلاء</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">طلبات البدلاء</h1>
       <p className="small text-muted mb-3">مدرس يطلب من زميل (نفس الشعبة) أن يغطي محاضرته — التفاوض مباشر بينكما، لا حاجة لموافقة المجلس.</p>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={load} />}
@@ -104,7 +104,7 @@ export default function SubstituteRequestsView({ call }: { call: Call }) {
             {tab === 'incoming' && r.status === 'pending' && (
               <div className="d-flex gap-1">
                 <button className="aust-btn btn-sm" disabled={busy === `respond:${r.id}`} onClick={() => respond(r.id, 'accept')}>قبول</button>
-                <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} disabled={busy === `respond:${r.id}`} onClick={() => respond(r.id, 'reject')}>رفض</button>
+                <button className="aust-btn-danger-outline btn-sm" disabled={busy === `respond:${r.id}`} onClick={() => respond(r.id, 'reject')}>رفض</button>
               </div>
             )}
             {tab === 'outgoing' && r.status === 'pending' && (

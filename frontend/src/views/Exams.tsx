@@ -20,7 +20,7 @@ export default function ExamsView({ call, onNew }: { call: Call, onNew: () => vo
   return (
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <h1 className="h3 fw-bold mb-0" style={{color: '#0A1D3B'}}>الامتحانات</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">الامتحانات</h1>
         <button className="aust-btn" onClick={onNew}>+ إعداد امتحان</button>
       </div>
       <div className="aust-panel p-3 mb-3 d-flex gap-2">

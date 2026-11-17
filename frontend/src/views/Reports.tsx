@@ -16,7 +16,7 @@ export default function ReportsView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <h1 className="h3 fw-bold mb-0" style={{color: '#0A1D3B'}}>التقارير — نسبة استخدام القاعات</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">التقارير — نسبة استخدام القاعات</h1>
         <a className="aust-btn-outline" href={`${BASE}/api/reports/utilization?format=csv`} target="_blank" rel="noreferrer">تصدير CSV</a>
       </div>
       <table className="table table-sm aust-panel align-middle">

@@ -61,6 +61,7 @@
   --aust-border: #e5ded4;
   --aust-text: #1f2937;
   --aust-muted: #6b7280;
+  --aust-ok: #1f7a3d;
 }
 
 body {
@@ -116,6 +117,25 @@ body {
 }
 .aust-chip:hover { background: #eef3f8; }
 .aust-chip.active { background: var(--aust-navy); color: #fff; }
+
+/* ── AUST headings (替换 ~30 خط inline navy بأنماط موحدة) ── */
+.aust-h1, .aust-h2 { color: var(--aust-navy); }
+
+/* ── زر الحذف الخطير — نفس المظهر في كل الشاشات ── */
+.aust-btn-danger-outline {
+  border: 1px solid var(--aust-dark-brown);
+  background: transparent;
+  color: var(--aust-dark-brown);
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 0.5rem 1.2rem;
+}
+.aust-btn-danger-outline:hover { background: #fbeae5; color: var(--aust-dark-brown); }
+
+/* ── AUST شارة الحالة — بدل ~20 hex inline متكرر ── */
+.aust-badge-ok { background: var(--aust-ok) !important; color: #fff !important; }
+.aust-badge-danger { background: var(--aust-dark-brown) !important; color: #fff !important; }
+.aust-badge-neutral { background: var(--aust-muted) !important; color: #fff !important; }
 
 /* ── Sidebar shell ──────────────────────────── */
 .app-sidebar {

@@ -59,7 +59,7 @@ export default function HallsAvailableView({ call, onBook, canBook = true }: { c
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{color: '#0A1D3B'}}>القاعات المتاحة</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">القاعات المتاحة</h1>
       <p className="small text-muted mb-2">
         تُحدَّث تلقائيًا كل 30 ثانية{lastUpdated ? <> — آخر تحديث <strong>{lastUpdated}</strong></> : null}
       </p>
@@ -80,7 +80,7 @@ export default function HallsAvailableView({ call, onBook, canBook = true }: { c
           <div className="col-md-4" key={h.id}>
             <div className="aust-panel p-3 h-100">
               <div className="d-flex justify-content-between align-items-start">
-                <h2 className="h5 mb-1" style={{color: '#0A1D3B'}}>{h.name}</h2>
+                <h2 className="h5 mb-1 aust-h2">{h.name}</h2>
                 <span className="badge" style={{background: '#9C4D20', color: '#fff'}}>{h.hall_type}</span>
               </div>
               <p className="mb-1 small text-muted">سعتها: <strong>{h.capacity}</strong> مقعدًا</p>

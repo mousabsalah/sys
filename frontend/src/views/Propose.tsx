@@ -105,7 +105,7 @@ export default function ProposeView({ call, onAdopted }: { call: Call; onAdopted
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>اقتراح الجدول التلقائي (CP-SAT)</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">اقتراح الجدول التلقائي (CP-SAT)</h1>
       <p className="small text-muted mb-3">مقترح للمراجعة فقط — لا يُحفظ شيء تلقائيًا؛ الاعتماد يمر بمعاملة واحدة عبر مسار check→save المعتاد (الكل أو لا شيء).</p>
 
       <form className="aust-panel p-3 mb-3" onSubmit={propose}>

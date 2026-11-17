@@ -32,7 +32,7 @@ export default function TimetablesView({ call, onNew }: { call: Call, onNew: () 
   return (
     <>
       <div className="d-flex align-items-center justify-content-between mb-3">
-        <h1 className="h3 fw-bold mb-0" style={{color: '#0A1D3B'}}>الجداول</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">الجداول</h1>
         <div className="d-flex gap-2">
           <button className="aust-btn-outline" onClick={() => setShowOfficial(true)}>📄 الورقة الرسمية</button>
           <button className="aust-btn" onClick={onNew}>+ إعداد الجدول</button>

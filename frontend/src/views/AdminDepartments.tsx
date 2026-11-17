@@ -60,7 +60,7 @@ export default function AdminDepartmentsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{ color: '#0A1D3B' }}>إدارة الأقسام</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">إدارة الأقسام</h1>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <div className="alert alert-danger py-2">{err}</div>}
 
@@ -94,7 +94,7 @@ export default function AdminDepartmentsView({ call }: { call: Call }) {
                 <td>{facultyName(d.faculty_id)}</td>
                 <td className="d-flex gap-1">
                   <button className="aust-btn-outline btn-sm" onClick={() => { setEditing(d.id); setForm({ faculty_id: String(d.faculty_id), name: d.name, code: d.code }) }}>تعديل</button>
-                  <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(d)}>حذف</button>
+                  <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(d)}>حذف</button>
                 </td>
               </tr>
             ))}

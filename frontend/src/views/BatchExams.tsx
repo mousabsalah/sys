@@ -38,7 +38,7 @@ export default function BatchExamsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>جدول الامتحانات — {data?.batch.name}</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">جدول الامتحانات — {data?.batch.name}</h1>
       <p className="small text-muted mb-3">امتحانات شعب دفعتك المعتمدة فقط، مرتبة حسب التاريخ.</p>
       {err && <ErrorRetry message={err} onRetry={load} />}
 
@@ -58,8 +58,8 @@ export default function BatchExamsView({ call }: { call: Call }) {
                   <td>{r.hall_name ?? '—'}</td>
                   <td>{r.exam_type ?? '—'}</td>
                   <td>{cancelled
-                    ? <span className="badge" style={{ background: '#6c757d', color: '#fff' }}>ملغي</span>
-                    : <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>معتمد</span>}
+                    ? <span className="badge aust-badge-neutral">ملغي</span>
+                    : <span className="badge aust-badge-ok">معتمد</span>}
                   </td>
                 </tr>
               )

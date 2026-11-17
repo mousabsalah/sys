@@ -65,7 +65,7 @@ export default function AdminSemestersView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>الفصول الدراسية — قراءة فقط</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">الفصول الدراسية — قراءة فقط</h1>
       <p className="small text-muted mb-3">كل عمليات الإدارة (فتح السنة، إنشاء/تعديل/أرشفة/حذف الفصول) تتم عبر <strong>مجلس المدرسين</strong> ← «بداية السنة الدراسية». هذه الشاشة للمشاهدة فقط.</p>
       <div className="alert alert-info py-2 small" role="note">هذه شاشة مشاهدة — أي تعديل مطلوب يتم من «بداية السنة الدراسية» بحساب مجلس المدرسين.</div>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
@@ -86,7 +86,7 @@ export default function AdminSemestersView({ call }: { call: Call }) {
                   <td className="small" dir="ltr">{s.start_date ?? '—'} ← {s.end_date ?? '—'}</td>
                   <td>{s.archived_at
                     ? <span className="badge" style={{ background: '#555', color: '#fff' }}>مؤرشف</span>
-                    : <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>جارٍ</span>}
+                    : <span className="badge aust-badge-ok">جارٍ</span>}
                   </td>
                 </tr>
               ))}
@@ -97,7 +97,7 @@ export default function AdminSemestersView({ call }: { call: Call }) {
 
       <div className="aust-panel p-3">
         <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-          <h2 className="h5 mb-0" style={{ color: '#0A1D3B' }}>النسخ الاحتياطية الأخيرة</h2>
+          <h2 className="h5 mb-0 aust-h2">النسخ الاحتياطية الأخيرة</h2>
           <button className="aust-btn" disabled={backupBusy} onClick={createBackup}>{backupBusy ? 'جارٍ الإنشاء…' : '+ نسخة احتياطية الآن'}</button>
         </div>
         <ul className="list-group">

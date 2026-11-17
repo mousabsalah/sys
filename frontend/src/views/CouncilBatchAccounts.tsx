@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import useSeqGuard from '../components/useSeqGuard'
+import TempPasswordAlert from '../components/TempPasswordAlert'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
@@ -43,17 +45,23 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
+  const { next, isCurrent } = useSeqGuard()
+
   async function load() {
+    const seq = next()
     setLoading(true)
     try {
       const d = await call<Master>('/api/council/batch-accounts')
+      if (!isCurrent(seq)) return
       setRows(d.batches ?? [])
       setDepartments(d.departments ?? [])
       setPrograms(d.programs ?? [])
       if (!form.department_id && d.departments?.length) setForm((f) => ({ ...f, department_id: String(d.departments[0].id) }))
       if (!form.program_id && d.programs?.length) setForm((f) => ({ ...f, program_id: String(d.programs[0].id) }))
       setErr(null)
-    } catch (e) { setErr((e as Error).message) } finally { setLoading(false) }
+    } catch (e) {
+      if (!isCurrent(seq)) return
+      setErr((e as Error).message) } finally { setLoading(false) }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [reloadKey, call])
 
@@ -166,27 +174,20 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h1 className="h3 fw-bold mb-0" style={{ color: '#0A1D3B' }}>إدارة الدفعات</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">إدارة الدفعات</h1>
         <button className="aust-btn" onClick={() => { setShowCreate((s) => !s); setErr(null); setMsg(null) }}>{showCreate ? 'إخفاء النموذج' : '+ دفعة جديدة'}</button>
       </div>
       <p className="small text-muted mb-3">مجلس المدرسين ينشئ الدفعات بشعبها وبرنامجها، ويدير حسابات الدفعات — المدير لا يرى أيًا من ذلك. «حذف الدفعة» ممنوع مع أي استخدام (جداول/امتحانات/حسابات/خطة/فصول).</p>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
       {tempPassword && (
-        <div className="alert alert-warning py-2 d-flex align-items-center justify-content-between gap-2 flex-wrap" role="alert">
-          <span>
-            كلمة المرور المؤقتة للحساب <strong dir="ltr">{tempPassword.username}</strong>:&nbsp;
-            <strong dir="ltr">{tempPassword.password}</strong>
-            {' '}— تُعرض مرة واحدة فقط، انسخها الآن.
-          </span>
-          <button className="aust-btn-outline btn-sm" onClick={() => setTempPassword(null)}>فهمت</button>
-        </div>
+        <TempPasswordAlert username={tempPassword.username} password={tempPassword.password} onClose={() => setTempPassword(null)} />
       )}
 
       {/* ── نموذج دفعة جديدة ── */}
       {showCreate && (
         <div className="aust-panel p-3 mb-3">
-          <h2 className="h6 fw-bold mb-2" style={{ color: '#0A1D3B' }}>دفعة جديدة</h2>
+          <h2 className="h6 fw-bold mb-2 aust-h2">دفعة جديدة</h2>
           <div className="d-flex gap-2 flex-wrap align-items-center">
             <input className="form-control" style={{ maxWidth: 200 }} placeholder="اسم الدفعة مثل دفعة 2026" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <input className="form-control" style={{ maxWidth: 130 }} type="number" min={1} dir="ltr" placeholder="السعة" value={form.student_count} onChange={(e) => setForm({ ...form, student_count: e.target.value })} />
@@ -240,9 +241,9 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
                 <td>
                   {b.account
                     ? (b.account.is_active
-                        ? <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>مفعل</span>
-                        : <span className="badge" style={{ background: '#782B19', color: '#fff' }}>موقوف</span>)
-                    : <span className="badge" style={{ background: '#6c757d', color: '#fff' }}>بدون حساب</span>}
+                        ? <span className="badge aust-badge-ok">مفعل</span>
+                        : <span className="badge aust-badge-danger">موقوف</span>)
+                    : <span className="badge aust-badge-neutral">بدون حساب</span>}
                 </td>
                 <td className="d-flex gap-1 flex-wrap">
                   {b.account ? (
@@ -260,7 +261,7 @@ export default function CouncilBatchAccountsView({ call }: { call: Call }) {
                   ) : (
                     <button className="aust-btn btn-sm" onClick={() => { setFormFor(b.id); setUsername(''); setPassword(''); setErr(null) }}>إنشاء حساب</button>
                   )}
-                  <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => deleteBatch(b)}>حذف</button>
+                  <button className="aust-btn-danger-outline btn-sm" onClick={() => deleteBatch(b)}>حذف</button>
                 </td>
               </tr>
             ))}

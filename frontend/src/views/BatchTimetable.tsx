@@ -42,7 +42,7 @@ export default function BatchTimetableView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>جدولي — {data?.batch.name}</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">جدولي — {data?.batch.name}</h1>
       <p className="small text-muted mb-3">جدول محاضرات شعب دفعتك المعتمدة فقط (بالترتيب الزمني). المحاضرات الملغية تبقى ظاهرة بشارة رمادية حتى لا يفوتك التغيير.</p>
       {err && <ErrorRetry message={err} onRetry={load} />}
 
@@ -77,8 +77,8 @@ export default function BatchTimetableView({ call }: { call: Call }) {
                   <td>{r.hall_name ?? '—'}</td>
                   <td>{r.faculty_name ?? '—'}</td>
                   <td>{cancelled
-                    ? <span className="badge" style={{ background: '#6c757d', color: '#fff' }}>ملغية</span>
-                    : <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>معتمدة</span>}
+                    ? <span className="badge aust-badge-neutral">ملغية</span>
+                    : <span className="badge aust-badge-ok">معتمدة</span>}
                   </td>
                 </tr>
               )

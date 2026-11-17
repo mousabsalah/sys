@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import useSeqGuard from '../components/useSeqGuard'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
@@ -46,11 +47,21 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
+  const { next, isCurrent } = useSeqGuard()
+
   async function load() {
+    const seq = next()
     try {
-      setData(await call<ApprovalsResponse>('/api/admin/approvals'))
+      const d = await call<ApprovalsResponse>('/api/admin/approvals')
+      if (!isCurrent(seq)) return
+      setData(d)
       setErr(null)
-    } catch (e) { setErr((e as Error).message) } finally { setLoaded(true) }
+    } catch (e) {
+      if (!isCurrent(seq)) return
+      setErr((e as Error).message)
+    } finally {
+      if (isCurrent(seq)) setLoaded(true)
+    }
   }
   useEffect(() => { load() }, [call])
 
@@ -71,7 +82,7 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>اعتماد الجداول والامتحانات</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">اعتماد الجداول والامتحانات</h1>
       <p className="small text-muted mb-3">ما ينشئه مجلس المدرسين يبدأ «بانتظار الاعتماد» — لا يراه غير المجلس والمدير. وافق هنا ليظهر للبقية.</p>
       {msg && <div className="alert alert-success py-2">{msg}</div>}
       {err && <ErrorRetry message={err} onRetry={load} />}

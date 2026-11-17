@@ -28,7 +28,7 @@ export default function CreateBookingView({ call, onDone, hallId }: { call: Call
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>حجز قاعة</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">حجز قاعة</h1>
       <div className="aust-panel p-2 p-md-3 d-inline-flex align-items-center gap-2 mb-3">
         <span className="small text-muted">القاعة المختارة:</span>
         <strong>{hallId ? `قاعة #${hallId}` : 'لم تُحدَّد — اذهب إلى «القاعات المتاحة» لاختيارها'}</strong>

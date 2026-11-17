@@ -55,7 +55,7 @@ export default function AdminArchiveView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>أرشيف الفصول السابقة</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">أرشيف الفصول السابقة</h1>
       <p className="small text-muted mb-3">جداول وامتحانات الفصول المؤرشفة — عرض للقراءة فقط، مفهرسة حسب الكلية ← القسم ← السنة ← الدفعة.</p>
       {err && <div className="alert alert-danger py-2">{err}</div>}
 
@@ -74,7 +74,7 @@ export default function AdminArchiveView({ call }: { call: Call }) {
                 >
                   <div className="d-flex justify-content-between align-items-center">
                     <strong dir="ltr">{s.academic_term}</strong>
-                    <span className="badge" style={{ background: '#782B19', color: '#fff' }}>{s.department ?? `#${s.department_id}`}</span>
+                    <span className="badge aust-badge-danger">{s.department ?? `#${s.department_id}`}</span>
                   </div>
                   <div className="small" style={selectedId === s.id ? { color: '#d6c9b4' } : { color: '#666' }}>
                     {s.faculty ?? `#${s.faculty_id}`} · {s.batch ?? `#${s.batch_id}`}
@@ -94,7 +94,7 @@ export default function AdminArchiveView({ call }: { call: Call }) {
             <div className="aust-panel p-3">
               <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                 <div>
-                  <h2 className="h5 mb-0" style={{ color: '#0A1D3B' }}>فصل {detail.semester.academic_term} — {detail.semester.department} / {detail.semester.batch}</h2>
+                  <h2 className="h5 mb-0 aust-h2">فصل {detail.semester.academic_term} — {detail.semester.department} / {detail.semester.batch}</h2>
                   <div className="small text-muted">{detail.semester.faculty} · {detail.semester.student_count ?? '—'} طالب · مؤرشف في {detail.semester.archived_at ? new Date(detail.semester.archived_at).toLocaleDateString('ar-SD') : '—'}</div>
                 </div>
                 <span className="badge" style={{ background: '#555', color: '#fff' }}>للقراءة فقط</span>

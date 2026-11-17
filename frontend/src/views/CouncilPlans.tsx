@@ -55,7 +55,7 @@ export default function CouncilPlansView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>الخطط الدراسية</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">الخطط الدراسية</h1>
       <p className="small text-muted mb-3">المواد المقررة لكل شعبة وعدد الحصص الأسبوعية — مدخل «الاقتراح التلقائي» (CP-SAT). مجموع الحصص يُفضّل أن لا يتجاوز شبكة الفترات (٦ أيام × ٣ فترات = 18).</p>
       {err && <div className="alert alert-danger py-2">{err}</div>}
       {msg && <div className="alert alert-success py-2">{msg}</div>}
@@ -71,7 +71,7 @@ export default function CouncilPlansView({ call }: { call: Call }) {
               <div className="aust-panel p-3 h-100">
                 <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
                   <div>
-                    <h2 className="h5 mb-0" style={{ color: '#0A1D3B' }}>شعبة {g.track} — {g.batch?.name}</h2>
+                    <h2 className="h5 mb-0 aust-h2">شعبة {g.track} — {g.batch?.name}</h2>
                     <div className="small text-muted">{g.student_count} طالبًا</div>
                   </div>
                   {editing

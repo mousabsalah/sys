@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import TempPasswordAlert from '../components/TempPasswordAlert'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
@@ -128,7 +129,7 @@ export default function AdminUsersView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>إدارة المستخدمين</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">إدارة المستخدمين</h1>
       <p className="small text-muted mb-3">إجمالي <strong>{totalUsers}</strong> حساب مسجّل في النظام — التعطيل فقط، بلا حذف. <span className="text-muted">(حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين ولا تظهر هنا)</span></p>
 
       {msg && <div className="alert alert-success py-2">{msg}</div>}
@@ -171,15 +172,7 @@ export default function AdminUsersView({ call }: { call: Call }) {
       )}
 
       {tempPassword && (
-        <div className="aust-panel p-3 mb-3" style={{ borderInlineStart: '4px solid #D4822D' }}>
-          <h2 className="h5 mb-2" style={{ color: '#B26225' }}>كلمة المرور المؤقتة ({tempPassword.username})</h2>
-          <div className="d-flex align-items-center gap-2">
-            <code className="fs-4">{tempPassword.password}</code>
-            <button className="aust-btn-outline btn-sm" onClick={() => navigator.clipboard.writeText(tempPassword.password)}>نسخ</button>
-            <button className="aust-btn-outline btn-sm" onClick={() => setTempPassword(null)}>إغلاق</button>
-          </div>
-          <p className="small text-muted mb-0 mt-1">هذه الكلمة تُعرض مرة واحدة فقط — أعطها للمستخدم بطريقة آمنة.</p>
-        </div>
+        <TempPasswordAlert username={tempPassword.username} password={tempPassword.password} onClose={() => setTempPassword(null)} />
       )}
 
       <div className="table-responsive">
@@ -201,8 +194,8 @@ export default function AdminUsersView({ call }: { call: Call }) {
                 <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleDateString('ar-SD') : '—'}</td>
                 <td>
                   {u.is_active
-                    ? <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>مفعل</span>
-                    : <span className="badge" style={{ background: '#782B19', color: '#fff' }}>موقوف</span>}
+                    ? <span className="badge aust-badge-ok">مفعل</span>
+                    : <span className="badge aust-badge-danger">موقوف</span>}
                 </td>
                 <td className="d-flex gap-1">
                   <button className="aust-btn-outline btn-sm" onClick={() => toggleActive(u)}>{u.is_active ? 'إيقاف' : 'تفعيل'}</button>

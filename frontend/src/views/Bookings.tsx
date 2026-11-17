@@ -16,7 +16,7 @@ export default function BookingsView({ call }: { call: Call }) {
   }, [reloadKey, call])
   return (
     <>
-      <h1 className="h3 fw-bold mb-3" style={{color: '#0A1D3B'}}>الحجوزات</h1>
+      <h1 className="h3 fw-bold mb-3 aust-h1">الحجوزات</h1>
       {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
       <table className="table table-sm aust-panel">
         <thead className="table-light"><tr><th>القاعة</th><th>التاريخ</th><th>من</th><th>إلى</th><th>النشاط</th></tr></thead>

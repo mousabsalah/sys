@@ -83,7 +83,7 @@ export default function CouncilCoursesView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h1 className="h3 fw-bold mb-0" style={{ color: '#0A1D3B' }}>إدارة المقررات</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">إدارة المقررات</h1>
         <button className="aust-btn" onClick={startAdd}>+ مقرر جديد</button>
       </div>
       <p className="small text-muted mb-3">مجلس المدرسين يضيف/يعدّل/يحذف المقررات — المدير يقرأها فقط لعرض قوائم «الخطط الدراسية».</p>
@@ -92,7 +92,7 @@ export default function CouncilCoursesView({ call }: { call: Call }) {
 
       {showForm && (
         <div className="aust-panel p-3 mb-3">
-          <h2 className="h6 fw-bold mb-2" style={{ color: '#0A1D3B' }}>{editing !== null ? 'تعديل مقرر' : 'مقرر جديد'}</h2>
+          <h2 className="h6 fw-bold mb-2 aust-h2">{editing !== null ? 'تعديل مقرر' : 'مقرر جديد'}</h2>
           <div className="d-flex gap-2 flex-wrap">
             <input className="form-control" style={{ maxWidth: 150 }} dir="ltr" placeholder="الكود مثل CS101" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
             <input className="form-control" style={{ maxWidth: 320 }} placeholder="اسم المقرر" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -121,7 +121,7 @@ export default function CouncilCoursesView({ call }: { call: Call }) {
                 </td>
                 <td className="d-flex gap-1">
                   <button className="aust-btn-outline btn-sm" onClick={() => startEdit(c)}>تعديل</button>
-                  <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(c)}>حذف</button>
+                  <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(c)}>حذف</button>
                 </td>
               </tr>
             ))}

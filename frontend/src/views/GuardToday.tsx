@@ -86,7 +86,7 @@ export default function GuardTodayView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1" style={{ color: '#0A1D3B' }}>قاعات اليوم — شاشة الحارس</h1>
+      <h1 className="h3 fw-bold mb-1 aust-h1">قاعات اليوم — شاشة الحارس</h1>
       <p className="small text-muted mb-3">
         {data?.day} {data?.date} · تُحدَّث تلقائيًا كل 30 ثانية{lastUpdated ? <> — آخر تحديث <strong>{lastUpdated}</strong></> : null}
       </p>
@@ -94,8 +94,8 @@ export default function GuardTodayView({ call }: { call: Call }) {
       {err && <ErrorRetry message={err} onRetry={refresh} />}
 
       <div className="aust-panel p-3 mb-3 d-flex align-items-center gap-3 flex-wrap">
-        <span className="badge fs-6" style={{ background: '#1f7a3d', color: '#fff' }}>{data?.free_now ?? 0} قاعة حرة الآن</span>
-        <span className="badge fs-6" style={{ background: '#782B19', color: '#fff' }}>{data?.busy_now ?? 0} مشغولة الآن</span>
+        <span className="badge fs-6 aust-badge-ok">{data?.free_now ?? 0} قاعة حرة الآن</span>
+        <span className="badge fs-6 aust-badge-danger">{data?.busy_now ?? 0} مشغولة الآن</span>
         <span className="small text-muted">من إجمالي {data?.total_halls ?? 0} قاعة</span>
         <div className="ms-auto d-flex gap-1" role="group" aria-label="تصفية القاعات">
           <button className={`aust-chip ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>الكل</button>
@@ -123,12 +123,12 @@ export default function GuardTodayView({ call }: { call: Call }) {
             <div className="aust-panel p-3 h-100">
               <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
                 <div>
-                  <h2 className="h5 mb-0" style={{ color: '#0A1D3B' }}>{h.name}</h2>
+                  <h2 className="h5 mb-0 aust-h2">{h.name}</h2>
                   <div className="small text-muted">سعتها <strong>{h.capacity}</strong> مقعد · {h.hall_type}</div>
                 </div>
                 {h.state === 'occupied'
-                  ? <span className="badge" style={{ background: '#782B19', color: '#fff' }}>مشغولة الآن</span>
-                  : <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>فارغة الآن</span>}
+                  ? <span className="badge aust-badge-danger">مشغولة الآن</span>
+                  : <span className="badge aust-badge-ok">فارغة الآن</span>}
               </div>
               <p className="small mb-2">{h.equipment ? h.equipment : <span className="text-muted">بلا تجهيزات</span>}</p>
 
@@ -144,7 +144,7 @@ export default function GuardTodayView({ call }: { call: Call }) {
                         <tr key={`${e.kind}-${e.id}`} style={cancelled ? { opacity: 0.55 } : undefined}>
                           <td dir="ltr" className="small">{e.start_time.slice(0, 5)}–{e.end_time.slice(0, 5)}</td>
                           <td className="small">{cancelled
-                            ? <span className="badge" style={{ background: '#6c757d', color: '#fff' }}>{e.label} — ملغية</span>
+                            ? <span className="badge aust-badge-neutral">{e.label} — ملغية</span>
                             : <span className="badge" style={{ background: e.kind === 'exam' ? '#782B19' : '#0A1D3B', color: '#fff' }}>{e.label}</span>}
                           </td>
                           <td className="small">
@@ -152,7 +152,7 @@ export default function GuardTodayView({ call }: { call: Call }) {
                             <div className="text-muted">{e.group}{e.with ? ` · ${e.with}` : ''}</div>
                           </td>
                           <td>{e.state === 'ended'
-                            ? <span className="badge" style={{ background: '#6c757d', color: '#fff' }}>انتهت</span>
+                            ? <span className="badge aust-badge-neutral">انتهت</span>
                             : <span className="badge" style={{ background: '#B26225', color: '#fff' }}>قادمة {e.start_time.slice(0, 5)}</span>}
                           </td>
                         </tr>

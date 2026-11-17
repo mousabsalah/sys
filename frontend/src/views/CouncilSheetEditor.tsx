@@ -119,7 +119,7 @@ export default function CouncilSheetEditorView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h1 className="h3 fw-bold mb-0" style={{ color: '#0A1D3B' }}>محرر الورقة الرسمية</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">محرر الورقة الرسمية</h1>
         <div className="d-flex gap-2">
           <button className="aust-btn-outline" disabled={saving || !dirty} onClick={resetAll}>↻ استرجاع الافتراضي</button>
           <button className="aust-btn" disabled={saving || !dirty} onClick={save}>{saving ? 'جارٍ الحفظ…' : 'حفظ التغييرات'}</button>
@@ -274,7 +274,7 @@ export default function CouncilSheetEditorView({ call }: { call: Call }) {
       {/* ── معاينة حية ── */}
       <div className="aust-panel p-3 mb-3 d-flex align-items-center justify-content-between gap-2">
         <div>
-          <h2 className="h6 fw-bold mb-1" style={{ color: '#0A1D3B' }}>المعاينة الحية</h2>
+          <h2 className="h6 fw-bold mb-1 aust-h2">المعاينة الحية</h2>
           <div className="small text-muted">أدخل / افتح الجدول الرسمي: <strong>الجداول ← الشعبة ← 📄 الورقة الرسمية</strong></div>
         </div>
         <button className="aust-btn-outline" onClick={() => setPreviewOpen(true)}>معاينة الورقة</button>

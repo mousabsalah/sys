@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import useSeqGuard from '../components/useSeqGuard'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
 
@@ -50,18 +51,24 @@ export default function CouncilAcademicYearView({ call }: { call: Call }) {
   const [editForm, setEditForm] = useState({ academic_term: '', start_date: '', end_date: '' })
   const [showOpen, setShowOpen] = useState(false)
 
+  const { next, isCurrent } = useSeqGuard()
+
   async function load() {
+    const seq = next()
     setLoading(true)
     try {
       const [sem, batchData] = await Promise.all([
         call<{ semesters: SemesterRow[]; active_id: number | null; total: number }>('/api/council/semesters'),
         call<{ batches: { id: number; name: string; student_count: number }[] }>('/api/council/batch-accounts'),
       ])
+      if (!isCurrent(seq)) return
       setRows(sem.semesters ?? [])
       setActiveId(sem.active_id ?? null)
       setBatches(batchData.batches ?? [])
       setErr(null)
-    } catch (e) { setErr((e as Error).message) } finally { setLoading(false) }
+    } catch (e) {
+      if (!isCurrent(seq)) return
+      setErr((e as Error).message) } finally { setLoading(false) }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [reloadKey, call])
 
@@ -150,14 +157,14 @@ export default function CouncilAcademicYearView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
-        <h1 className="h3 fw-bold mb-0" style={{ color: '#0A1D3B' }}>بداية السنة الدراسية</h1>
+        <h1 className="h3 fw-bold mb-0 aust-h1">بداية السنة الدراسية</h1>
         <button className="aust-btn" onClick={() => setShowOpen((s) => !s)}>{showOpen ? 'إخفاء النموذج' : '+ فتح السنة الدراسية'}</button>
       </div>
 
       {activeSemester
         ? <div className="alert alert-success py-2 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
             <span>الفصل النشط الآن: <strong>{activeSemester.academic_term}</strong> — {activeSemester.batch} · {activeSemester.department ?? ''} · من {activeSemester.start_date ?? '—'} إلى {activeSemester.end_date ?? '—'}</span>
-            <span className="badge" style={{ background: '#1f7a3d', color: '#fff' }}>نشط</span>
+            <span className="badge aust-badge-ok">نشط</span>
           </div>
         : <div className="alert alert-warning py-2 mb-3">لا يوجد فصل نشط الآن — افتح السنة الدراسية أو حدّد التواريخ للفصل القادم.</div>}
 
@@ -167,7 +174,7 @@ export default function CouncilAcademicYearView({ call }: { call: Call }) {
       {/* ── فتح السنة ── */}
       {showOpen && (
         <div className="aust-panel p-3 mb-3">
-          <h2 className="h6 fw-bold mb-2" style={{ color: '#0A1D3B' }}>فتح السنة الدراسية (سمسترين متزامنين)</h2>
+          <h2 className="h6 fw-bold mb-2 aust-h2">فتح السنة الدراسية (سمسترين متزامنين)</h2>
           <div className="d-flex gap-2 flex-wrap align-items-end mb-3">
             <div>
               <label className="form-label" htmlFor="ay">السنة الدراسية</label>
@@ -234,7 +241,7 @@ export default function CouncilAcademicYearView({ call }: { call: Call }) {
                         </>
                       )}
                       {s.archived_at && <button className="aust-btn-outline btn-sm" onClick={() => unarchive(s)}>فك الأرشفة</button>}
-                      <button className="aust-btn-outline btn-sm" style={{ borderColor: '#782B19', color: '#782B19' }} onClick={() => remove(s)}>حذف</button>
+                      <button className="aust-btn-danger-outline btn-sm" onClick={() => remove(s)}>حذف</button>
                     </>
                   )}
                 </td>
