@@ -163,8 +163,8 @@ final class ProposeGroupSolver
     }
 
     /**
-     * @param  array<int>  $courseIds
-     * @return Collection<int, Collection<int, object>>
+     * @param  Collection<int|string, mixed>  $courseIds
+     * @return Collection<int|string, Collection<int, \stdClass>>
      */
     private function poolsFor($courseIds)
     {
