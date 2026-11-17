@@ -1990,6 +1990,25 @@ class AdminSecurityTest extends TestCase
         $this->assertTrue(DB::table('audit_logs')->where('action', 'course.delete')->where('target_id', $courseId)->exists());
     }
 
+    public function test_council_courses_filter_q_matches_code_and_name(): void
+    {
+        $council = $this->makeUser('council');
+        Course::create(['code' => 'NET777', 'name' => 'شبكات متقدمة', 'credit_hours' => 3]);
+        Course::create(['code' => 'AI101', 'name' => 'ذكاء اصطناعي', 'credit_hours' => 4]);
+
+        $byCode = $this->authedAs($council)->getJson('/api/council/courses?q=NET')->json('courses');
+        $this->assertContains('NET777', collect($byCode)->pluck('code'));
+        $this->assertNotContains('AI101', collect($byCode)->pluck('code'));
+
+        $byName = $this->authedAs($council)->getJson('/api/council/courses?q=ذكاء')->json('courses');
+        $this->assertContains('AI101', collect($byName)->pluck('code'));
+        $this->assertNotContains('NET777', collect($byName)->pluck('code'));
+
+        // q عدائي (علامات مائة) لا يعطب الاستعلام
+        $wide = $this->authedAs($council)->getJson('/api/council/courses?q='.urlencode('%'))->assertOk()->json('courses');
+        $this->assertIsArray($wide);
+    }
+
     public function test_batch_notifications_feed_and_badge(): void
     {
         [$faculty, $department, $batch, $group] = $this->makeAcademicChain();

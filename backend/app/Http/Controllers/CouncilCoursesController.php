@@ -18,11 +18,21 @@ class CouncilCoursesController extends Controller
 {
     public function __construct(private AuditLogger $audit) {}
 
-    // GET /api/council/courses — كل المقررات مع مؤشرات استخدامها
-    public function index()
+    // GET /api/council/courses — كل المقررات (+ فلتر اختياري ?q= حسب الكود أو الاسم)
+    public function index(Request $request)
     {
-        $courses = Course::query()
-            ->orderBy('code')
+        $q = trim(mb_substr((string) $request->query('q', ''), 0, 60));
+
+        $query = Course::query()->orderBy('code');
+        if ($q !== '') {
+            // بارامتر مربوط — لا يمكن حقن SQL من هنا
+            $query->where(function ($w) use ($q) {
+                $w->where('code', 'like', '%'.$q.'%')
+                    ->orWhere('name', 'like', '%'.$q.'%');
+            });
+        }
+
+        $courses = $query
             ->get()
             ->map(fn (Course $c): array => [
                 'id' => $c->id,
