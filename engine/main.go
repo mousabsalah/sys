@@ -272,13 +272,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func main() {
-	portNum, err := strconv.Atoi(os.Getenv("SYST_ENGINE_PORT"))
-	if err != nil || portNum < 1 || portNum > 65535 {
-		portNum = 8080
-	}
-	log.Printf("syst-engine listening on :%d", portNum)
-
+func newMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -315,9 +309,19 @@ func main() {
 
 	mux.HandleFunc("/propose", handlePropose)
 
+	return mux
+}
+
+func main() {
+	portNum, err := strconv.Atoi(os.Getenv("SYST_ENGINE_PORT"))
+	if err != nil || portNum < 1 || portNum > 65535 {
+		portNum = 8080
+	}
+	log.Printf("syst-engine listening on :%d", portNum)
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", portNum),
-		Handler:           corsMiddleware(mux),
+		Handler:           corsMiddleware(newMux()),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      90 * time.Second,
