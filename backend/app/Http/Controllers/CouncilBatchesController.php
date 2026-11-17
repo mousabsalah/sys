@@ -6,6 +6,7 @@ use App\Models\Batch;
 use App\Models\Group;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Auth\TempPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -208,7 +209,7 @@ class CouncilBatchesController extends Controller
         }
 
         $batch = Batch::findOrFail((int) $input['batch_id']);
-        $plainPassword = $input['password'] ?? self::generatePassword(10);
+        $plainPassword = $input['password'] ?? TempPassword::issue(10);
         $generated = empty($input['password']);
 
         $account = DB::transaction(function () use ($input, $request, $batch, $plainPassword, $generated) {
@@ -281,7 +282,7 @@ class CouncilBatchesController extends Controller
     public function resetPassword(Request $request, int $user)
     {
         $account = $this->batchAccount($user);
-        $plain = self::generatePassword(10);
+        $plain = TempPassword::issue(10);
 
         DB::transaction(function () use ($account, $request, $plain, &$revoked) {
             $account->password = $plain;
@@ -303,17 +304,5 @@ class CouncilBatchesController extends Controller
     private function batchAccount(int $userId): User
     {
         return User::where('id', $userId)->where('role', 'batch')->firstOrFail();
-    }
-
-    /** كلمة مرور مؤقتة — 10 أحرف */
-    private static function generatePassword(int $length): string
-    {
-        $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789@$!';
-        $password = '';
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-        }
-
-        return $password;
     }
 }

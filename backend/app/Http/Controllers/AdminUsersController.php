@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Auth\TempPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -169,7 +170,7 @@ class AdminUsersController extends Controller
         if ($reject = $this->rejectIfLecturer($target)) {
             return $reject;
         }
-        $plain = $this->generatePassword(10);
+        $plain = TempPassword::issue(10);
 
         // Laravel Hash + Model cast('password' => 'hashed') → تمرير الـplain سيُخزن مشفّرًا
         DB::transaction(function () use ($request, $target, $plain, &$revoked) {
@@ -202,12 +203,5 @@ class AdminUsersController extends Controller
             'last_login_at' => $u->last_login_at,
             'email' => $u->email,
         ];
-    }
-
-    private function generatePassword(int $length = 10): string
-    {
-        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%!';
-
-        return implode('', array_map(fn () => $chars[random_int(0, strlen($chars) - 1)], range(1, $length)));
     }
 }

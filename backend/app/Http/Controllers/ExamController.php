@@ -6,6 +6,7 @@ use App\Models\ExamSession;
 use App\Models\Group;
 use App\Services\Access\FacultyScope;
 use App\Services\Engine\ConflictChecker;
+use App\Support\Defaults;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -23,7 +24,7 @@ class ExamController extends Controller
     public function store(Request $request)
     {
         $input = $this->validatePayload($request);
-        $input['academic_term'] = $request->input('academic_term', '2026/1');
+        $input['academic_term'] = $request->input('academic_term', Defaults::DEFAULT_TERM);
 
         $result = $this->checker->commitExam($input);
 

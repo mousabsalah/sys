@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Academic\ArabicDay;
 use App\Services\OfficialSheet\OfficialSheetConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -25,7 +26,7 @@ class OfficialTimetableController
             ->leftJoin('programs', 'programs.id', '=', 'batches.program_id')
             ->leftJoin('departments', 'departments.id', '=', 'batches.department_id')
             ->where('groups.id', $groupId)
-            ->first(['groups.id', 'groups.track', 'groups.student_count', 'batches.name AS batch_name', 'programs.name AS program_name', 'departments.name AS department_name']);
+            ->first(['groups.id', 'groups.track', 'groups.student_count', 'batches.id AS batch_id', 'batches.name AS batch_name', 'programs.name AS program_name', 'departments.name AS department_name']);
 
         if (! $group) {
             return response()->json(['ok' => false, 'message_ar' => 'الشعبة غير موجودة.'], 404);
@@ -33,7 +34,7 @@ class OfficialTimetableController
 
         // آخر فصل جارٍ لم يُؤرشف (إن وُجد) — للعرض في لافتة البرنامج/الفصل
         $term = DB::table('semesters')
-            ->where('batch_id', DB::table('groups')->where('id', $groupId)->value('batch_id'))
+            ->where('batch_id', $group->batch_id)
             ->whereNull('archived_at')
             ->orderByDesc('start_date')
             ->orderByDesc('id')
@@ -63,13 +64,12 @@ class OfficialTimetableController
                 'faculty.full_name AS faculty_name',
                 'halls.name AS hall_name',
             )
-            ->orderByRaw("CASE timetables.day_of_week WHEN 'السبت' THEN 1 WHEN 'الأحد' THEN 2 WHEN 'الاثنين' THEN 3 WHEN 'الثلاثاء' THEN 4 WHEN 'الأربعاء' THEN 5 WHEN 'الخميس' THEN 6 ELSE 99 END")
+            ->orderByRaw(ArabicDay::dayOrderSql('timetables.day_of_week'))
             ->orderBy('timetables.start_time')
             ->get();
 
         $sheet = OfficialSheetConfig::read();
 
-        $faculty = DB::table('faculty')->orderBy('id')->first(['full_name']);
         $college = DB::table('faculties')->orderBy('id')->first(['name', 'code']);
 
         return response()->json([

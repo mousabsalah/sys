@@ -8,6 +8,7 @@ use App\Models\Faculty;
 use App\Models\FacultyEntity;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
+use App\Services\Auth\TempPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -79,7 +80,7 @@ class CouncilLecturersController extends Controller
             'password' => ['nullable', 'string', 'min:6', 'max:100'],
         ]);
 
-        $plainPassword = $input['password'] ?? self::generatePassword(10);
+        $plainPassword = $input['password'] ?? TempPassword::issue(10);
         $accountGenerated = empty($input['password']);
 
         $lecturer = DB::transaction(function () use ($input, $request, $plainPassword, $accountGenerated) {
@@ -273,7 +274,7 @@ class CouncilLecturersController extends Controller
             return response()->json(['ok' => false, 'message_ar' => 'لا يوجد حساب لهذا المدرس.'], 422);
         }
 
-        $plain = self::generatePassword(10);
+        $plain = TempPassword::issue(10);
 
         DB::transaction(function () use ($account, $request, $plain, &$revoked) {
             $account->password = $plain;
@@ -289,17 +290,5 @@ class CouncilLecturersController extends Controller
             'temporary_password' => $plain,
             'message_ar' => 'كلمة المرور المؤقتة (انسيها الآن): '.$plain,
         ]);
-    }
-
-    /** كلمة مرور مؤقتة — 10 أحرف */
-    private static function generatePassword(int $length): string
-    {
-        $alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789@$!';
-        $password = '';
-        for ($i = 0; $i < $length; $i++) {
-            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-        }
-
-        return $password;
     }
 }

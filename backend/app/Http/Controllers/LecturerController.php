@@ -6,6 +6,7 @@ use App\Models\Faculty;
 use App\Models\Group;
 use App\Models\SubstituteRequest;
 use App\Models\Timetable;
+use App\Services\Academic\ArabicDay;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,7 +101,7 @@ class LecturerController extends Controller
                 'halls.name AS hall_name',
                 'faculty.full_name AS faculty_name',
             )
-            ->orderByRaw("CASE timetables.day_of_week WHEN 'السبت' THEN 1 WHEN 'الأحد' THEN 2 WHEN 'الاثنين' THEN 3 WHEN 'الثلاثاء' THEN 4 WHEN 'الأربعاء' THEN 5 WHEN 'الخميس' THEN 6 ELSE 99 END, timetables.start_time")
+            ->orderByRaw(ArabicDay::dayOrderSql('timetables.day_of_week').', timetables.start_time')
             ->get();
 
         return response()->json(['groups' => $this->groupsPayload($lecturer), 'rows' => $rows]);

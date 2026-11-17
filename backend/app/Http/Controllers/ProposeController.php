@@ -11,6 +11,7 @@ use App\Models\Period;
 use App\Models\Timetable;
 use App\Services\Access\FacultyScope;
 use App\Services\Engine\EngineClient;
+use App\Support\Defaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -86,7 +87,7 @@ class ProposeController extends Controller
         ]);
 
         $user = auth()->user();
-        $term = $input['academic_term'] ?? '2026/1';
+        $term = $input['academic_term'] ?? Defaults::DEFAULT_TERM;
         $multi = ! empty($input['group_ids']);
         $groupIds = $multi
             ? array_map('intval', $input['group_ids'])

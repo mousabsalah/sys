@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use App\Models\Timetable;
+use App\Services\Academic\ArabicDay;
 use App\Services\Access\FacultyScope;
 use App\Services\Engine\ConflictChecker;
+use App\Support\Defaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -26,7 +28,7 @@ class TimetableController extends Controller
     public function store(Request $request)
     {
         $input = $this->validatePayload($request);
-        $input['academic_term'] = $request->input('academic_term', '2026/1');
+        $input['academic_term'] = $request->input('academic_term', Defaults::DEFAULT_TERM);
 
         $result = $this->checker->commitTimetable($input);
 
@@ -54,7 +56,7 @@ class TimetableController extends Controller
             'assignments.*.faculty_id' => ['required', 'integer', Rule::exists('faculty', 'id')],
             'assignments.*.group_id' => ['required', 'integer', Rule::exists('groups', 'id')],
             'assignments.*.hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
-            'assignments.*.day_of_week' => ['required', 'string', 'in:السبت,الأحد,الاثنين,الثلاثاء,الأربعاء,الخميس'],
+            'assignments.*.day_of_week' => ['required', 'string', 'in:'.implode(',', ArabicDay::orderedStudyDays())],
             'assignments.*.start_time' => ['required', 'date_format:H:i:s'],
             'assignments.*.end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'assignments.*.academic_term' => ['sometimes', 'string', 'max:20'],
@@ -85,7 +87,7 @@ class TimetableController extends Controller
                         'day_of_week' => $item['day_of_week'],
                         'start_time' => $item['start_time'],
                         'end_time' => $item['end_time'],
-                        'academic_term' => $item['academic_term'] ?? '2026/1',
+                        'academic_term' => $item['academic_term'] ?? Defaults::DEFAULT_TERM,
                         'user_id' => $user->id,
                     ]);
 
@@ -178,7 +180,7 @@ class TimetableController extends Controller
             'faculty_id' => ['required', 'integer', Rule::exists('faculty', 'id')],
             'group_id' => ['required', 'integer', Rule::exists('groups', 'id')],
             'hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
-            'day_of_week' => ['required', 'string', 'in:السبت,الأحد,الاثنين,الثلاثاء,الأربعاء,الخميس'],
+            'day_of_week' => ['required', 'string', 'in:'.implode(',', ArabicDay::orderedStudyDays())],
             'start_time' => ['required', 'date_format:H:i:s'],
             'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
             'academic_term' => ['sometimes', 'string', 'max:20'],
