@@ -98,10 +98,10 @@ export default function GuardTodayView({ call }: { call: ReturnType<typeof useAu
         <span className="badge fs-6" style={{ background: '#782B19', color: '#fff' }}>{data?.busy_now ?? 0} مشغولة الآن</span>
         <span className="small text-muted">من إجمالي {data?.total_halls ?? 0} قاعة</span>
         <div className="ms-auto d-flex gap-1" role="group" aria-label="تصفية القاعات">
-          <button className={`btn btn-sm ${filter === 'all' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('all')}>الكل</button>
-          <button className={`btn btn-sm ${filter === 'occupied' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('occupied')}>مشغولة الآن</button>
-          <button className={`btn btn-sm ${filter === 'upcoming' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('upcoming')}>بها شيء قادم اليوم</button>
-          <button className={`btn btn-sm ${filter === 'empty' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setFilter('empty')}>يومها فارغ</button>
+          <button className={`aust-chip ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>الكل</button>
+          <button className={`aust-chip ${filter === 'occupied' ? 'active' : ''}`} onClick={() => setFilter('occupied')}>مشغولة الآن</button>
+          <button className={`aust-chip ${filter === 'upcoming' ? 'active' : ''}`} onClick={() => setFilter('upcoming')}>بها شيء قادم اليوم</button>
+          <button className={`aust-chip ${filter === 'empty' ? 'active' : ''}`} onClick={() => setFilter('empty')}>يومها فارغ</button>
         </div>
       </div>
 

@@ -48,14 +48,14 @@ export default function BatchTimetableView({ call }: { call: ReturnType<typeof u
 
       {cancelledCount > 0 && (
         <div className="alert alert-warning py-2">
-          🔔 تنبيه: {cancelledCount === 1 ? 'محاضرة واحدة ملغية' : `${cancelledCount} محاضرات ملغية`} في جدول دفعتك — راجع الجرس في الأسفل لآخر التغييرات.
+          تنبيه: {cancelledCount === 1 ? 'محاضرة واحدة ملغية' : `${cancelledCount} محاضرات ملغية`} في جدول دفعتك — راجع الإشعارات لآخر التغييرات.
         </div>
       )}
 
       <div className="aust-panel p-2 mb-3 d-flex gap-1 flex-wrap" role="group" aria-label="تصفية الشعب">
-        <button className={`btn btn-sm ${groupId === 'all' ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setGroupId('all')}>كل الشعب ({all.length})</button>
+        <button className={`aust-chip ${groupId === 'all' ? 'active' : ''}`} onClick={() => setGroupId('all')}>كل الشعب ({all.length})</button>
         {groups.map((g) => (
-          <button key={g.id} className={`btn btn-sm ${groupId === g.id ? 'btn-dark' : 'btn-outline-dark'}`} onClick={() => setGroupId(g.id)}>
+          <button key={g.id} className={`aust-chip ${groupId === g.id ? 'active' : ''}`} onClick={() => setGroupId(g.id)}>
             {g.track} ({all.filter((r) => r.group_id === g.id).length})
           </button>
         ))}

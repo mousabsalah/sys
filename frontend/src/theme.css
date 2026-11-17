@@ -99,6 +99,24 @@ body {
 }
 .aust-btn-outline:hover { background: #fdf3ea; }
 
+/* ── AUST chips (filters on light panels) ── */
+.aust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--aust-navy);
+  background: transparent;
+  color: var(--aust-navy);
+  border-radius: 6px;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.aust-chip:hover { background: #eef3f8; }
+.aust-chip.active { background: var(--aust-navy); color: #fff; }
+
 /* ── Sidebar shell ──────────────────────────── */
 .app-sidebar {
   background: var(--aust-navy);
@@ -117,7 +135,7 @@ body {
 }
 .app-sidebar .nav-link:hover { background: rgba(255,255,255,0.06); color: #fff; }
 .app-sidebar .nav-link.active { background: var(--aust-primary); color: #fff; font-weight: 600; }
-.app-sidebar .nav-link.disabled { color: #5f7099; cursor: default; }
+.app-sidebar .nav-link.disabled { color: #b8c7e3; cursor: default; opacity: 0.75; }
 
 /* ── Admin: مؤشرات رقمية ───────────────────── */
 .kpi-card {

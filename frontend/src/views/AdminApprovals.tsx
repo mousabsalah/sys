@@ -129,7 +129,7 @@ export default function AdminApprovalsView({ call }: { call: ReturnType<typeof u
         </table>
       </div>
 
-      <p className="small text-muted mt-3">بعد الاعتماد: تظهر للجميع · تُحتسب في التقارير · تظهر في «الجداول»/«الامتحانات» للدفعة والحرس.</p>
+      <p className="small text-muted mt-3">بعد الاعتماد: تظهر للجميع · تُحتسب في التقارير · تظهر في «الجداول»/«الامتحانات» للدفعة والحارس.</p>
     </>
   )
 }

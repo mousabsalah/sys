@@ -63,7 +63,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
         {user.role === 'batch' && <BatchNotificationsBell />}
         <div className="mt-auto p-3" style={{borderTop: '1px solid rgba(255,255,255,0.08)'}}>
           <div className="small" style={{color: '#b8c7e3'}}>{user.name}</div>
-          <div className="small" style={{color: '#D4822D'}}>{user.role === 'admin' ? 'مدير النظام' : user.role === 'council' ? 'مجلس المدرسين' : user.role === 'guard' ? 'حرس جامعي' : user.role === 'lecturer' ? 'مدرس' : 'دفعة'}</div>
+          <div className="small" style={{color: '#D4822D'}}>{user.role === 'admin' ? 'مدير النظام' : user.role === 'council' ? 'مجلس المدرسين' : user.role === 'guard' ? 'حارس' : user.role === 'lecturer' ? 'مدرس' : 'دفعة'}</div>
           <button className="btn btn-sm mt-2 w-100" style={{border: '1px solid #D4822D', color: '#D4822D', background: 'transparent'}} onClick={onLogout}>تسجيل الخروج</button>
         </div>
       </aside>

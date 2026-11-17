@@ -103,7 +103,7 @@ export default function AdminArchiveView({ call }: { call: ReturnType<typeof use
               <h3 className="h6 fw-bold" style={{ color: '#782B19' }}>المحاضرات ({detail.timetables.length})</h3>
               <div className="table-responsive mb-3" style={{ maxHeight: 320, overflowY: 'auto' }}>
                 <table className="table table-sm table-striped align-middle">
-                  <thead className="table-light"><tr><th>اليوم</th><th>من</th><th>إلى</th><th>المقرر</th><th>القاعة</th><th>الشعبة</th><th>الأستاذ</th></tr></thead>
+                  <thead className="table-light"><tr><th>اليوم</th><th>من</th><th>إلى</th><th>المقرر</th><th>القاعة</th><th>الشعبة</th><th>المدرس</th></tr></thead>
                   <tbody>
                     {detail.timetables.map((t) => (
                       <tr key={t.id}>

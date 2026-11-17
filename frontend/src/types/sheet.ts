@@ -136,7 +136,7 @@ export const DEFAULT_SHEET_SETTINGS: SheetConfig = {
   contact_phone2: '+249915496335',
   contact_email: 'Computer@aust.edu.sd',
   contact_url: 'www.aust.edu.sd',
-  contact_bg: '#101010',
+  contact_bg: '#0A1D3B',
   contact_color: '#ffffff',
   contact_font_size: 10,
 

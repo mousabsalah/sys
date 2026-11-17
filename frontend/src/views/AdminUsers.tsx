@@ -24,7 +24,7 @@ type MasterLite = {
 const ROLE_LABEL: Record<AdminUser['role'], string> = {
   admin: 'مدير النظام',
   council: 'مجلس المدرسين',
-  guard: 'حرس',
+  guard: 'حارس',
   batch: 'دفعة',
   lecturer: 'مدرس',
 }
@@ -140,7 +140,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
           <option value="">كل الأدوار</option>
           <option value="admin">مدير النظام</option>
           <option value="council">مجلس المدرسين</option>
-          <option value="guard">حرس</option>
+          <option value="guard">حارس</option>
         </select>
         <select className="form-select" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="الحالة">
           <option value="all">كل الحالات</option>
@@ -161,7 +161,7 @@ export default function AdminUsersView({ call }: { call: ReturnType<typeof useAu
             <select className="form-select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as AdminUser['role'] })}>
               <option value="admin">مدير النظام</option>
               <option value="council">مجلس المدرسين</option>
-              <option value="guard">حرس</option>
+              <option value="guard">حارس</option>
             </select>
             {/* دور المجلس يعمل عبر الجامعة كلها — لا قيد كلية (الجامعة = المقررات والكليات كلها) */}
             <button className="aust-btn" onClick={create}>إنشاء الحساب</button>
