@@ -190,14 +190,14 @@ func check(p Payload) CheckResult {
 // وإنما يُعيد 503 مع رسالة عربية واضحة.
 func handlePropose(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST only"})
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST only")
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
 	if err != nil {
 		log.Printf("propose: read body failed: %v", err)
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		writeError(w, http.StatusBadRequest, "BAD_BODY", "invalid body")
 		return
 	}
 	var probe struct {
@@ -207,11 +207,11 @@ func handlePropose(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal(body, &probe); err != nil {
 		log.Printf("propose: unmarshal payload failed: %v", err)
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+		writeError(w, http.StatusBadRequest, "BAD_JSON", "invalid JSON payload")
 		return
 	}
 	if probe.Group.ID <= 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing group.id"})
+		writeError(w, http.StatusBadRequest, "MISSING_GROUP_ID", "missing group.id")
 		return
 	}
 
@@ -233,16 +233,14 @@ func handlePropose(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// المخرج يصلح للتشخيص — 503 العربي يبقى للمستخدم لكن الحقيقية تسجل في stdout
 		log.Printf("propose: solver exec failed: %v", err)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
-			"error": "تعذر تشغيل محرك الاقتراح (CP-SAT). حاول لاحقًا أو تابع الجدولة يدويًا.",
-		})
+		writeError(w, http.StatusServiceUnavailable, "SOLVER_UNREACHABLE", "تعذر تشغيل محرك الاقتراح (CP-SAT). حاول لاحقًا أو تابع الجدولة يدويًا.")
 		return
 	}
 
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(output, &parsed); err != nil {
 		log.Printf("propose: solver output is not valid JSON: %v", err)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "استجابة غير صالحة من المحرك"})
+		writeError(w, http.StatusServiceUnavailable, "SOLVER_BAD_RESPONSE", "استجابة غير صالحة من المحرك")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -254,6 +252,11 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+// writeError موحّد — مكان واحد لكل ردود الخطأ (code + message).
+func writeError(w http.ResponseWriter, status int, code, msg string) {
+	writeJSON(w, status, map[string]string{"code": code, "error": msg})
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -288,23 +291,23 @@ func main() {
 
 	mux.HandleFunc("/check", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST only"})
+			writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST only")
 			return
 		}
 		body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
 		if err != nil {
 			log.Printf("check: read body failed: %v", err)
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+			writeError(w, http.StatusBadRequest, "BAD_BODY", "invalid body")
 			return
 		}
 		var p Payload
 		if err := json.Unmarshal(body, &p); err != nil {
 			log.Printf("check: unmarshal payload failed: %v", err)
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON payload"})
+			writeError(w, http.StatusBadRequest, "BAD_JSON", "invalid JSON payload")
 			return
 		}
 		if p.Type == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing type"})
+			writeError(w, http.StatusBadRequest, "MISSING_TYPE", "missing type")
 			return
 		}
 		writeJSON(w, http.StatusOK, check(p))

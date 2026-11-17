@@ -43,12 +43,17 @@ def fail(code: str, message: str):
     sys.exit(1)
 
 
-def main():
-    raw = sys.stdin.read()
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        fail("BAD_INPUT", f"Invalid JSON payload ({exc})")
+def normalize_pool(pool):
+    """حوّل faculty_pool (قوائم أرقام أو كائنات {id, full_name}) لقائمة (fid, name) موحدة."""
+    ids = []
+    for f in (pool or []):
+        fid = int(f["id"]) if isinstance(f, dict) else int(f)
+        name = f.get("full_name") if isinstance(f, dict) else str(f)
+        ids.append((fid, name))
+    return ids
+
+
+def solve(data: dict) -> None:
 
     group = data.get("group") or {}
     group_id = int(group.get("id") or 0)
@@ -80,11 +85,7 @@ def main():
     for ci, c in enumerate(courses):
         sessions = int(c.get("sessions") or 1)
         pool = c.get("faculty_pool") or []
-        pool_ids = []
-        for f in pool:
-            fid = int(f["id"]) if isinstance(f, dict) else int(f)
-            name = f.get("full_name") if isinstance(f, dict) else str(f)
-            pool_ids.append((fid, name))
+        pool_ids = normalize_pool(pool)
         if not pool_ids:
             course_fail_reason[ci] = "لا يوجد مدرسون مسندون لهذا المقرر في pool (course_faculty)"
             course_vars[ci] = []
@@ -173,10 +174,8 @@ def main():
             if solver.Value(var) == 1:
                 p = periods[pi]
                 h = halls[hi]
-                pool = courses[ci].get("faculty_pool") or []
-                f = pool[fi]
-                fid = int(f["id"]) if isinstance(f, dict) else int(f)
-                fname = f.get("full_name") if isinstance(f, dict) else str(f)
+                pool_ids = normalize_pool(courses[ci].get("faculty_pool"))
+                fid, fname = pool_ids[fi]
                 assignments.append({
                     "course_id": int(courses[ci]["course_id"]),
                     "code": courses[ci].get("code", ""),
@@ -215,6 +214,20 @@ def main():
         "unplaced": unplaced,
         "academic_term": term,
     }, sys.stdout, ensure_ascii=False)
+
+
+def main():
+    raw = sys.stdin.read()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        fail("BAD_INPUT", f"Invalid JSON payload ({exc})")
+    try:
+        solve(data)
+    except SystemExit:
+        raise  # fail() أخرجت بالفعل — لا نُظمّنه
+    except Exception as exc:
+        fail("BAD_INPUT", f"unexpected error ({exc.__class__.__name__}): {exc}")
 
 
 if __name__ == "__main__":
