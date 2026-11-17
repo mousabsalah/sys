@@ -8,7 +8,6 @@ use App\Models\FacultyEntity;
 use App\Models\Hall;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
-use App\Services\Backup\BackupGateway;
 use App\Services\Deletion\DeleteGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AdminMasterDataController extends Controller
 {
-    public function __construct(private AuditLogger $audit, private BackupGateway $dumper) {}
+    public function __construct(private AuditLogger $audit) {}
 
     // ══════════════ الكليات ══════════════
 
