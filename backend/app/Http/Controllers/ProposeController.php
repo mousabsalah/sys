@@ -7,7 +7,6 @@ use App\Models\Course;
 use App\Models\Group;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
-use App\Services\Engine\EngineClient;
 use App\Services\Engine\ProposeGroupSolver;
 use App\Support\Defaults;
 use Illuminate\Http\Request;
@@ -25,7 +24,7 @@ use Illuminate\Validation\Rule;
  */
 class ProposeController extends Controller
 {
-    public function __construct(private EngineClient $engine, private ProposeGroupSolver $solver) {}
+    public function __construct(private ProposeGroupSolver $solver) {}
 
     /**
      * GET /api/admin/propose-timetable/context

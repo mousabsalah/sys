@@ -62,6 +62,7 @@ class TimetableController extends Controller
             'assignments.*.course_code' => ['sometimes', 'string', 'max:20'],
         ]);
 
+        $user = auth()->user();
         $conflicts = [];
         $created = 0;
 

@@ -8,6 +8,7 @@ use App\Models\Group;
 use App\Models\GroupCourse;
 use App\Models\Hall;
 use App\Models\Period;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -162,7 +163,8 @@ final class ProposeGroupSolver
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $pools  [course_id => [faculty...]]
+     * @param  array<int>  $courseIds
+     * @return Collection<int, Collection<int, object>>
      */
     private function poolsFor($courseIds)
     {
