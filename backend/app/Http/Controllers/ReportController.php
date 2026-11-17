@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Timetable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
 {
     // نسبة استخدام القاعات (محاضرات لكل قاعة) — مع تصدير CSV
-    public function utilization(Request $request)
+    public function utilization(Request $request): Response
     {
         $format = $request->query('format', 'json'); // json|csv
 

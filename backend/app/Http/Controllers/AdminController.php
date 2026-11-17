@@ -12,6 +12,7 @@ use App\Models\Group;
 use App\Models\Hall;
 use App\Models\Period;
 use App\Models\Program;
+use Illuminate\Http\JsonResponse;
 
 /**
  * AdminController — لوحة المدير للبيانات الرئيسية (كليات/أقسام/دفعات/قاعات...)
@@ -19,7 +20,7 @@ use App\Models\Program;
  */
 class AdminController extends Controller
 {
-    public function masterData()
+    public function masterData(): JsonResponse
     {
         return response()->json([
             'faculties' => FacultyEntity::all(['id', 'name', 'code', 'description']),

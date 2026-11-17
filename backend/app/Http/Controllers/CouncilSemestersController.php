@@ -8,6 +8,7 @@ use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
 use App\Services\Backup\BackupGateway;
 use App\Services\Deletion\DeleteGuard;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,7 @@ class CouncilSemestersController extends Controller
     public function __construct(private AuditLogger $audit, private BackupGateway $dumper) {}
 
     // GET /api/council/semesters — كل الفصول + حساب حالة كل فصل
-    public function index()
+    public function index(): JsonResponse
     {
         $today = now()->startOfDay();
         $items = Semester::with('faculty:id,name', 'department:id,name', 'batch:id,name,student_count')
@@ -71,7 +72,7 @@ class CouncilSemestersController extends Controller
     }
 
     // POST /api/council/semesters/open-year — فتح السنة الدراسية: سمسترين متزامنين لكل دفعة محددة
-    public function openYear(Request $request)
+    public function openYear(Request $request): JsonResponse
     {
         $input = $request->validate([
             'semesters' => ['required', 'array', 'min:1', 'max:2'],
@@ -153,7 +154,7 @@ class CouncilSemestersController extends Controller
     }
 
     // POST /api/council/semesters — إضافة فصل واحد (حالة فردية استثنائية بعد فتح العام)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->validate([
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')],
@@ -174,7 +175,7 @@ class CouncilSemestersController extends Controller
     }
 
     // PUT /api/council/semesters/{semester} — تعديل تواريخ/صيغة (الفصل نفسه لا يتغير)
-    public function update(Request $request, int $semester)
+    public function update(Request $request, int $semester): JsonResponse
     {
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
@@ -204,7 +205,7 @@ class CouncilSemestersController extends Controller
     }
 
     // POST /api/council/semesters/{semester}/dates — تعيين تواريخ الفصل فقط
-    public function setDates(Request $request, int $semester)
+    public function setDates(Request $request, int $semester): JsonResponse
     {
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
@@ -223,7 +224,7 @@ class CouncilSemestersController extends Controller
     }
 
     // POST /api/council/semesters/{semester}/archive — مع نسخة احتياطية تلقائية (نفس سلوك الأدمن سابقًا)
-    public function archive(Request $request, int $semester)
+    public function archive(Request $request, int $semester): JsonResponse
     {
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {
@@ -245,7 +246,7 @@ class CouncilSemestersController extends Controller
     }
 
     // POST /api/council/semesters/{semester}/unarchive
-    public function unarchive(Request $request, int $semester)
+    public function unarchive(Request $request, int $semester): JsonResponse
     {
         $item = Semester::findOrFail($semester);
         DB::transaction(function () use ($item, $request) {
@@ -257,7 +258,7 @@ class CouncilSemestersController extends Controller
     }
 
     // DELETE /api/council/semesters/{semester} — محروس: لا حذف مع أي استخدام (محاضرات/امتحانات/حجوزات)
-    public function destroy(Request $request, int $semester)
+    public function destroy(Request $request, int $semester): JsonResponse
     {
         $item = Semester::findOrFail($semester);
         if ($item->archived_at) {

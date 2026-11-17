@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Group;
 use App\Models\GroupCourse;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ class CouncilPlansController extends Controller
     /**
      * GET /api/council/plans — كل الخطط الدراسية لكل شعبة + قائمة المقررات للمحرر.
      */
-    public function plansIndex()
+    public function plansIndex(): JsonResponse
     {
         $groups = Group::with('batch:id,name')
             ->get(['id', 'batch_id', 'track', 'student_count']);
@@ -63,7 +64,7 @@ class CouncilPlansController extends Controller
      * POST /api/council/plans/{group} — استبدال خطة الشعبة كاملة بمعاملة واحدة.
      * body: { items: [{ course_id, sessions_per_week }] }
      */
-    public function plansStore(Request $request, int $group)
+    public function plansStore(Request $request, int $group): JsonResponse
     {
         $input = $request->validate([
             'items' => ['required', 'array', 'min:1'],

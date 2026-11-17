@@ -9,6 +9,7 @@ use App\Models\Hall;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Engine\ConflictChecker;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -17,13 +18,13 @@ class GuardController extends Controller
     public function __construct(private ConflictChecker $checker) {}
 
     // التوصيات الخالية الآن — للحرس
-    public function nowHalls()
+    public function nowHalls(): JsonResponse
     {
         return response()->json($this->checker->currentFreeHalls());
     }
 
     // GET /api/guard/today — الحارس: كل القاعات مع حالتها الآن (occupied|free) + جدول اليوم لكل قاعة
-    public function today()
+    public function today(): JsonResponse
     {
         $now = now();
         $todayStr = $now->toDateString();
@@ -157,7 +158,7 @@ class GuardController extends Controller
     }
 
     // قفل/فتح قاعة — حارس فقط + سجل
-    public function lock(Request $request, int $hallId)
+    public function lock(Request $request, int $hallId): JsonResponse
     {
         $validated = $request->validate([
             'notes' => 'nullable|string|max:255',
@@ -204,7 +205,7 @@ class GuardController extends Controller
         return response()->json(['ok' => true, 'hall_id' => $hallId, 'action' => 'lock']);
     }
 
-    public function unlock(Request $request, int $hallId)
+    public function unlock(Request $request, int $hallId): JsonResponse
     {
         $hall = Hall::findOrFail($hallId);
 
@@ -227,7 +228,7 @@ class GuardController extends Controller
     }
 
     // عرض سجل القفل — مدير فقط
-    public function lockLog(Request $request)
+    public function lockLog(Request $request): JsonResponse
     {
         $rows = GuardLock::with('hall:id,name')->orderByDesc('action_at')->limit(200)->get();
 

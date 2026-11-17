@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ExamSession;
 use App\Models\Timetable;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -17,7 +18,7 @@ class AdminApprovalsController extends Controller
     public function __construct(private AuditLogger $audit) {}
 
     // GET /api/admin/approvals — كل المعلّق جاهزًا بقراءة واضحة
-    public function index()
+    public function index(): JsonResponse
     {
         $lectures = Timetable::pending()
             ->join('groups', 'groups.id', '=', 'timetables.group_id')
@@ -74,7 +75,7 @@ class AdminApprovalsController extends Controller
     }
 
     // POST /api/admin/approvals/timetables/{timetable}/approve — اعتماد جدول
-    public function approveTimetable(Request $request, int $timetable)
+    public function approveTimetable(Request $request, int $timetable): JsonResponse
     {
         $item = Timetable::findOrFail($timetable);
         if ($item->status === 'approved') {
@@ -88,7 +89,7 @@ class AdminApprovalsController extends Controller
     }
 
     // POST /api/admin/approvals/timetables/{timetable}/unapprove — إرجاع للانتظار
-    public function unapproveTimetable(Request $request, int $timetable)
+    public function unapproveTimetable(Request $request, int $timetable): JsonResponse
     {
         $item = Timetable::findOrFail($timetable);
         if ($item->status !== 'approved') {
@@ -102,7 +103,7 @@ class AdminApprovalsController extends Controller
     }
 
     // POST /api/admin/approvals/exams/{exam}/approve — اعتماد امتحان
-    public function approveExam(Request $request, int $exam)
+    public function approveExam(Request $request, int $exam): JsonResponse
     {
         $item = ExamSession::findOrFail($exam);
         if ($item->status === 'approved') {
@@ -116,7 +117,7 @@ class AdminApprovalsController extends Controller
     }
 
     // POST /api/admin/approvals/exams/{exam}/unapprove — إرجاع للانتظار
-    public function unapproveExam(Request $request, int $exam)
+    public function unapproveExam(Request $request, int $exam): JsonResponse
     {
         $item = ExamSession::findOrFail($exam);
         if ($item->status !== 'approved') {

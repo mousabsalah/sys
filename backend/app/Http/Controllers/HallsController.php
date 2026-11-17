@@ -9,6 +9,7 @@ use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Guard\GuardLocks;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
@@ -17,7 +18,7 @@ use Illuminate\Http\Request;
  */
 class HallsController extends Controller
 {
-    public function available(Request $request)
+    public function available(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'date' => 'required|date|after_or_equal:today',

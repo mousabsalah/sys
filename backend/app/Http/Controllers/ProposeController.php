@@ -9,6 +9,7 @@ use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Engine\ProposeGroupSolver;
 use App\Support\Defaults;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -30,7 +31,7 @@ class ProposeController extends Controller
      * GET /api/admin/propose-timetable/context
      * الشعب ضمن نطاق المستخدم + المقررات + الخطة الدراسية لكل شعبة.
      */
-    public function context()
+    public function context(): JsonResponse
     {
         $groups = Group::query()
             ->join('batches', 'batches.id', '=', 'groups.batch_id')
@@ -69,7 +70,7 @@ class ProposeController extends Controller
      * - group_ids (مصفوفة) ⇒ وضع متعدد: كل شعبة ضمن نطاق المستخدم تُحل تسلسليًا
      * - group_id (رقم)     ⇒ شعبة واحدة (توافق مع النسخة السابقة)
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->validate([
             'group_id' => ['required_without:group_ids', 'integer', Rule::exists('groups', 'id')],

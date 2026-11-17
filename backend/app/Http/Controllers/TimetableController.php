@@ -7,6 +7,7 @@ use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Engine\ConflictChecker;
 use App\Support\Defaults;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -16,7 +17,7 @@ class TimetableController extends Controller
     public function __construct(private ConflictChecker $checker) {}
 
     // POST /api/timetables/check — تحقق فقط (لا كتابة)
-    public function check(Request $request)
+    public function check(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
 
@@ -24,7 +25,7 @@ class TimetableController extends Controller
     }
 
     // POST /api/timetables — حفظ بمعاملة وإعادة فحص تحت قفل
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
         $input['academic_term'] = $request->input('academic_term', Defaults::DEFAULT_TERM);
@@ -47,7 +48,7 @@ class TimetableController extends Controller
      * كل سطر يمر بنفس commitTimetable (قفل + Go check + R13).
      * أي تعارض في أي سطر ⇒ rollback كامل (لا يُحفظ شيء) — يرجع قائمة الأسطر المتعارضة.
      */
-    public function bulkStore(Request $request)
+    public function bulkStore(Request $request): JsonResponse
     {
         $input = $request->validate([
             'assignments' => ['required', 'array', 'min:1', 'max:500'],
@@ -114,7 +115,7 @@ class TimetableController extends Controller
     }
 
     // GET /api/timetables?by=group&id=3  (يشمل شعب الدفعات — مجلس/مدير يريان الكل، بما فيه غير المعتمد)
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $user = auth()->user();
         $by = $request->query('by', 'group'); // group|faculty|hall|batch

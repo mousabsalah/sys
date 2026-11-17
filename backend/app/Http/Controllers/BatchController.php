@@ -7,6 +7,7 @@ use App\Models\ExamSession;
 use App\Models\Group;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,7 +36,7 @@ class BatchController extends Controller
     }
 
     // GET /api/batch/timetables — جدول شعبه كلها (صفوف دفعته المعتمدة + الملغية الموسومة)
-    public function timetables(Request $request)
+    public function timetables(Request $request): JsonResponse
     {
         $batchId = $this->batchId($request);
         $groupIds = $this->ownGroupIds($batchId);
@@ -73,7 +74,7 @@ class BatchController extends Controller
     }
 
     // GET /api/batch/exams — جدول امتحانات دفعته (المعتمدة + الملغية الموسومة)
-    public function exams(Request $request)
+    public function exams(Request $request): JsonResponse
     {
         $batchId = $this->batchId($request);
         $groupIds = $this->ownGroupIds($batchId);
@@ -119,7 +120,7 @@ class BatchController extends Controller
     }
 
     // GET /api/batch/notifications — آخر تغييرات محاضرات/امتحانات دفعته (إلغاء/إرجاع/إضافة)
-    public function notifications(Request $request)
+    public function notifications(Request $request): JsonResponse
     {
         $batchId = $this->batchId($request);
         $groupIds = $this->ownGroupIds($batchId);
@@ -153,7 +154,7 @@ class BatchController extends Controller
     }
 
     // GET /api/batch/notifications/count — عدد غير المقروءة (لحقة الجرس)
-    public function notificationsCount(Request $request)
+    public function notificationsCount(Request $request): JsonResponse
     {
         $batchId = $this->batchId($request);
         $groupIds = $this->ownGroupIds($batchId);
@@ -168,7 +169,7 @@ class BatchController extends Controller
     }
 
     // POST /api/batch/notifications/read — تحديد الكل كمقروء
-    public function markNotificationsRead(Request $request)
+    public function markNotificationsRead(Request $request): JsonResponse
     {
         $request->user()?->forceFill(['notifications_seen_at' => now()])->save();
 

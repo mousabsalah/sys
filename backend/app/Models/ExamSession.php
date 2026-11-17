@@ -13,12 +13,20 @@ class ExamSession extends Model
     ];
 
     /** Scope: الامتحانات المعتمدة فقط — يرى غير المجلس/المدير المعتمدة دون غيرها */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeApproved(Builder $query): Builder
     {
         return $query->where($query->getModel()->getTable().'.status', 'approved');
     }
 
     /** Scope: الامتحانات المعلّقة (بانتظار اعتماد المدير) */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopePending(Builder $query): Builder
     {
         return $query->where($query->getModel()->getTable().'.status', 'pending');
@@ -28,6 +36,10 @@ class ExamSession extends Model
 
     /**
      * Scope: الامتحانات غير المرتبطة بفصل مؤرشف — الأرشفة تجمّد الفصل ولا يظل يحجب الجدولة.
+     */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeNotArchived(Builder $query): Builder
     {

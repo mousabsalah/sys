@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Audit\AuditLogger;
 use App\Services\OfficialSheet\OfficialSheetConfig;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,13 +54,13 @@ class OfficialSheetController extends Controller
     ];
 
     // GET /api/council/sheet-settings — الإعدادات الحالية (مدموجة مع الافتراضيات)
-    public function show()
+    public function show(): JsonResponse
     {
         return response()->json(['settings' => OfficialSheetConfig::read()]);
     }
 
     // PUT /api/council/sheet-settings — حفظ (لا تُقبل مفاتيح غير معروفة)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->all();
         if ($input === []) {
@@ -170,7 +171,7 @@ class OfficialSheetController extends Controller
     }
 
     // POST /api/council/sheet-settings/logo — رفع شعار (university|college)
-    public function uploadLogo(Request $request)
+    public function uploadLogo(Request $request): JsonResponse
     {
         $request->validate([
             'slot' => ['required', 'string', 'in:university,college'],
@@ -207,7 +208,7 @@ class OfficialSheetController extends Controller
     }
 
     // POST /api/council/sheet-settings/reset — إرجاع الإعدادات الافتراضية
-    public function reset(Request $request)
+    public function reset(Request $request): JsonResponse
     {
         DB::table('sheet_settings')->where('key', 'official_sheet')->update([
             'value' => OfficialSheetConfig::defaultJson(),

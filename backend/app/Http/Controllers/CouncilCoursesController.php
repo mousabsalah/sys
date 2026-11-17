@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Services\Audit\AuditLogger;
 use App\Services\Deletion\DeleteGuard;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,7 +20,7 @@ class CouncilCoursesController extends Controller
     public function __construct(private AuditLogger $audit) {}
 
     // GET /api/council/courses — كل المقررات (+ فلتر اختياري ?q= حسب الكود أو الاسم)
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $q = trim(mb_substr((string) $request->query('q', ''), 0, 60));
 
@@ -50,7 +51,7 @@ class CouncilCoursesController extends Controller
     }
 
     // POST /api/council/courses — إضافة مقرر
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->validate([
             'code' => ['required', 'string', 'max:30', 'unique:courses,code'],
@@ -66,7 +67,7 @@ class CouncilCoursesController extends Controller
     }
 
     // PUT /api/council/courses/{course} — تعديل مقرر
-    public function update(Request $request, int $course)
+    public function update(Request $request, int $course): JsonResponse
     {
         $item = Course::findOrFail($course);
         $input = $request->validate([
@@ -83,7 +84,7 @@ class CouncilCoursesController extends Controller
     }
 
     // DELETE /api/council/courses/{course} — حذف محروس (لا حذف مع أي استخدام)
-    public function destroy(Request $request, int $course)
+    public function destroy(Request $request, int $course): JsonResponse
     {
         $item = Course::findOrFail($course);
 

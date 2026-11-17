@@ -8,6 +8,7 @@ use App\Models\SubstituteRequest;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Audit\AuditLogger;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -59,13 +60,13 @@ class LecturerController extends Controller
     }
 
     // GET /api/lecturer/groups — شعبه فقط
-    public function myGroups(Request $request)
+    public function myGroups(Request $request): JsonResponse
     {
         return response()->json(['groups' => $this->groupsPayload($this->lecturerFor($request))]);
     }
 
     // GET /api/lecturer/timetables[?group_id=5] — جدول شعبه (معتمدة + ملغية بختم)
-    public function timetables(Request $request)
+    public function timetables(Request $request): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $groupIds = $this->groupIdsFor($lecturer);
@@ -108,7 +109,7 @@ class LecturerController extends Controller
     }
 
     // POST /api/lecturer/timetables/{timetable}/cancel — إلغاء منطقي (status=cancelled)
-    public function cancelLecture(Request $request, int $timetable)
+    public function cancelLecture(Request $request, int $timetable): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $item = Timetable::findOrFail($timetable);
@@ -136,7 +137,7 @@ class LecturerController extends Controller
     }
 
     // POST /api/lecturer/timetables/{timetable}/uncancel — التراجع عن الإلغاء
-    public function uncancelLecture(Request $request, int $timetable)
+    public function uncancelLecture(Request $request, int $timetable): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $item = Timetable::findOrFail($timetable);
@@ -164,7 +165,7 @@ class LecturerController extends Controller
     }
 
     // GET /api/lecturer/lecturers — مدرسو شعبه عدا نفسه (للطلبات)
-    public function groupLecturers(Request $request)
+    public function groupLecturers(Request $request): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $groupIds = $this->groupIdsFor($lecturer);
@@ -186,7 +187,7 @@ class LecturerController extends Controller
     }
 
     // POST /api/lecturer/timetables/{timetable}/substitute-request — طلب بديل في نفس شعبه
-    public function requestSubstitute(Request $request, int $timetable)
+    public function requestSubstitute(Request $request, int $timetable): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $item = Timetable::findOrFail($timetable);
@@ -240,7 +241,7 @@ class LecturerController extends Controller
     }
 
     // GET /api/lecturer/substitute-requests — الصادرة + الواردة
-    public function substituteRequests(Request $request)
+    public function substituteRequests(Request $request): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
 
@@ -259,7 +260,7 @@ class LecturerController extends Controller
     }
 
     // POST /api/lecturer/substitute-requests/{request}/respond — المستهدف يقبل/يرفض
-    public function respondSubstitute(Request $request, int $request_)
+    public function respondSubstitute(Request $request, int $request_): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $sub = SubstituteRequest::findOrFail($request_);
@@ -299,7 +300,7 @@ class LecturerController extends Controller
     }
 
     // POST /api/lecturer/substitute-requests/{request}/cancel — الطالب يلغي طلبه المعلّق
-    public function cancelSubstitute(Request $request, int $request_)
+    public function cancelSubstitute(Request $request, int $request_): JsonResponse
     {
         $lecturer = $this->lecturerFor($request);
         $sub = SubstituteRequest::findOrFail($request_);

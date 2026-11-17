@@ -9,6 +9,7 @@ use App\Models\Hall;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
 use App\Services\Deletion\DeleteGuard;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,7 @@ class AdminMasterDataController extends Controller
 
     // ══════════════ الكليات ══════════════
 
-    public function facultyStore(Request $request)
+    public function facultyStore(Request $request): JsonResponse
     {
         $input = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('faculties', 'name')],
@@ -39,7 +40,7 @@ class AdminMasterDataController extends Controller
         return response()->json(['ok' => true, 'faculty' => $faculty], Response::HTTP_CREATED);
     }
 
-    public function facultyUpdate(Request $request, int $faculty)
+    public function facultyUpdate(Request $request, int $faculty): JsonResponse
     {
         $item = FacultyEntity::findOrFail($faculty);
         $input = $request->validate([
@@ -53,7 +54,7 @@ class AdminMasterDataController extends Controller
         return response()->json(['ok' => true, 'faculty' => $item]);
     }
 
-    public function facultyDelete(Request $request, int $faculty)
+    public function facultyDelete(Request $request, int $faculty): JsonResponse
     {
         $item = FacultyEntity::findOrFail($faculty);
 
@@ -72,7 +73,7 @@ class AdminMasterDataController extends Controller
 
     // ══════════════ الأقسام ══════════════
 
-    public function departmentStore(Request $request)
+    public function departmentStore(Request $request): JsonResponse
     {
         $input = $request->validate([
             'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')],
@@ -90,7 +91,7 @@ class AdminMasterDataController extends Controller
         return response()->json(['ok' => true, 'department' => $department], Response::HTTP_CREATED);
     }
 
-    public function departmentUpdate(Request $request, int $department)
+    public function departmentUpdate(Request $request, int $department): JsonResponse
     {
         $item = Department::findOrFail($department);
         $input = $request->validate([
@@ -120,7 +121,7 @@ class AdminMasterDataController extends Controller
         });
     }
 
-    public function departmentDelete(Request $request, int $department)
+    public function departmentDelete(Request $request, int $department): JsonResponse
     {
         $item = Department::findOrFail($department);
 
@@ -139,7 +140,7 @@ class AdminMasterDataController extends Controller
 
     // ══════════════ القاعات ══════════════
 
-    public function hallStore(Request $request)
+    public function hallStore(Request $request): JsonResponse
     {
         $input = $request->validate([
             'name' => ['required', 'string', 'max:50', 'unique:halls,name'],
@@ -155,7 +156,7 @@ class AdminMasterDataController extends Controller
         return response()->json(['ok' => true, 'hall' => $hall], Response::HTTP_CREATED);
     }
 
-    public function hallUpdate(Request $request, int $hall)
+    public function hallUpdate(Request $request, int $hall): JsonResponse
     {
         $item = Hall::findOrFail($hall);
         $input = $request->validate([
@@ -171,7 +172,7 @@ class AdminMasterDataController extends Controller
         return response()->json(['ok' => true, 'hall' => $item]);
     }
 
-    public function hallDelete(Request $request, int $hall)
+    public function hallDelete(Request $request, int $hall): JsonResponse
     {
         $item = Hall::findOrFail($hall);
 
@@ -199,39 +200,39 @@ class AdminMasterDataController extends Controller
 
     // POST /api/admin/semesters — إنشاء (مغلق: الإدارة للمجلس)
     // كتابة الفصول انتقلت لمجلس المدرسين (CouncilSemestersController) — المسار هنا للتوافق ويرجع 403
-    public function semesterStore(Request $request)
+    public function semesterStore(Request $request): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
-    public function semesterUpdate(Request $request, int $semester)
+    public function semesterUpdate(Request $request, int $semester): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
-    public function semesterSetDates(Request $request, int $semester)
+    public function semesterSetDates(Request $request, int $semester): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
-    public function semesterArchive(Request $request, int $semester)
+    public function semesterArchive(Request $request, int $semester): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
-    public function semesterUnarchive(Request $request, int $semester)
+    public function semesterUnarchive(Request $request, int $semester): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
-    public function semesterDelete(Request $request, int $semester)
+    public function semesterDelete(Request $request, int $semester): JsonResponse
     {
         return $this->rejectSemesterWriteForAdmin();
     }
 
     // ══════════════ قوائم الفصول (شاملة البيانات) ══════════════
 
-    public function semestersIndex()
+    public function semestersIndex(): JsonResponse
     {
         $items = Semester::with('faculty:id,name,code', 'department:id,name', 'batch:id,name,student_count')
             ->orderBy('id')

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -30,7 +31,7 @@ class AuthController extends Controller
     }
 
     // POST /api/login — الدخول بكلمة المرور المشفّرة
-    public function login(Request $request)
+    public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'username' => 'required|string|max:50',
@@ -66,13 +67,13 @@ class AuthController extends Controller
     }
 
     // GET /api/me — بيانات الحساب الحالي
-    public function me(Request $request)
+    public function me(Request $request): JsonResponse
     {
         return response()->json($this->userPayload($request->user()));
     }
 
     // POST /api/logout
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
         $request->user()?->currentAccessToken()?->delete();
 

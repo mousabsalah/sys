@@ -15,12 +15,20 @@ class Timetable extends Model
     ];
 
     /** Scope: الجداول المعتمدة فقط — يرى غير المجلس/المدير المعتمدة دون غيرها */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeApproved(Builder $query): Builder
     {
         return $query->where($query->getModel()->getTable().'.status', 'approved');
     }
 
     /** Scope: الجداول المعلّقة (بانتظار اعتماد المدير) */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopePending(Builder $query): Builder
     {
         return $query->where($query->getModel()->getTable().'.status', 'pending');
@@ -28,6 +36,10 @@ class Timetable extends Model
 
     /**
      * Scope: المحاضرات غير المرتبطة بفصل مؤرشف — الأرشفة تجمّد الفصل ولا يظل يحجب الجدولة.
+     */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeNotArchived(Builder $query): Builder
     {

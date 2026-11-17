@@ -18,6 +18,10 @@ class Booking extends Model
     /**
      * Scope: الحجوزات المؤكدة وغير المرتبطة بفصل مؤرشف.
      */
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'confirmed')

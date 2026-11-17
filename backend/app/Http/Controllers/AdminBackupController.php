@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Services\Audit\AuditLogger;
 use App\Services\Backup\BackupGateway;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class AdminBackupController extends Controller
 {
@@ -15,7 +17,7 @@ class AdminBackupController extends Controller
     /**
      * إنشاء نسخة احتياطية فورية (mysqldump كامل للقاعدة).
      */
-    public function create(Request $request)
+    public function create(Request $request): JsonResponse
     {
         $file = $this->dumper->dump();
 
@@ -42,7 +44,7 @@ class AdminBackupController extends Controller
     /**
      * قائمة النسخ الموجودة (الأحدث أولًا).
      */
-    public function list()
+    public function list(): JsonResponse
     {
         $dir = storage_path('backups');
         if (! File::isDirectory($dir)) {
@@ -65,7 +67,7 @@ class AdminBackupController extends Controller
     /**
      * تحميل نسخة .sql مباشرةً. اسم الملف محصور على النمط الرسمي لمنع path traversal.
      */
-    public function download(Request $request, string $file)
+    public function download(Request $request, string $file): Response
     {
         if (! preg_match('/^aust_graduation_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}(_[0-9a-f]{4,16})?\.sql$/i', $file)) {
             return response()->json(['ok' => false, 'message_ar' => 'اسم ملف غير صالح.'], 422);

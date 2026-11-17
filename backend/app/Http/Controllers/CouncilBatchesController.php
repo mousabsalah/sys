@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\TempPassword;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,7 +22,7 @@ class CouncilBatchesController extends Controller
     public function __construct(private AuditLogger $audit) {}
 
     // GET /api/council/batch-accounts — كل الدفعات + شعبها + حسابها (إن وُجد) + مرجعيات الإدارة
-    public function index()
+    public function index(): JsonResponse
     {
         $batches = DB::table('batches')
             ->leftJoin('departments', 'departments.id', '=', 'batches.department_id')
@@ -70,7 +71,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/programs — إضافة برنامج (للدفعات الجديدة إن لم يوجد مناسب)
-    public function storeProgram(Request $request)
+    public function storeProgram(Request $request): JsonResponse
     {
         $input = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -90,7 +91,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/batches — إنشاء دفعة + شعبها تلقائيًا (حصة بالنصف لكل مسار، والباقي لأول مسار)
-    public function storeBatch(Request $request)
+    public function storeBatch(Request $request): JsonResponse
     {
         $departmentIds = DB::table('departments')->pluck('id')->all();
         $input = $request->validate([
@@ -154,7 +155,7 @@ class CouncilBatchesController extends Controller
     }
 
     // PUT /api/council/batches/{batch} — تعديل الاسم وسعة الدفعة (لا تعديل للشعب هنا)
-    public function updateBatch(Request $request, int $batch)
+    public function updateBatch(Request $request, int $batch): JsonResponse
     {
         $item = Batch::findOrFail($batch);
         $input = $request->validate([
@@ -169,7 +170,7 @@ class CouncilBatchesController extends Controller
     }
 
     // DELETE /api/council/batches/{batch} — حذف محروس (لا حذف مع أي استخدام). الشعب تنحذف معها (cascade)
-    public function destroyBatch(Request $request, int $batch)
+    public function destroyBatch(Request $request, int $batch): JsonResponse
     {
         $item = Batch::findOrFail($batch);
         $groupIds = DB::table('groups')->where('batch_id', $item->id)->pluck('id');
@@ -196,7 +197,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/batch-accounts — إنشاء حساب دفعة (username إلزامي، كلمة المرور تُولَّد إن تُركت فارغة)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->validate([
             'batch_id' => ['required', 'integer', Rule::exists('batches', 'id')],
@@ -245,7 +246,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/batch-accounts/{user}/deactivate — إيقاف حساب الدفعة (لا حذف)
-    public function deactivate(Request $request, int $user)
+    public function deactivate(Request $request, int $user): JsonResponse
     {
         $account = $this->batchAccount($user);
         if (! $account->is_active) {
@@ -263,7 +264,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/batch-accounts/{user}/reactivate — إعادة تفعيل
-    public function reactivate(Request $request, int $user)
+    public function reactivate(Request $request, int $user): JsonResponse
     {
         $account = $this->batchAccount($user);
         if ($account->is_active) {
@@ -279,7 +280,7 @@ class CouncilBatchesController extends Controller
     }
 
     // POST /api/council/batch-accounts/{user}/reset-password — كلمة مرور مؤقتة تُعرض مرة واحدة
-    public function resetPassword(Request $request, int $user)
+    public function resetPassword(Request $request, int $user): JsonResponse
     {
         $account = $this->batchAccount($user);
         $plain = TempPassword::issue(10);

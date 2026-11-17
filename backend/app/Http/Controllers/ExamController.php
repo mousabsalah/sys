@@ -6,21 +6,23 @@ use App\Models\ExamSession;
 use App\Models\Group;
 use App\Services\Engine\ConflictChecker;
 use App\Support\Defaults;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class ExamController extends Controller
 {
     public function __construct(private ConflictChecker $checker) {}
 
-    public function check(Request $request)
+    public function check(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
 
         return response()->json($this->checker->checkExam($input));
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
         $input['academic_term'] = $request->input('academic_term', Defaults::DEFAULT_TERM);
@@ -38,7 +40,7 @@ class ExamController extends Controller
         return response()->json(['ok' => true, 'exam' => $result['exam']], 201);
     }
 
-    public function index(Request $request)
+    public function index(Request $request): Collection
     {
         $user = auth()->user();
         $by = $request->query('by', 'group'); // group|course

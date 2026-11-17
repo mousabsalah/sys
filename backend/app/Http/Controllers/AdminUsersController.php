@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\TempPassword;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\Response;
 
 /**
  * AdminUsersController — إدارة كل المستخدمين (admin فقط).
@@ -19,7 +19,7 @@ class AdminUsersController extends Controller
     public function __construct(private AuditLogger $audit) {}
 
     // GET /api/admin/users?q=&role=&status=active|deactivated|all&limit=
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         // حسابات المدرسين والدفعات لا تظهر للمدير — يديرها مجلس المدرسين حصريًا
         $query = User::query()->orderBy('id')->whereNotIn('role', ['lecturer', 'batch']);
@@ -56,12 +56,12 @@ class AdminUsersController extends Controller
     }
 
     // POST /api/admin/users — إضافة مستخدم
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         // حسابات الدفعات والمدرسين تُنشأ عبر مجلس المدرسين حصريًا — رفض مبكر قبل أي تحقق
         $requestedRole = (string) $request->input('role');
         if ($requestedRole === 'batch' || $requestedRole === 'lecturer') {
-            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], Response::HTTP_FORBIDDEN);
+            return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], JsonResponse::HTTP_FORBIDDEN);
         }
 
         $input = $request->validate([
@@ -88,11 +88,11 @@ class AdminUsersController extends Controller
             return $user;
         });
 
-        return response()->json(['ok' => true, 'user' => $this->userPayload($user)], Response::HTTP_CREATED);
+        return response()->json(['ok' => true, 'user' => $this->userPayload($user)], JsonResponse::HTTP_CREATED);
     }
 
     /** رفض أي وصول للمدير إلى حساب دفعة/مدرس — هذه ملكية مجلس المدرسين */
-    private function rejectIfLecturer(User $target): ?Response
+    private function rejectIfLecturer(User $target): ?JsonResponse
     {
         if (in_array($target->role, ['lecturer', 'batch'], true)) {
             return response()->json(['ok' => false, 'message_ar' => 'حسابات المدرسين والدفعات تُدار عبر مجلس المدرسين، وليس عبر مدير النظام.'], 403);
@@ -102,7 +102,7 @@ class AdminUsersController extends Controller
     }
 
     // PUT /api/admin/users/{user} — تعديل بيانات الحساب (لا يغيّر الدور، لا يحذف)
-    public function update(Request $request, int $user)
+    public function update(Request $request, int $user): JsonResponse
     {
         $target = User::findOrFail($user);
         if ($reject = $this->rejectIfLecturer($target)) {
@@ -125,7 +125,7 @@ class AdminUsersController extends Controller
     }
 
     // POST /api/admin/users/{user}/deactivate — تعطيل (ليس حذفًا)
-    public function deactivate(Request $request, int $user)
+    public function deactivate(Request $request, int $user): JsonResponse
     {
         $target = User::findOrFail($user);
         $me = $request->user();
@@ -135,7 +135,7 @@ class AdminUsersController extends Controller
         }
 
         if ($target->id === $me->id) {
-            return response()->json(['ok' => false, 'message_ar' => 'لا يمكنك تعطيل حسابك أنت.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['ok' => false, 'message_ar' => 'لا يمكنك تعطيل حسابك أنت.'], JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         DB::transaction(function () use (&$revoked, $target, $request) {
@@ -149,7 +149,7 @@ class AdminUsersController extends Controller
     }
 
     // POST /api/admin/users/{user}/reactivate — تفعيل الحساب الموقوف
-    public function reactivate(Request $request, int $user)
+    public function reactivate(Request $request, int $user): JsonResponse
     {
         $target = User::findOrFail($user);
         if ($reject = $this->rejectIfLecturer($target)) {
@@ -164,7 +164,7 @@ class AdminUsersController extends Controller
     }
 
     // POST /api/admin/users/{user}/reset-password — كلمة مرور مؤقتة (تُعاد مرة واحدة)
-    public function resetPassword(Request $request, int $user)
+    public function resetPassword(Request $request, int $user): JsonResponse
     {
         $target = User::findOrFail($user);
         if ($reject = $this->rejectIfLecturer($target)) {

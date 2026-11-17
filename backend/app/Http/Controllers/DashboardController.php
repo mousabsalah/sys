@@ -8,11 +8,12 @@ use App\Models\Course;
 use App\Models\ExamSession;
 use App\Models\Hall;
 use App\Models\Timetable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $now = now();
 

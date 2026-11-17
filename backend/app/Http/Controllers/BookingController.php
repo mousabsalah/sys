@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Services\Engine\ConflictChecker;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
@@ -12,7 +14,7 @@ class BookingController extends Controller
     public function __construct(private ConflictChecker $checker) {}
 
     // حجز يدوي بقاعة/تاريخ/وقت لمقرر أو نشاط
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
         $input['user_id'] = $request->user()->id ?? $request->input('user_id');
@@ -31,7 +33,7 @@ class BookingController extends Controller
     }
 
     // فحص تقديري متاح دون كتابة
-    public function check(Request $request)
+    public function check(Request $request): JsonResponse
     {
         $input = $this->validatePayload($request);
         $input['user_id'] = $request->user()->id ?? $request->input('user_id');
@@ -39,7 +41,7 @@ class BookingController extends Controller
         return response()->json($this->checker->checkBooking($input));
     }
 
-    public function index(Request $request)
+    public function index(Request $request): Collection
     {
         $by = $request->query('by'); // hall|date|null
         $id = $request->query('id');

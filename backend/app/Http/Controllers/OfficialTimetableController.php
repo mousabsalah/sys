@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Academic\ArabicDay;
 use App\Services\OfficialSheet\OfficialSheetConfig;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 class OfficialTimetableController
 {
     // GET /api/council/timetables-official?group_id=N — نفس الشعبة بصيغة الطباعة الرسمية
-    public function show(Request $request)
+    public function show(Request $request): JsonResponse
     {
         $input = $request->validate(['group_id' => ['required', 'integer']]);
         $groupId = (int) $input['group_id'];

@@ -9,6 +9,7 @@ use App\Models\FacultyEntity;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Services\Auth\TempPassword;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class CouncilLecturersController extends Controller
     public function __construct(private AuditLogger $audit) {}
 
     // GET /api/council/lecturers — كل المدرسين مع كلياتهم ومقرراتهم
-    public function index()
+    public function index(): JsonResponse
     {
         $lecturers = Faculty::with(['faculties:id,name,code', 'department:id,name', 'courses:id,code,name'])
             ->withCount('courses')
@@ -66,7 +67,7 @@ class CouncilLecturersController extends Controller
     }
 
     // POST /api/council/lecturers — إضافة مدرس بدرجته وربطه بكلية (أو أكثر)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $input = $request->validate([
             'full_name' => ['required', 'string', 'max:100'],
@@ -128,7 +129,7 @@ class CouncilLecturersController extends Controller
     }
 
     // PUT /api/council/lecturers/{lecturer} — تعديل وربط الكليات (sync كامل)
-    public function update(Request $request, int $lecturer)
+    public function update(Request $request, int $lecturer): JsonResponse
     {
         $item = Faculty::findOrFail($lecturer);
 
@@ -157,7 +158,7 @@ class CouncilLecturersController extends Controller
     }
 
     // DELETE /api/council/lecturers/{lecturer} — حذف محروس (مثل القاعات: لا حذف مع ارتباط)
-    public function destroy(Request $request, int $lecturer)
+    public function destroy(Request $request, int $lecturer): JsonResponse
     {
         $item = Faculty::findOrFail($lecturer);
 
@@ -183,7 +184,7 @@ class CouncilLecturersController extends Controller
     }
 
     // GET /api/council/lecturers/{lecturer}/courses — مقررات المدرس + الكل (للاختيار)
-    public function courses(int $lecturer)
+    public function courses(int $lecturer): JsonResponse
     {
         $item = Faculty::with('courses:id,code,name')->findOrFail($lecturer);
 
@@ -195,7 +196,7 @@ class CouncilLecturersController extends Controller
     }
 
     // POST /api/council/lecturers/{lecturer}/courses/{course} — ربط مدرس بمقرر (أو أكثر)
-    public function bindCourse(Request $request, int $lecturer, int $course)
+    public function bindCourse(Request $request, int $lecturer, int $course): JsonResponse
     {
         $item = Faculty::findOrFail($lecturer);
         Course::findOrFail($course);
@@ -207,7 +208,7 @@ class CouncilLecturersController extends Controller
     }
 
     // DELETE /api/council/lecturers/{lecturer}/courses/{course} — فك الربط (R13)
-    public function unbindCourse(Request $request, int $lecturer, int $course)
+    public function unbindCourse(Request $request, int $lecturer, int $course): JsonResponse
     {
         $item = Faculty::findOrFail($lecturer);
 
@@ -224,7 +225,7 @@ class CouncilLecturersController extends Controller
     }
 
     // POST /api/council/lecturers/{lecturer}/deactivate — إيقاف حساب المدرس (لا حذف؛ من المجلس فقط)
-    public function deactivate(Request $request, int $lecturer)
+    public function deactivate(Request $request, int $lecturer): JsonResponse
     {
         $lecturerModel = Faculty::findOrFail($lecturer);
         $account = User::where('lecturer_id', $lecturerModel->id)->first();
@@ -246,7 +247,7 @@ class CouncilLecturersController extends Controller
     }
 
     // POST /api/council/lecturers/{lecturer}/reactivate — إعادة تفعيل حساب المدرس
-    public function reactivate(Request $request, int $lecturer)
+    public function reactivate(Request $request, int $lecturer): JsonResponse
     {
         $lecturerModel = Faculty::findOrFail($lecturer);
         $account = User::where('lecturer_id', $lecturerModel->id)->first();
@@ -266,7 +267,7 @@ class CouncilLecturersController extends Controller
     }
 
     // POST /api/council/lecturers/{lecturer}/reset-password — كلمة مرور مؤقتة (تُعاد مرة واحدة)
-    public function resetPassword(Request $request, int $lecturer)
+    public function resetPassword(Request $request, int $lecturer): JsonResponse
     {
         $lecturerModel = Faculty::findOrFail($lecturer);
         $account = User::where('lecturer_id', $lecturerModel->id)->first();

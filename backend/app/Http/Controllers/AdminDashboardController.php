@@ -7,6 +7,7 @@ use App\Models\ExamSession;
 use App\Models\Semester;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  */
 class AdminDashboardController extends Controller
 {
-    public function dashboardStats()
+    public function dashboardStats(): JsonResponse
     {
         // ── القاعات مع إشغالها (محاضرات/امتحانات/حجوزات غير مؤرشفة) ──
         $lectures = Timetable::notArchived()->where('status', '!=', 'cancelled')
@@ -121,7 +122,7 @@ class AdminDashboardController extends Controller
     /**
      * جداول فصل دراسي مؤرشف للعرض فقط (indexed بـ القسم/السنة/الدفعة عبر الواجهة).
      */
-    public function archivedSchedule(int $semester)
+    public function archivedSchedule(int $semester): JsonResponse
     {
         $item = Semester::with('faculty:id,name', 'department:id,name', 'batch:id,name,student_count')->findOrFail($semester);
 
