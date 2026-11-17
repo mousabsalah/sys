@@ -7,9 +7,9 @@ use App\Models\ExamSession;
 use App\Models\Hall;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
+use App\Services\Guard\GuardLocks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * HallsController — «القاعات المتاحة» بفلتر تاريخي/زمني/سعة.
@@ -50,22 +50,8 @@ class HallsController extends Controller
             ->unique()
             ->values();
 
-        // قاعات مقفولة نشطًا (آخر إجراء = قفل) — محسوب في PHP
-        $latestLocks = DB::table('guard_locks')
-            ->select('hall_id', DB::raw('MAX(action_at) as last_at'))
-            ->groupBy('hall_id')
-            ->get();
-
-        $lockedIds = collect();
-        foreach ($latestLocks as $row) {
-            $latest = DB::table('guard_locks')
-                ->where('hall_id', $row->hall_id)
-                ->where('action_at', $row->last_at)
-                ->value('action');
-            if ($latest === 'lock') {
-                $lockedIds->push((int) $row->hall_id);
-            }
-        }
+        // قاعات مقفولة نشطًا (آخر إجراء = قفل) — مصدر واحد (GuardLocks)
+        $lockedIds = GuardLocks::lockedHallIds();
 
         $halls = Hall::where('status', 'متاحة')
             ->when($minCapacity > 0, fn ($q) => $q->where('capacity', '>=', $minCapacity))

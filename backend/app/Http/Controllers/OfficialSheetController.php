@@ -163,12 +163,7 @@ class OfficialSheetController extends Controller
             throw ValidationException::withMessages(['payload' => ['لا توجد حقول معروفة لتعديلها.']]);
         }
 
-        $current = OfficialSheetConfig::read();
-        $merged = array_merge($current, $clean);
-        DB::table('sheet_settings')->where('key', 'official_sheet')->update([
-            'value' => json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-            'updated_at' => now(),
-        ]);
+        $merged = OfficialSheetConfig::saveMerged($clean);
         $this->audit->log($request, 'sheet_settings.save', 'sheet_settings', 1, ['keys' => array_keys($clean)]);
 
         return response()->json(['ok' => true, 'settings' => $merged]);
@@ -205,11 +200,7 @@ class OfficialSheetController extends Controller
             }
         }
 
-        $merged = array_merge($current, [$key => $url]);
-        DB::table('sheet_settings')->where('key', 'official_sheet')->update([
-            'value' => json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
-            'updated_at' => now(),
-        ]);
+        OfficialSheetConfig::saveMerged([$key => $url]);
         $this->audit->log($request, 'sheet_settings.logo', 'sheet_settings', 1, ['slot' => $request->input('slot'), 'url' => $url]);
 
         return response()->json(['ok' => true, 'url' => $url]);

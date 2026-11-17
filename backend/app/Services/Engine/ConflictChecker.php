@@ -13,6 +13,7 @@ use App\Models\Semester;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Academic\SemesterResolver;
+use App\Services\Guard\GuardLocks;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -246,13 +247,8 @@ class ConflictChecker
                 ->pluck('hall_id'))
             ->unique()->values();
 
-        // VB: آخر قفل لكل قاعة يُحسم في SQL (index scan) بدل سحب كل التاريخ في PHP
-        $lockedIds = DB::table('guard_locks as g')
-            ->whereIn('g.id', function ($q) {
-                $q->selectRaw('MAX(id)')->from('guard_locks')->groupBy('hall_id');
-            })
-            ->where('g.action', 'lock')
-            ->pluck('g.hall_id');
+        // VB: آخر قفل لكل قاعة — مصدر واحد (GuardLocks)
+        $lockedIds = GuardLocks::lockedHallIds();
 
         $free = Hall::whereNotIn('id', $busyHallIds)->whereNotIn('id', $lockedIds)->get();
         $all = Hall::all();

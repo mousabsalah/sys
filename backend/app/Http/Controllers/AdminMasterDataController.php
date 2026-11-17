@@ -9,6 +9,7 @@ use App\Models\Hall;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
 use App\Services\Backup\BackupGateway;
+use App\Services\Deletion\DeleteGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -58,12 +59,10 @@ class AdminMasterDataController extends Controller
         $item = FacultyEntity::findOrFail($faculty);
 
         return DB::transaction(function () use ($request, $item) {
-            if (Department::where('faculty_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['faculty' => ['لا يمكن حذف كلية بها أقسام مرتبطة.']]);
-            }
-            if (Semester::where('faculty_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['faculty' => ['لا يمكن حذف كلية بها فصول دراسية مرتبطة.']]);
-            }
+            DeleteGuard::assertUnused('faculty', [
+                'لا يمكن حذف كلية بها أقسام مرتبطة.' => Department::where('faculty_id', $item->id)->exists(),
+                'لا يمكن حذف كلية بها فصول دراسية مرتبطة.' => Semester::where('faculty_id', $item->id)->exists(),
+            ]);
 
             $item->delete();
             $this->audit->log($request, 'faculty.delete', 'faculty', $item->id, ['name' => $item->name]);
@@ -127,12 +126,10 @@ class AdminMasterDataController extends Controller
         $item = Department::findOrFail($department);
 
         return DB::transaction(function () use ($request, $item) {
-            if (Batch::where('department_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['department' => ['لا يمكن حذف قسم به دفعات مرتبطة.']]);
-            }
-            if (Semester::where('department_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['department' => ['لا يمكن حذف قسم به فصول دراسية مرتبطة.']]);
-            }
+            DeleteGuard::assertUnused('department', [
+                'لا يمكن حذف قسم به دفعات مرتبطة.' => Batch::where('department_id', $item->id)->exists(),
+                'لا يمكن حذف قسم به فصول دراسية مرتبطة.' => Semester::where('department_id', $item->id)->exists(),
+            ]);
 
             $item->delete();
             $this->audit->log($request, 'department.delete', 'department', $item->id, ['name' => $item->name]);
@@ -180,15 +177,11 @@ class AdminMasterDataController extends Controller
         $item = Hall::findOrFail($hall);
 
         return DB::transaction(function () use ($request, $item) {
-            if (DB::table('timetables')->where('hall_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بمحاضرات.']]);
-            }
-            if (DB::table('exam_sessions')->where('hall_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بامتحانات.']]);
-            }
-            if (DB::table('bookings')->where('hall_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['hall' => ['لا يمكن حذف قاعة مرتبطة بحجوزات.']]);
-            }
+            DeleteGuard::assertUnused('hall', [
+                'لا يمكن حذف قاعة مرتبطة بمحاضرات.' => DB::table('timetables')->where('hall_id', $item->id)->exists(),
+                'لا يمكن حذف قاعة مرتبطة بامتحانات.' => DB::table('exam_sessions')->where('hall_id', $item->id)->exists(),
+                'لا يمكن حذف قاعة مرتبطة بحجوزات.' => DB::table('bookings')->where('hall_id', $item->id)->exists(),
+            ]);
 
             $item->delete();
             $this->audit->log($request, 'hall.delete', 'hall', $item->id, ['name' => $item->name]);
@@ -206,144 +199,35 @@ class AdminMasterDataController extends Controller
     }
 
     // POST /api/admin/semesters — إنشاء (مغلق: الإدارة للمجلس)
+    // كتابة الفصول انتقلت لمجلس المدرسين (CouncilSemestersController) — المسار هنا للتوافق ويرجع 403
     public function semesterStore(Request $request)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $input = $request->validate([
-            'faculty_id' => ['required', 'integer', Rule::exists('faculties', 'id')],
-            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')],
-            'batch_id' => ['required', 'integer', Rule::exists('batches', 'id')],
-            'academic_term' => ['required', 'string', 'max:20'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-        ]);
-
-        $this->assertAcademicChain((int) $input['faculty_id'], (int) $input['department_id'], (int) $input['batch_id']);
-        $this->assertAcademicTermUnique((int) $input['department_id'], (int) $input['batch_id'], $input['academic_term'], null);
-
-        $semester = Semester::create($input);
-        $this->audit->log($request, 'semester.create', 'semester', $semester->id, ['academic_term' => $semester->academic_term]);
-
-        return response()->json(['ok' => true, 'semester' => $semester], Response::HTTP_CREATED);
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     public function semesterUpdate(Request $request, int $semester)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $item = Semester::findOrFail($semester);
-        if ($item->archived_at) {
-            return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشف — السجل التاريخي مجمّد. فكّ الأرشفة أولًا للتعديل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-        $input = $request->validate([
-            'faculty_id' => ['sometimes', 'integer', Rule::exists('faculties', 'id')],
-            'department_id' => ['sometimes', 'integer', Rule::exists('departments', 'id')],
-            'batch_id' => ['sometimes', 'integer', Rule::exists('batches', 'id')],
-            'academic_term' => ['sometimes', 'string', 'max:20'],
-            'start_date' => ['sometimes', 'nullable', 'date'],
-            'end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:start_date'],
-        ]);
-
-        $facultyId = (int) ($input['faculty_id'] ?? $item->faculty_id);
-        $departmentId = (int) ($input['department_id'] ?? $item->department_id);
-        $batchId = (int) ($input['batch_id'] ?? $item->batch_id);
-        $term = (string) ($input['academic_term'] ?? $item->academic_term);
-
-        $this->assertAcademicChain($facultyId, $departmentId, $batchId);
-        $this->assertAcademicTermUnique($departmentId, $batchId, $term, $item->id);
-
-        $item->fill($input)->save();
-        $this->audit->log($request, 'semester.update', 'semester', $item->id, $input);
-
-        return response()->json(['ok' => true, 'semester' => $item]);
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     public function semesterSetDates(Request $request, int $semester)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $item = Semester::findOrFail($semester);
-        if ($item->archived_at) {
-            return response()->json(['ok' => false, 'message_ar' => 'لا يمكن تعديل تواريخ فصل مؤرشف — السجل التاريخي مجمّد.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-        $input = $request->validate([
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-        ]);
-        $item->fill($input)->save();
-        $this->audit->log($request, 'semester.set_dates', 'semester', $item->id, ['start_date' => $input['start_date'], 'end_date' => $input['end_date']]);
-
-        return response()->json(['ok' => true, 'semester' => $item]);
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     public function semesterArchive(Request $request, int $semester)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $item = Semester::findOrFail($semester);
-        if ($item->archived_at) {
-            return response()->json(['ok' => false, 'message_ar' => 'الفصل مؤرشفة بالفعل.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        // نسخة احتياطية تلقائية قبل الأرشفة (متطلب: تلقائي كل نهاية فصل) — خارج المعاملة حتى لا تطول
-        $backupFile = $this->dumper->dump();
-        if ($backupFile === null) {
-            // فشل النسخ لا يمنع الأرشفة (تشغيلية) لكنه مسجّل دائمًا — لا فجوة صامتة
-            $this->audit->log($request, 'backup.auto_failed', 'semester', $item->id, ['error' => 'mysqldump فشل — راجع اللوج']);
-        }
-
-        DB::transaction(function () use ($item, $request, $backupFile) {
-            $item->forceFill(['archived_at' => now()])->save();
-            $this->audit->log($request, 'semester.archive', 'semester', $item->id, ['academic_term' => $item->academic_term, 'backup' => $backupFile]);
-        });
-
-        return response()->json(['ok' => true, 'semester' => $item->refresh(), 'backup' => $backupFile]);
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     public function semesterUnarchive(Request $request, int $semester)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $item = Semester::findOrFail($semester);
-        DB::transaction(function () use ($item, $request) {
-            $item->forceFill(['archived_at' => null])->save();
-            $this->audit->log($request, 'semester.unarchive', 'semester', $item->id, ['academic_term' => $item->academic_term]);
-        });
-
-        return response()->json(['ok' => true, 'semester' => $item]);
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     public function semesterDelete(Request $request, int $semester)
     {
-        if ($request->user()?->role === 'admin') {
-            return $this->rejectSemesterWriteForAdmin();
-        }
-        $item = Semester::findOrFail($semester);
-        if ($item->archived_at) {
-            return response()->json(['ok' => false, 'message_ar' => 'لا يمكن حذف فصل مؤرشف — فكّ الأرشفة أولًا ثم احذف إن لم يكن مرتبطًا.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        return DB::transaction(function () use ($request, $item) {
-            if (DB::table('timetables')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بمحاضرات.']]);
-            }
-            if (DB::table('exam_sessions')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بامتحانات.']]);
-            }
-            if (DB::table('bookings')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بحجوزات.']]);
-            }
-            $item->delete();
-            $this->audit->log($request, 'semester.delete', 'semester', $item->id, ['academic_term' => $item->academic_term]);
-
-            return response()->json(['ok' => true]);
-        });
+        return $this->rejectSemesterWriteForAdmin();
     }
 
     // ══════════════ قوائم الفصول (شاملة البيانات) ══════════════
@@ -369,35 +253,5 @@ class AdminMasterDataController extends Controller
             ]);
 
         return response()->json(['semesters' => $items, 'total' => $items->count()]);
-    }
-
-    /**
-     * التسلسل الأكاديمي يجب أن يكون مترابطًا: الدفعة ← قسمها، والقسم ← كليته.
-     * وإلا فالبيانات تُقبل صامتة — ثم تنكسر واجهة الأرشفة والاقتراح التلقائي لاحقًا.
-     */
-    private function assertAcademicChain(int $facultyId, int $departmentId, int $batchId): void
-    {
-        $department = Department::find($departmentId);
-        if (! $department || (int) $department->faculty_id !== $facultyId) {
-            throw ValidationException::withMessages(['department_id' => ['القسم لا ينتمي للكلية المختارة.']]);
-        }
-        $batch = Batch::find($batchId);
-        if (! $batch || (int) $batch->department_id !== $departmentId) {
-            throw ValidationException::withMessages(['batch_id' => ['الدفعة لا تنتمي للقسم المختار.']]);
-        }
-    }
-
-    private function assertAcademicTermUnique(int $departmentId, int $batchId, string $academicTerm, ?int $excludeId): void
-    {
-        $query = DB::table('semesters')
-            ->where('department_id', $departmentId)
-            ->where('batch_id', $batchId)
-            ->where('academic_term', $academicTerm);
-        if ($excludeId !== null) {
-            $query->where('id', '!=', $excludeId);
-        }
-        if ($query->exists()) {
-            throw ValidationException::withMessages(['academic_term' => ['يوجد فصل بهذا المسمى لنفس القسم والدفعة.']]);
-        }
     }
 }

@@ -112,4 +112,20 @@ final class OfficialSheetConfig
 
         return self::mergedFrom(is_array($decoded) ? $decoded : []);
     }
+
+    /**
+     * دمج وحفظ — المسار الوحيد لحفظ الإعدادات (مع ضمان الإبقاء على الصيغة والتوقيت).
+     * الجدول array-friendly: يُمرَّر إليه map مرتبطة تُدمَج مع الحالي.
+     */
+    public static function saveMerged(array $changes): array
+    {
+        $current = self::read();
+        $merged = array_merge($current, $changes);
+        \DB::table('sheet_settings')->where('key', 'official_sheet')->update([
+            'value' => json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            'updated_at' => now(),
+        ]);
+
+        return $merged;
+    }
 }

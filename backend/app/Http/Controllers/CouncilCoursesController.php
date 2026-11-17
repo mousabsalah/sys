@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Services\Audit\AuditLogger;
+use App\Services\Deletion\DeleteGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -87,17 +87,12 @@ class CouncilCoursesController extends Controller
     {
         $item = Course::findOrFail($course);
 
-        $blockers = [
-            'timetables' => DB::table('timetables')->where('course_id', $item->id)->exists(),
-            'exam_sessions' => DB::table('exam_sessions')->where('course_id', $item->id)->exists(),
-            'course_faculty' => DB::table('course_faculty')->where('course_id', $item->id)->exists(),
-            'group_courses' => DB::table('group_courses')->where('course_id', $item->id)->exists(),
-        ];
-        if (in_array(true, $blockers, true)) {
-            throw ValidationException::withMessages([
-                'course' => ['لا يمكن حذف مقرر مستخدم (جداول/امتحانات/ربط بمدرسين/خطة شعبة) — للأرشفة استخدم حذفه بعد فك كل الروابط.'],
-            ]);
-        }
+        DeleteGuard::assertUnused('course', [
+            'لا يمكن حذف مقرر مستخدم (جداول/امتحانات/ربط بمدرسين/خطة شعبة) — للأرشفة استخدم حذفه بعد فك كل الروابط.' => DB::table('timetables')->where('course_id', $item->id)->exists()
+                || DB::table('exam_sessions')->where('course_id', $item->id)->exists()
+                || DB::table('course_faculty')->where('course_id', $item->id)->exists()
+                || DB::table('group_courses')->where('course_id', $item->id)->exists(),
+        ]);
 
         $this->audit->log($request, 'course.delete', 'course', $item->id, ['code' => $item->code, 'name' => $item->name]);
         $item->delete();

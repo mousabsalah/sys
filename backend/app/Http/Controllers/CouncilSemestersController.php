@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Semester;
 use App\Services\Audit\AuditLogger;
 use App\Services\Backup\BackupGateway;
+use App\Services\Deletion\DeleteGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -264,15 +265,11 @@ class CouncilSemestersController extends Controller
         }
 
         return DB::transaction(function () use ($request, $item) {
-            if (DB::table('timetables')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بمحاضرات.']]);
-            }
-            if (DB::table('exam_sessions')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بامتحانات.']]);
-            }
-            if (DB::table('bookings')->where('semester_id', $item->id)->exists()) {
-                throw ValidationException::withMessages(['semester' => ['لا يمكن حذف فصل مرتبط بحجوزات.']]);
-            }
+            DeleteGuard::assertUnused('semester', [
+                'لا يمكن حذف فصل مرتبط بمحاضرات.' => DB::table('timetables')->where('semester_id', $item->id)->exists(),
+                'لا يمكن حذف فصل مرتبط بامتحانات.' => DB::table('exam_sessions')->where('semester_id', $item->id)->exists(),
+                'لا يمكن حذف فصل مرتبط بحجوزات.' => DB::table('bookings')->where('semester_id', $item->id)->exists(),
+            ]);
             $item->delete();
             $this->audit->log($request, 'semester.delete', 'semester', $item->id, ['academic_term' => $item->academic_term]);
 
