@@ -752,6 +752,66 @@ class AdminSecurityTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_check_ignores_exams_and_bookings_from_other_semesters(): void
+    {
+        $council = $this->makeUser('council');
+        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $lecturer->id]);
+        $hall = $this->makeHall('قاعة الفصول المختلفة');
+
+        $argueDate = '2026-11-15'; // الأحد
+
+        // فصل آخر بتاريخ الفصول المختلف، بنفس القاعة ونفس اليوم والوقت
+        $otherSemester = Semester::create([
+            'faculty_id' => $faculty->id,
+            'department_id' => $department->id,
+            'batch_id' => $batch->id,
+            'academic_term' => '2026/2',
+        ]);
+        ExamSession::create([
+            'course_id' => $course->id, 'group_id' => $group->id, 'hall_id' => $hall->id,
+            'exam_date' => $argueDate, 'start_time' => '07:00:00', 'end_time' => '09:00:00',
+            'exam_type' => 'فاينل', 'academic_term' => '2026/2', 'status' => 'approved',
+        ]);
+        Booking::create([
+            'hall_id' => $hall->id,
+            'date' => $argueDate,
+            'start_time' => '07:00:00', 'end_time' => '09:00:00',
+            'user_id' => $council->id, 'status' => 'confirmed', 'semester_id' => $otherSemester->id,
+        ]);
+
+        // الفصلان مختلفان — القاعة مسموحة
+        $response = $this->authedAs($council)
+            ->postJson('/api/timetables/check', [
+                'course_id' => $course->id,
+                'faculty_id' => $lecturer->id,
+                'group_id' => $group->id,
+                'hall_id' => $hall->id,
+                'day_of_week' => 'الأحد',
+                'start_time' => '07:00:00',
+                'end_time' => '09:00:00',
+                'academic_term' => '2026/1',
+            ])
+            ->assertOk();
+        $this->assertTrue((bool) $response->json('ok'));
+
+        // نفس الفصل — التعارض يظهر
+        $blocked = $this->authedAs($council)
+            ->postJson('/api/timetables/check', [
+                'course_id' => $course->id,
+                'faculty_id' => $lecturer->id,
+                'group_id' => $group->id,
+                'hall_id' => $hall->id,
+                'day_of_week' => 'الأحد',
+                'start_time' => '07:00:00',
+                'end_time' => '09:00:00',
+                'academic_term' => '2026/2',
+            ])
+            ->assertOk();
+        $this->assertFalse((bool) $blocked->json('ok'));
+    }
+
     public function test_bulk_store_creates_commits_atomically_and_rolls_back_on_conflict(): void
     {
         $council = $this->makeUser('council');

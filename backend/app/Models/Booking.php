@@ -36,4 +36,9 @@ class Booking extends Model
     {
         return $this->belongsTo(Hall::class);
     }
+
+    public function semester(): BelongsTo
+    {
+        return $this->belongsTo(Semester::class);
+    }
 }

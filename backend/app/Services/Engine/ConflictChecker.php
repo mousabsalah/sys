@@ -342,15 +342,22 @@ class ConflictChecker
         // الحجوزات — مؤكدة وغير مؤرشفة فقط
         if ($examDate !== null) {
             // حجز لفترة محددة / امتحان: نفس اليوم + نفس القاعة يكفي
-            $bookings = Booking::active()->whereDate('date', $examDate)->where('hall_id', $hallId)->get();
+            $bookings = Booking::active()->whereDate('date', $examDate)->where('hall_id', $hallId)->with('semester:id,academic_term')->get();
         } else {
             // محاضرة أسبوعية متكررة: الحجوزات المستقبلية من نفس يوم الأسبوع فقط
             $bookings = Booking::active()
                 ->where('date', '>=', now()->subDays(30)->toDateString())
-                ->get(['id', 'date', 'start_time', 'end_time', 'hall_id', 'course_id'])
+                ->with('semester:id,academic_term')
+                ->get(['id', 'date', 'start_time', 'end_time', 'hall_id', 'course_id', 'semester_id'])
                 ->filter(
                     fn ($b) => ArabicDay::of(Carbon::parse($b->date)) === $dayOfWeek
                 )->values();
+        }
+        // نطاق الفصل: نُبقي الحجز فقط إذا كان لنفس التيرم (أو بلا فصل — حجز عام لا يُهمَل)
+        if ($term !== null && $term !== '') {
+            $bookings = $bookings->filter(
+                fn ($b) => $b->semester_id === null || $b->semester?->academic_term === $term
+            )->values();
         }
         foreach ($bookings as $b) {
             $slots[] = [
@@ -367,9 +374,12 @@ class ConflictChecker
             ];
         }
 
-        // الامتحانات — بدون فصول مؤرشفة وأعمدة مطلوبة فقط
+        // الامتحانات — بدون فصول مؤرشفة وأعمدة مطلوبة فقط (ونفس التيرم إن حُدِّد)
         $examQuery = ExamSession::notArchived()
-            ->select('id', 'exam_date', 'start_time', 'end_time', 'hall_id', 'group_id', 'course_id');
+            ->select('id', 'exam_date', 'start_time', 'end_time', 'hall_id', 'group_id', 'course_id', 'academic_term');
+        if ($term !== null && $term !== '') {
+            $examQuery->where('academic_term', $term);
+        }
         foreach ($examQuery->get() as $e) {
             $slots[] = [
                 'id' => (int) $e->id,
