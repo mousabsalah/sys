@@ -103,6 +103,47 @@ class CouncilExamScheduleTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_official_exam_sheet_serves_approved_layout_for_group(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeChain();
+        $this->seedExamRows($group->id);
+        $council = $this->makeUser('council');
+
+        $response = $this->withHeaders(['Accept' => 'application/json'])
+            ->actingAs($council, 'sanctum')
+            ->getJson('/api/council/exam-schedules/official?group_id='.$group->id)
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertSame('دفعة 2026', $response->json('group.batch_name'));
+        $this->assertSame('بكلاريوس', $response->json('group.track'));
+        $this->assertSame('بكالوريوس تقنية المعلومات', $response->json('group.program_name'));
+
+        // المعتمدة فقط — pending لا تظهر في الورقة الطباعية (لكلا الفصلين مثل ورقةنا)
+        $rows = $response->json('rows');
+        $this->assertCount(2, $rows);
+        foreach ($rows as $row) {
+            $this->assertSame('approved', $row['status']);
+        }
+
+        // اللافتة تُخصَّص للامتحانات مع الاحتفاظ بباقي الورقة
+        $this->assertSame('جدول امتحانات نهاية الفصل', $response->json('sheet.title_prefix'));
+        $this->assertStringContainsString('{prefix}', $response->json('sheet.title_template'));
+        $this->assertSame(true, $response->json('sheet.signatures_enabled'));
+        $this->assertArrayHasKey('issued_at', $response->json());
+    }
+
+    public function test_official_exam_sheet_forbidden_for_admin(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeChain();
+        $admin = $this->makeUser('admin');
+
+        $this->withHeaders(['Accept' => 'application/json'])
+            ->actingAs($admin, 'sanctum')
+            ->getJson('/api/council/exam-schedules/official?group_id='.$group->id)
+            ->assertStatus(403);
+    }
+
     public function test_archive_then_unarchive_roundtrip_keeps_pending_flow(): void
     {
         [$faculty, $department, $batch, $group] = $this->makeChain();

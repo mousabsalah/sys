@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { type Call } from '../api'
 import { SkeletonRows, ErrorRetry } from '../components/LoadState'
+import { OfficialExamScheduleSheet } from './OfficialExamScheduleSheet'
 
 type GroupSummary = {
   id: number; batch: string; track: string; student_count: number
@@ -24,6 +25,7 @@ export default function CouncilExamSchedulesView({ call }: { call: Call }) {
   const [loading, setLoading] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
   const [showArchived, setShowArchived] = useState(false)
+  const [sheetFor, setSheetFor] = useState<number | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
 
@@ -113,6 +115,7 @@ export default function CouncilExamSchedulesView({ call }: { call: Call }) {
                 </div>
 
                 <div className="d-flex gap-2 flex-wrap">
+                  <button type="button" className="aust-btn-outline btn-sm" onClick={() => setSheetFor(g.id)}>الورقة الرسمية</button>
                   {g.counts.approved + g.counts.pending + g.counts.cancelled > 0 && (
                     <button type="button" className="aust-btn-outline btn-sm" disabled={busy === `archive-${g.id}`} onClick={() => archive(g)}>{busy === `archive-${g.id}` ? 'جارٍ الأرشفة…' : 'أرشفة الجدول'}</button>
                   )}
@@ -153,6 +156,8 @@ export default function CouncilExamSchedulesView({ call }: { call: Call }) {
           </div>
         </section>
       ))}
+
+      {sheetFor !== null && <OfficialExamScheduleSheet call={call} groupId={sheetFor} onClose={() => setSheetFor(null)} />}
     </>
   )
 }

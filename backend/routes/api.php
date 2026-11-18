@@ -22,6 +22,7 @@ use App\Http\Controllers\EnginePassthrough;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\HallsController;
 use App\Http\Controllers\LecturerController;
+use App\Http\Controllers\OfficialExamScheduleController;
 use App\Http\Controllers\OfficialSheetController;
 use App\Http\Controllers\OfficialTimetableController;
 use App\Http\Controllers\ProposeController;
@@ -102,6 +103,7 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
 // ── مجلس المدرسين: ورقة الجدول الرسمية للطباعة (Siegel AUST) ──
 Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
     Route::get('/council/timetables-official', [OfficialTimetableController::class, 'show']);
+    Route::get('/council/exam-schedules/official', [OfficialExamScheduleController::class, 'show']);
 });
 
 // ── مجلس المدرسين: «الجداول الدراسية» — عرض/أرشفة/حذف جداول الشعب (بلا إنشاء يدوي) ──
