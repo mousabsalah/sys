@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Services\Academic\ArabicDay;
 use App\Services\Academic\SpecializationGroups;
 use App\Support\Defaults;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ class CouncilExamScheduleController extends Controller
                 'group_id' => (int) $r->group_id,
                 'status' => (string) $r->status,
                 'exam_date' => (string) $r->exam_date,
-                'day' => ArabicDay::of(\Carbon\Carbon::parse((string) $r->exam_date)),
+                'day' => ArabicDay::of(Carbon::parse((string) $r->exam_date)),
                 'exam_type' => (string) $r->exam_type,
                 'start_time' => substr((string) $r->start_time, 0, 8),
                 'end_time' => substr((string) $r->end_time, 0, 8),
