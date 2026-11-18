@@ -34,7 +34,8 @@ export default function CouncilPlansView({ call }: { call: Call }) {
   function toggle(courseId: number) {
     setEditItems((prev) => (prev.some((i) => i.course_id === courseId)
       ? prev.filter((i) => i.course_id !== courseId)
-      : [...prev, { course_id: courseId, sessions_per_week: courses.find((c) => c.id === courseId)?.credit_hours ?? 3 }]))
+      // الافتراضي على 3 حصص بالأسبوع — ساعات المقرر الإجمالية معلومة لا توجيه أسبوعي
+      : [...prev, { course_id: courseId, sessions_per_week: 3 }]))
   }
   function setSessions(courseId: number, value: number) {
     setEditItems((prev) => prev.map((i) => (i.course_id === courseId ? { ...i, sessions_per_week: Math.max(1, Math.min(12, value)) } : i)))
@@ -101,7 +102,7 @@ export default function CouncilPlansView({ call }: { call: Call }) {
                         return (
                           <label key={c.id} className={`form-check form-check-inline border rounded px-2 py-1 mb-1 ${checked ? 'border-primary bg-light' : ''}`} style={{ cursor: 'pointer' }}>
                             <input className="form-check-input me-1" type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
-                            <span className="small">{c.code} — {c.name} <span className="text-muted">({c.credit_hours} س)</span></span>
+                            <span className="small">{c.code} — {c.name} <span className="text-muted" title="عدد ساعات المقرر الكلي للسمستر — ليس حصصًا أسبوعية">({c.credit_hours} ساعات كلية)</span></span>
                           </label>
                         )
                       })}
@@ -116,7 +117,7 @@ export default function CouncilPlansView({ call }: { call: Call }) {
                               <tr key={i.course_id}>
                                 <td className="small">{c?.code} — {c?.name}</td>
                                 <td>
-                                  <input type="number" className="form-control form-control-sm" style={{ width: 70 }} min={1} max={12} dir="ltr" value={i.sessions_per_week} onChange={(e) => setSessions(i.course_id, Number(e.target.value))} />
+                                  <input type="number" className="form-control form-control-sm" style={{ width: 70 }} min={1} max={12} dir="ltr" value={i.sessions_per_week} onChange={(e) => setSessions(i.course_id, Number(e.target.value))} title="عدد الحصص بالأسبوع" aria-label="عدد الحصص بالأسبوع" />
                                 </td>
                               </tr>
                             )

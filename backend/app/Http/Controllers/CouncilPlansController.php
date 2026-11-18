@@ -70,6 +70,18 @@ class CouncilPlansController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.course_id' => ['required', 'integer', 'distinct', Rule::exists('courses', 'id')],
             'items.*.sessions_per_week' => ['required', 'integer', 'min:1', 'max:12'],
+        ], [
+            'items.required' => 'لا توجد مقررات في الخطة — أضف مقررًا واحدًا على الأقل.',
+            'items.array' => 'الخطة يجب أن تكون قائمة مقررات.',
+            'items.min' => 'أضف مقررًا واحدًا على الأقل إلى الخطة.',
+            'items.*.course_id.required' => 'مقرر مجهول في الخطة.',
+            'items.*.course_id.integer' => 'المقرر غير صالح.',
+            'items.*.course_id.distinct' => 'مقرر مكرر في الخطة — كل المقررات مرة واحدة فقط.',
+            'items.*.course_id.exists' => 'أحد المقررات المذكورة غير موجود في النظام.',
+            'items.*.sessions_per_week.required' => 'حدد عدد الحصص الأسبوعية لكل مقرر.',
+            'items.*.sessions_per_week.integer' => 'عدد الحصص الأسبوعية يجب أن يكون رقمًا صحيحًا.',
+            'items.*.sessions_per_week.min' => 'كل مقرر يحتل حصة واحدة أسبوعيًا على الأقل.',
+            'items.*.sessions_per_week.max' => 'الحد الأقصى 12 حصة أسبوعيًا لكل مقرر — ساعات المقرر الإجمالية لا تدخل هنا (أسبوعي فقط).',
         ]);
 
         $groupModel = DB::transaction(function () use ($input, $group, $request) {
