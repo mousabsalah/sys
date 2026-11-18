@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Group;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
+use App\Services\Academic\SpecializationGroups;
 use App\Support\Defaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,26 +28,7 @@ class CouncilScheduleController extends Controller
     {
         $term = (string) $request->query('term', Defaults::DEFAULT_TERM);
 
-        $groups = DB::table('groups')
-            ->join('batches', 'batches.id', '=', 'groups.batch_id')
-            ->leftJoin('programs', 'programs.id', '=', 'batches.program_id')
-            ->leftJoin('departments', 'departments.id', '=', 'batches.department_id')
-            ->whereNull('batches.deleted_at')
-            ->orderBy('departments.name')
-            ->orderBy('batches.name')
-            ->orderBy('groups.track')
-            ->orderBy('groups.id')
-            ->select(
-                'groups.id',
-                'groups.track',
-                'groups.student_count',
-                'batches.id AS batch_id',
-                'batches.name AS batch_name',
-                'programs.name AS program_name',
-                'departments.name AS department_name',
-                'departments.id AS department_id',
-            )
-            ->get();
+        $groups = SpecializationGroups::list();
 
         // عدّادات لكل شعبة/حالة
         $counts = [];
@@ -61,16 +43,16 @@ class CouncilScheduleController extends Controller
 
         $groupsPayload = [];
         foreach ($groups as $g) {
-            $gid = (int) $g->id;
+            $gid = (int) $g['id'];
             $byStatus = $counts[$gid] ?? [];
             $groupsPayload[] = [
                 'id' => $gid,
-                'batch' => (string) $g->batch_name,
-                'track' => (string) $g->track,
-                'student_count' => (int) $g->student_count,
-                'program' => (string) ($g->program_name ?? ''),
-                'department' => (string) ($g->department_name ?? ''),
-                'department_id' => $g->department_id !== null ? (int) $g->department_id : null,
+                'batch' => (string) $g['batch'],
+                'track' => (string) $g['track'],
+                'student_count' => (int) $g['student_count'],
+                'program' => (string) $g['program'],
+                'department' => (string) $g['department'],
+                'department_id' => $g['department_id'],
                 'counts' => [
                     'total' => array_sum($byStatus),
                     'approved' => $byStatus['approved'] ?? 0,

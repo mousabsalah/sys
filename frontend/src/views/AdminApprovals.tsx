@@ -47,6 +47,7 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [examBulkBusy, setExamBulkBusy] = useState(false)
 
   const { next, isCurrent } = useSeqGuard()
 
@@ -74,6 +75,18 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
       setMsg(approve ? 'تم الاعتماد ✓ — ظهر الآن للجميع' : 'تم الإرجاع للانتظار')
       await load()
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
+  }
+
+  async function approveAllExams() {
+    const n = data?.pending_exams_count ?? 0
+    if (n === 0) return
+    if (!window.confirm(`اعتماد جدول الامتحانات كاملًا — سيتم اعتماد ${n} فاينل معلّق دفعة واحدة وستظهر فورًا للدفعة والمدرس وأي جهة معنية. متابعة؟`)) return
+    setExamBulkBusy(true); setErr(null); setMsg(null)
+    try {
+      const r = await call<{ ok: boolean; approved?: number }>('/api/admin/approvals/exams/approve-all', 'POST', {})
+      setMsg(`اعتُمد جدول الامتحانات كاملًا — ${r.approved ?? n} فاينل صار ظاهرًا للجميع ✓`)
+      await load()
+    } catch (e) { setErr((e as Error).message) } finally { setExamBulkBusy(false) }
   }
 
   async function approveAll() {
@@ -132,7 +145,10 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
         </table>
       </div>
 
-      <h2 className="h5 fw-bold mt-4 mb-2" style={{ color: '#782B19' }}>امتحانات معلّقة ({data?.pending_exams_count ?? 0})</h2>
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 mt-4">
+        <h2 className="h5 fw-bold mb-0" style={{ color: '#782B19' }}>امتحانات معلّقة ({data?.pending_exams_count ?? 0})</h2>
+        <button type="button" className="aust-btn btn-sm" disabled={(data?.pending_exams_count ?? 0) === 0 || examBulkBusy} onClick={approveAllExams}>{examBulkBusy ? 'جارٍ الاعتماد…' : 'اعتماد جدول الامتحانات كامل'}</button>
+      </div>
       <div className="table-responsive">
         <table className="table table-sm aust-panel align-middle">
           <thead className="table-light"><tr><th>التاريخ</th><th>الدفعة/الشعبة</th><th>المقرر</th><th>النوع</th><th>من</th><th>إلى</th><th>القاعة</th><th></th></tr></thead>

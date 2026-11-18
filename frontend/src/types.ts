@@ -6,6 +6,7 @@ export type ViewName =
   | 'propose'
   | 'propose-exams'
   | 'council-schedules'
+  | 'exam-schedules'
   | 'bookings'
   | 'create-booking'
   | 'halls-available'

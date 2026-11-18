@@ -13,6 +13,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
     { key: 'propose', label: 'اقتراح تلقائي', roles: ['council'] },
     { key: 'propose-exams', label: 'اقتراح الامتحانات التلقائي', roles: ['council'] },
     { key: 'council-schedules', label: 'الجداول الدراسية', roles: ['council'] },
+    { key: 'exam-schedules', label: 'جدول الامتحانات', roles: ['council'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'lecturer'] },
     { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'lecturer'] },
     { key: 'council-academic-year', label: 'بداية السنة الدراسية', roles: ['council'] },

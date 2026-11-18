@@ -12,6 +12,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilCoursesController;
 use App\Http\Controllers\CouncilExamProposalController;
+use App\Http\Controllers\CouncilExamScheduleController;
 use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\CouncilPlansController;
 use App\Http\Controllers\CouncilScheduleController;
@@ -111,6 +112,14 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
     Route::delete('/council/schedules/{group}', [CouncilScheduleController::class, 'destroy']);
 });
 
+// ── مجلس المدرسين: «جدول الامتحانات» — نفس مفهوم الجداول الدراسية (فاينل فقط) ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/exam-schedules', [CouncilExamScheduleController::class, 'index']);
+    Route::post('/council/exam-schedules/archive', [CouncilExamScheduleController::class, 'archive']);
+    Route::post('/council/exam-schedules/unarchive', [CouncilExamScheduleController::class, 'unarchive']);
+    Route::delete('/council/exam-schedules/{group}', [CouncilExamScheduleController::class, 'destroy']);
+});
+
 // ── مجلس المدرسين: بداية السنة الدراسية (فتحتها بويه — سمسترين متزامنين + إدارة الفصول) — المدير للقراءة فقط ──
 Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
     Route::get('/council/semesters', [CouncilSemestersController::class, 'index']);
@@ -191,6 +200,7 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
     // اعتماد الجداول والامتحانات المعلّقة (مجلس ينشئ ← المدير يعتمد ← الجميع يرى)
     Route::get('/admin/approvals', [AdminApprovalsController::class, 'index']);
     Route::post('/admin/approvals/approve-all', [AdminApprovalsController::class, 'approveAll'])->middleware('throttle:12,1,approve-all');
+    Route::post('/admin/approvals/exams/approve-all', [AdminApprovalsController::class, 'approveAllExams'])->middleware('throttle:12,1,approve-all-exams');
     Route::post('/admin/approvals/timetables/{timetable}/approve', [AdminApprovalsController::class, 'approveTimetable']);
     Route::post('/admin/approvals/timetables/{timetable}/unapprove', [AdminApprovalsController::class, 'unapproveTimetable']);
     Route::post('/admin/approvals/exams/{exam}/approve', [AdminApprovalsController::class, 'approveExam']);

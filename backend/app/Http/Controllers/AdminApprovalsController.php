@@ -98,6 +98,29 @@ class AdminApprovalsController extends Controller
         return response()->json(['ok' => true, 'approved' => count($ids)]);
     }
 
+    // POST /api/admin/approvals/exams/approve-all — اعتماد كل الامتحانات المعلّقة دفعة واحدة
+    public function approveAllExams(Request $request): JsonResponse
+    {
+        $term = $request->input('academic_term');
+        $query = ExamSession::pending();
+        if (is_string($term) && $term !== '') {
+            $query->where('academic_term', $term);
+        }
+        /** @var array<int, int> $ids */
+        $ids = $query->pluck('id')->all();
+
+        if ($ids === []) {
+            return response()->json(['ok' => true, 'approved' => 0]);
+        }
+
+        DB::transaction(function () use ($ids) {
+            ExamSession::whereIn('id', $ids)->update(['status' => 'approved', 'updated_at' => now()]);
+        });
+        $this->audit->log($request, 'exams.approve_all', 'exam_session', null, ['count' => count($ids), 'term' => $term]);
+
+        return response()->json(['ok' => true, 'approved' => count($ids)]);
+    }
+
     // POST /api/admin/approvals/timetables/{timetable}/approve — اعتماد جدول
     public function approveTimetable(Request $request, int $timetable): JsonResponse
     {

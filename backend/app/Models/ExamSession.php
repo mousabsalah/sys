@@ -36,6 +36,7 @@ class ExamSession extends Model
 
     /**
      * Scope: الامتحانات غير المرتبطة بفصل مؤرشف — الأرشفة تجمّد الفصل ولا يظل يحجب الجدولة.
+     * وصفوف «مؤرشفة» صراحةً (status='archived') تُستبعد هي أيضًا من كل ما هو نشط.
      */
     /**
      * @param  Builder<static>  $query
@@ -43,7 +44,7 @@ class ExamSession extends Model
      */
     public function scopeNotArchived(Builder $query): Builder
     {
-        return $query->where(function (Builder $q) {
+        return $query->where('exam_sessions.status', '!=', 'archived')->where(function (Builder $q) {
             $q->whereNull('exam_sessions.semester_id')
                 ->orWhereExists(function ($q) {
                     $q->select(DB::raw(1))
