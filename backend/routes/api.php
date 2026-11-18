@@ -184,6 +184,7 @@ Route::middleware(['auth:sanctum', 'active', 'role:admin'])->group(function () {
 
     // اعتماد الجداول والامتحانات المعلّقة (مجلس ينشئ ← المدير يعتمد ← الجميع يرى)
     Route::get('/admin/approvals', [AdminApprovalsController::class, 'index']);
+    Route::post('/admin/approvals/approve-all', [AdminApprovalsController::class, 'approveAll'])->middleware('throttle:12,1,approve-all');
     Route::post('/admin/approvals/timetables/{timetable}/approve', [AdminApprovalsController::class, 'approveTimetable']);
     Route::post('/admin/approvals/timetables/{timetable}/unapprove', [AdminApprovalsController::class, 'unapproveTimetable']);
     Route::post('/admin/approvals/exams/{exam}/approve', [AdminApprovalsController::class, 'approveExam']);

@@ -7,6 +7,7 @@ use App\Models\Timetable;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * AdminApprovalsController — «اعتماد الجداول والامتحانات» للمدير.
@@ -72,6 +73,29 @@ class AdminApprovalsController extends Controller
             'pending_lectures_count' => $lectures->count(),
             'pending_exams_count' => $exams->count(),
         ]);
+    }
+
+    // POST /api/admin/approvals/approve-all — اعتماد كل المحاضرات المعلّقة في الفصل دفعة واحدة
+    public function approveAll(Request $request): JsonResponse
+    {
+        $term = $request->input('academic_term');
+        $query = Timetable::pending();
+        if (is_string($term) && $term !== '') {
+            $query->where('academic_term', $term);
+        }
+        /** @var array<int, int> $ids */
+        $ids = $query->pluck('id')->all();
+
+        if ($ids === []) {
+            return response()->json(['ok' => true, 'approved' => 0]);
+        }
+
+        DB::transaction(function () use ($ids) {
+            Timetable::whereIn('id', $ids)->update(['status' => 'approved', 'updated_at' => now()]);
+        });
+        $this->audit->log($request, 'timetables.approve_all', 'timetable', null, ['count' => count($ids), 'term' => $term]);
+
+        return response()->json(['ok' => true, 'approved' => count($ids)]);
     }
 
     // POST /api/admin/approvals/timetables/{timetable}/approve — اعتماد جدول

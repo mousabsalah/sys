@@ -46,6 +46,7 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const { next, isCurrent } = useSeqGuard()
 
@@ -75,6 +76,18 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
     } catch (e) { setErr((e as Error).message) } finally { setBusy(null) }
   }
 
+  async function approveAll() {
+    const n = data?.pending_lectures_count ?? 0
+    if (n === 0) return
+    if (!window.confirm(`اعتماد الجدول كاملًا — سيتم اعتماد ${n} محاضرة معلّقة دفعة واحدة وستظهر فورًا للدفعة والمدرس والورقة الرسمية والحارس. متابعة؟`)) return
+    setBulkBusy(true); setErr(null); setMsg(null)
+    try {
+      const r = await call<{ ok: boolean; approved?: number }>('/api/admin/approvals/approve-all', 'POST', {})
+      setMsg(`اعتُمد الجدول كاملًا — ${r.approved ?? n} محاضرة صارت ظاهرة للجميع ✓`)
+      await load()
+    } catch (e) { setErr((e as Error).message) } finally { setBulkBusy(false) }
+  }
+
   if (err && !data) return <ErrorRetry message={err} onRetry={load} />
   if (!loaded) return <SkeletonRows rows={4} height={52} />
 
@@ -92,7 +105,10 @@ export default function AdminApprovalsView({ call }: { call: Call }) {
         <button className="aust-btn-outline btn-sm ms-auto" onClick={load}>تحديث</button>
       </div>
 
-      <h2 className="h5 fw-bold mt-4 mb-2" style={{ color: '#782B19' }}>محاضرات معلّقة ({data?.pending_lectures_count ?? 0})</h2>
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <h2 className="h5 fw-bold mb-0" style={{ color: '#782B19' }}>محاضرات معلّقة ({data?.pending_lectures_count ?? 0})</h2>
+        <button type="button" className="aust-btn btn-sm" disabled={(data?.pending_lectures_count ?? 0) === 0 || bulkBusy} onClick={approveAll}>{bulkBusy ? 'جارٍ الاعتماد…' : 'اعتماد الجدول كامل'}</button>
+      </div>
       <div className="table-responsive mb-4">
         <table className="table table-sm aust-panel align-middle">
           <thead className="table-light"><tr><th>اليوم</th><th>الدفعة/الشعبة</th><th>المقرر</th><th>من</th><th>إلى</th><th>القاعة</th><th>المدرّس</th><th></th></tr></thead>
