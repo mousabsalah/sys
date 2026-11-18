@@ -227,14 +227,21 @@ func handlePropose(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), solverExecTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, pythonBin, solverPath)
+	var stdout, stderr bytes.Buffer
 	cmd.Stdin = bytes.NewReader(body)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	cmd.Env = append(os.Environ(), "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1")
-	output, err := cmd.Output()
+	err = cmd.Run()
+	output := stdout.Bytes()
 	if err != nil {
 		// المخرج يصلح للتشخيص — 503 العربي يبقى للمستخدم لكن الحقيقية تسجل في stdout
-		log.Printf("propose: solver exec failed: %v", err)
+		log.Printf("propose: solver exec failed: %v — stderr: %s", err, tailString(stderr.String(), 1024))
 		writeError(w, http.StatusServiceUnavailable, "SOLVER_UNREACHABLE", "تعذر تشغيل محرك الاقتراح (CP-SAT). حاول لاحقًا أو تابع الجدولة يدويًا.")
 		return
+	}
+	if stderr.Len() > 0 {
+		log.Printf("propose: solver stderr: %s", tailString(stderr.String(), 1024))
 	}
 
 	var parsed map[string]interface{}
@@ -246,6 +253,88 @@ func handlePropose(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(output)
+}
+
+// ── /propose-exams: اقتراح جدول امتحانات فاينل — Google OR-Tools CP-SAT ───
+// نفس مفهوم /propose لكن بفترات امتحانية على تواريخ حقيقية (مدى يدوي من الشاشة).
+func handleProposeExams(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST only")
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		log.Printf("propose-exams: read body failed: %v", err)
+		writeError(w, http.StatusBadRequest, "BAD_BODY", "invalid body")
+		return
+	}
+	var probe struct {
+		Group struct {
+			ID int `json:"id"`
+		} `json:"group"`
+		ExamSlots []json.RawMessage `json:"exam_slots"`
+		Courses   []json.RawMessage `json:"courses"`
+	}
+	if err := json.Unmarshal(body, &probe); err != nil {
+		log.Printf("propose-exams: unmarshal payload failed: %v", err)
+		writeError(w, http.StatusBadRequest, "BAD_JSON", "invalid JSON payload")
+		return
+	}
+	if probe.Group.ID <= 0 {
+		writeError(w, http.StatusBadRequest, "MISSING_GROUP_ID", "missing group.id")
+		return
+	}
+	if len(probe.ExamSlots) == 0 {
+		writeError(w, http.StatusBadRequest, "MISSING_EXAM_SLOTS", "exam_slots مطلوب وغير فارغ — حدد مدى تواريخ الامتحانات")
+		return
+	}
+
+	solverPath := os.Getenv("SYST_SOLVER_EXAM_PATH")
+	if solverPath == "" {
+		solverPath = "./solver_exams.py"
+	}
+	pythonBin := os.Getenv("SYST_PYTHON")
+	if pythonBin == "" {
+		pythonBin = "python"
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), solverExecTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, pythonBin, solverPath)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdin = bytes.NewReader(body)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Env = append(os.Environ(), "PYTHONIOENCODING=utf-8", "PYTHONUTF8=1")
+	err = cmd.Run()
+	output := stdout.Bytes()
+	if err != nil {
+		log.Printf("propose-exams: solver exec failed: %v — stderr: %s", err, tailString(stderr.String(), 1024))
+		writeError(w, http.StatusServiceUnavailable, "SOLVER_UNREACHABLE", "تعذر تشغيل محرك الاقتراح (CP-SAT). حاول لاحقًا أو تابع الجدولة يدويًا.")
+		return
+	}
+	if stderr.Len() > 0 {
+		log.Printf("propose-exams: solver stderr: %s", tailString(stderr.String(), 1024))
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(output, &parsed); err != nil {
+		log.Printf("propose-exams: solver output is not valid JSON: %v", err)
+		writeError(w, http.StatusServiceUnavailable, "SOLVER_BAD_RESPONSE", "استجابة غير صالحة من المحرك")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(output)
+}
+
+// tailString يرجع آخر n بايت من s — يمنع flood في الـ logs لو solver طلع traceback طويل.
+func tailString(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return "…" + s[len(s)-n:]
 }
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -308,6 +397,7 @@ func newMux() *http.ServeMux {
 	})
 
 	mux.HandleFunc("/propose", handlePropose)
+	mux.HandleFunc("/propose-exams", handleProposeExams)
 
 	return mux
 }

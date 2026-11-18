@@ -6,6 +6,7 @@ import type { AuthUser, ViewName } from './types'
 import AuthView from './views/Auth'
 const DashboardView = lazy(() => import('./views/Dashboard'))
 const ProposeView = lazy(() => import('./views/Propose'))
+const ProposeExamsView = lazy(() => import('./views/ProposeExams'))
 const CouncilSchedulesView = lazy(() => import('./views/CouncilSchedules'))
 const BookingsView = lazy(() => import('./views/Bookings'))
 const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
@@ -38,7 +39,7 @@ const fallback = (
 )
 
 // صفحات مخفية عن مدير النظام — حتى لو وصل إليها بأي طريق تعود إلى اللوحة
-const ADMIN_HIDDEN: ReadonlySet<ViewName> = new Set(['council-schedules', 'halls-available', 'create-booking', 'propose'])
+const ADMIN_HIDDEN: ReadonlySet<ViewName> = new Set(['council-schedules', 'halls-available', 'create-booking', 'propose', 'propose-exams'])
 
 export default function App() {
   const [auth, setAuth] = useState<{ user: AuthUser; token: string } | null>(null)
@@ -67,6 +68,7 @@ export default function App() {
       <Suspense fallback={fallback}>
         {activeView === 'dashboard' && <DashboardView call={call} role={auth.user.role} />}
         {activeView === 'propose' && <ProposeView call={call} onAdopted={() => setView('council-schedules')} />}
+        {activeView === 'propose-exams' && <ProposeExamsView call={call} />}
         {activeView === 'council-schedules' && <CouncilSchedulesView call={call} />}
         {activeView === 'bookings' && <BookingsView call={call} />}
         {activeView === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}

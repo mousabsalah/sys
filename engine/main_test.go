@@ -262,3 +262,37 @@ func TestCheckRouteIntegration(t *testing.T) {
 		t.Fatalf("/check bad json: status=%d body=%v", resp.StatusCode, bad)
 	}
 }
+
+func TestProposeExamsRouteValidation(t *testing.T) {
+	server := httptest.NewServer(corsMiddleware(newMux()))
+	defer server.Close()
+
+	// missing exam_slots → 400 with unified envelope (no python needed)
+	payload := map[string]interface{}{
+		"group":   map[string]interface{}{"id": 1, "student_count": 30},
+		"courses": []map[string]interface{}{{"course_id": 1, "code": "CS101", "name": "برمجة", "sessions": 1}},
+	}
+	body, _ := json.Marshal(payload)
+	resp, err := http.Post(server.URL+"/propose-exams", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("propose-exams request failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatalf("decode propose-exams response: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest || out["code"] != "MISSING_EXAM_SLOTS" {
+		t.Fatalf("propose-exams missing slots: status=%d body=%v", resp.StatusCode, out)
+	}
+
+	// GET → 405
+	resp2, err := http.Get(server.URL + "/propose-exams")
+	if err != nil {
+		t.Fatalf("propose-exams GET failed: %v", err)
+	}
+	_ = resp2.Body.Close()
+	if w := resp2.StatusCode; w != http.StatusMethodNotAllowed {
+		t.Fatalf("propose-exams GET = %d, want 405", w)
+	}
+}

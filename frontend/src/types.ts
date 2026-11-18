@@ -4,6 +4,7 @@ export type ViewName =
   | 'login'
   | 'dashboard'
   | 'propose'
+  | 'propose-exams'
   | 'council-schedules'
   | 'bookings'
   | 'create-booking'

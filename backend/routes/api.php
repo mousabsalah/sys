@@ -11,6 +11,7 @@ use App\Http\Controllers\BatchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilCoursesController;
+use App\Http\Controllers\CouncilExamProposalController;
 use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\CouncilPlansController;
 use App\Http\Controllers\CouncilScheduleController;
@@ -61,6 +62,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('/timetables/bulk', [TimetableController::class, 'bulkStore'])->middleware('role:council');
     Route::post('/admin/propose-timetable', [ProposeController::class, 'store'])->middleware('role:council');
     Route::get('/admin/propose-timetable/context', [ProposeController::class, 'context'])->middleware('role:council');
+
+    // ── اقتراح الامتحانات التلقائي — فاينل لكل مقرر في الخطة على تواريخ حقيقية (CP-SAT) ──
+    Route::get('/council/propose-exams/context', [CouncilExamProposalController::class, 'context'])->middleware('role:council');
+    Route::post('/council/propose-exams', [CouncilExamProposalController::class, 'store'])->middleware('role:council');
+    Route::post('/council/propose-exams/apply', [CouncilExamProposalController::class, 'apply'])->middleware('role:council');
 
     // ── الحارس ──
     Route::get('/status/now', [GuardController::class, 'nowHalls'])->middleware('role:guard,admin');
