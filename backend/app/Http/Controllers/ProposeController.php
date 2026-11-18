@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\Booking;
 use App\Models\Course;
+use App\Models\ExamSession;
 use App\Models\Group;
 use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
@@ -162,11 +164,12 @@ class ProposeController extends Controller
                 'course_id' => (int) $t->course_id,
             ])->all();
 
-        // الامتحانات والحجوزات الموجودة — بدون فلترة بالتيرم حاليًا (تاريخ الامتحان تقاطع اليوم كافي للتداخل الزمني)
-        $exams = DB::table('exam_sessions')
-            ->whereNull('archived_at')
-            ->where('status', '!=', 'cancelled')
-            ->get(['id', 'exam_date', 'start_time', 'end_time', 'hall_id', 'group_id', 'course_id'])
+        // الامتحانات والحجوزات الموجودة — الأرشفة تُحسب عبر الفصل (semesters.archived_at)
+        $examsQ = ExamSession::notArchived()->where('status', '!=', 'cancelled');
+        if ($term !== null && $term !== '') {
+            $examsQ->where('academic_term', $term);
+        }
+        $exams = $examsQ->get(['id', 'exam_date', 'start_time', 'end_time', 'hall_id', 'group_id', 'course_id'])
             ->map(fn ($e) => [
                 'id' => (int) $e->id,
                 'kind' => 'exam',
@@ -180,9 +183,8 @@ class ProposeController extends Controller
                 'course_id' => (int) ($e->course_id ?? 0),
             ])->all();
 
-        $bookings = DB::table('bookings')
-            ->where('status', 'active')
-            ->get(['id', 'date', 'start_time', 'end_time', 'hall_id', 'group_id'])
+        $bookings = Booking::active()
+            ->get(['id', 'date', 'start_time', 'end_time', 'hall_id'])
             ->map(fn ($b) => [
                 'id' => (int) $b->id,
                 'kind' => 'booking',
@@ -192,7 +194,7 @@ class ProposeController extends Controller
                 'end_time' => substr((string) $b->end_time, 0, 8),
                 'hall_id' => (int) $b->hall_id,
                 'faculty_id' => 0,
-                'group_id' => (int) ($b->group_id ?? 0),
+                'group_id' => 0,
                 'course_id' => 0,
             ])->all();
 
