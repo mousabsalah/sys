@@ -165,7 +165,7 @@ export default function ProposeView({ call, onAdopted }: { call: Call; onAdopted
               ))}
             </div>
             <button type="button" className="aust-btn ms-auto" onClick={adoptAll} disabled={adopting || !result.assignments?.length || adoptState === 'ok'}>{adopting ? 'جارٍ الاعتماد…' : 'اعتماد الكل (معاملة واحدة)'}</button>
-            <button type="button" className="aust-btn-outline" onClick={onAdopted}>عرض الجداول</button>
+            <button type="button" className="aust-btn-outline" onClick={onAdopted}>الجداول الدراسية</button>
           </div>
 
           {adoptMsg && <div className={`alert ${adoptState === 'ok' ? 'alert-success' : 'alert-warning'}`}>{adoptMsg}</div>}

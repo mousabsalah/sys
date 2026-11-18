@@ -110,7 +110,7 @@
 
 ## القرارات المعتمدة (2026-11-09)
 
-- **الامتحانات داخل v1**: شاشات إعداد/عرض الامتحانات + `EXAM_SESSIONS`/`EXAM_UPDATES` + خدمة التحقق Go بـ `type=exam`.
+- **الامتحانات داخل v1**: `EXAM_SESSIONS`/`EXAM_UPDATES` + خدمة التحقق Go بـ `type=exam` — الشاشات اليدوية لـ«إعداد/عرض الامتحانات» **أُزيلت 2026-11-18** (انظر جديد التغيير في الأسفل).
 - **GROUPS (الشعب)**: `batches` صارت حاوية إدارية فقط؛ الجدولة/التحقق/الاستعلامات/الإشعارات كلها على (الدفعة × المسار: دبلوم/بكلاريوس) — `groups(batch_id, track, student_count)` + `UNIQUE(batch_id, track)`.
 - **الهرم التنظيمي جامعة ← كلية ← قسم ← دفعة ← شعبة**: جدولا `faculties` و`departments` جديدان؛ `batches.department_id` و`faculty.department_id`؛ `users.faculty_id` للمستخدم؛ **المقررات والقاعات جامعية مشتركة**؛ **admin فقط** يحرر المقررات؛ **guard مركزي** (كل القاعات)؛ **council** يرى الجامعة كلها (ألغي إطار faculty-scoping)؛ **admin** يرى الجامعة + فلتر كلية في اللوحة.
 - **وعاء إسناد الأساتذة (`course_faculty`)**: لكل مقرر قائمة أساتذة مصادقين؛ نموذج إعداد الجدول يتساقط مفلتر حسب المقرر؛ **R13** بمعنيين: لا حفظ بسطر مدرّس خارج الوعاء، **ولا حذف لمدرّس من الوعاء طالما له سطر سارٍ في الجدول** (تعديل المحاضرات أولًا)؛ مادة مشتركة بين دبلوم وبكلاريوس بـ أستاذين = سطرا جدول على نفس `course_id`.
@@ -127,10 +127,10 @@
 |---|---|---|
 | 1 — التأسيس (Laravel 12 + React) | ✅ مكتملة | Laravel 12.71 `backend/` (scaffold على SQLite ثم تواصلت بـ MariaDB للمنظومة الفعلية)؛ React TS/Vite RTL مع هوية AUST + شاشة دخول مبدئية؛ `.env` مكتمل لكليهما |
 | 2 — النواة (migrations/Models/seeders) | ✅ مكتملة | 17 كيانًا مدفوعًا على MariaDB `aust_graduation`؛ 3 كليات/6 أقسام/2 برامج/8 دفعات (2 شعب لكل دفعة)/42 فترة/20 قاعة/30 مقرر/12 عضو/5 حسابات عينة |
-| 3 — الجداول + التعارض (Go syst-engine + P2) | ✅ مكتملة | `engine/` Go (8080) → `POST /check`؛ Laravel يجمع payload من DB ويرسله — verdict عربي hard/soft؛ endpoints: `POST /api/timetables/check` + `POST /api/timetables`؛ transaction + `SELECT FOR UPDATE` + R13؛ Sanctum token end-to-end ✓ |
+| 3 — الجداول + التعارض (Go syst-engine + P2) | ✅ مكتملة | `engine/` Go (8080) → `POST /check`؛ Laravel يجمع payload من DB ويرسله — verdict عربي hard/soft؛ المسار الوحيد للإنشاء هو «اقتراح تلقائي» ثم `POST /api/timetables/bulk` (معاملة واحدة، لا حفظ جزئي)؛ transaction + `SELECT FOR UPDATE` + R13؛ Sanctum token end-to-end ✓ |
 | 4 — الحجوزات + الحارس + API | ✅ مكتملة v1 | `POST /api/bookings` + `POST /api/status/now` + `POST /api/halls/{id}/lock|unlock` + `GET /api/locks` + `GET /api/dashboard` + `GET /api/reports/utilization` — Sanctum + role middleware ✓ |
 | 5 — اللوحة + التقارير | ✅ مكتمل v1 | KPIs اللوحة مثبتة على backend؛ تقارير نسبة استخدام القاعات مع شريط تقدّم برتقالي + تصدير CSV ✓ (Real data!) |
-| 6 — واجهة React RTL | ✅ مكتملة v1 | تسجيل دخول + لوحة + قائمة جداول + إنشاء جدول مع تحقق Go + حجوزات + تقارير CSV — RTL/هوية AUST؛ `npm run build` نظيف ✓ |
+| 6 — واجهة React RTL | ✅ مكتملة v1 | تسجيل دخول + لوحة + «اقتراح تلقائي» + حجوزات + تقارير CSV — RTL/هوية AUST؛ `npm run build` نظيف ✓ |
 | 7 — CP-SAT اقتراح تلقائي | ✅ مكتملة (2026-11-10) | `engine/solver.py` (Google OR-Tools CP-SAT: x[c,p,h,f] مع hard constraints كاملة + قيد سعة القاعة + مدرسو course_faculty + تجاهل الموجود + توازن أيام الأسبوع + timeout قابل للضبط)؛ `POST /propose` داخل syst-engine (Python subprocess، UTF-8 مضبوط)؛ Laravel ProposeController + `POST /api/admin/propose-timetable` (شعبة واحدة بـ `group_id` أو عدة شعب تسلسليًا بـ `group_ids`) + `GET .../context` (يُرجع خطة كل شعبة scoped)؛ شاشة «اقتراح تلقائي» (اختيار شعبة/الكل حسب الخطط + مقررات + المسودة بأعمدة الشعبة) + زر «اعتماد الكل» (معاملة واحدة `POST /api/timetables/bulk` — الكل أو لا شيء + rollback)؛ **مُختبأ حيًا: عدة مسارات للشعب (OPTIMAL، 24/48 حصة) + council يرى الجامعة كلها + bulk = 201 ثم 422 بـrollback كامل**. (بيانات الديمو بقيم **16 محاضرة لمخطط CS2024** موجودة في القاعدة بقرار المشرف) |
 | 8 — التشطيب + الفصول + الـdemo | ✅ مكتمل 2026-11-10 (بانتظار قبول المشرف) | الفصل الثاني (الأدوار الفعلية للغات) + الفصل الثالث2 (أقسام 3-12..3-16: الكينونات الجديدة · ERD · council · الأدلة) · PDFs مولّدة · ملحق تقني SYST-08 (.docx/.pdf) للجنة · Vitest 4/4 · README (OPcache + CP-SAT + 2026-11-10 إغلاق) |
 
@@ -236,6 +236,12 @@
   - `config/cors.php` يفتح `allowed_origins => ['*']` — مناسب لمعاينة محلية بالـ token عبر `Authorization` (لا cookies)، لكن يجب تثبيته على أصل الواجهة الحقيقي لأي نشر مشترك.
 - **Frontend tests (Vitest + Testing Library)** — `npm test`: **4/4 نجحت** (شاشة الدخول · تسجيل الدخول ← لوحة التحكم ببيانات KPI · خطأ عند فشل الدخول · الخروج ← الدخول).
 - **الملحق التقني للجنة (محلي، `all/` و`docs/`)** — `SYST-08-technical-reference-appendix.docx|.pdf` (380 KB): البنية · المسارات كاملة بأدلة حية · سيناريو الديمو · القرارات.
+
+- **إزالة الجدولة اليدوية بالكامل (2026-11-18)**: شاشات «الجداول» و«إعداد الجدول» و«الامتحانات» و«إعداد امتحان» **أُزيلت من الواجهة والخلفية** — المسار الوحيد لإضافة محاضرات هو «اقتراح تلقائي» ← «اعتماد الكل» (معاملة واحدة `POST /api/timetables/bulk`). أُزيلت `GET /api/timetables` و`POST /api/timetables` و`POST /api/timetables/check` و`GET/POST /api/exams` و`POST /api/exams/check` (كل المستهلكين الآخرون يمرون بخدماتهم الخاصة — batch/lecturer/guard/الورقة الرسمية/الاعتماد لم تتغير). PHPUnit **73/73** (اختبار جديد `CouncilScheduleTest` بـ 6 سيناريوهات جديدة) · PHPStan L5 نظيف · Pint نظيف · Vitest **4/4** · oxlint بلا أخطاء · `npm run build` نظيف.
+  - جديد: شاشة **«الجداول الدراسية»** للمجلس (الشريط الجانبي) — عرض كل جداول الشعب **حسب التخصص (القسم ← الدفعة/الشعبة)** مع عدّادات الحالة لكل شعبة، وزر **«الورقة الرسمية»** لكل شعبة، وزرين: **«أرشفة الجدول»** (status=`archived` — تخرج المحاضرة من كل المسارات النشطة: الورقة الرسمية · دفعة · مدرس · حارس · فحص التعارض · إحصائيات الأدمن) وإعادة «إلغاء الأرشفة» (تعود `pending` وتحتاج اعتماد المدير من جديد)، و**«حذف الجدول كاملًا»** (معاملة واحدة — يُرفض بـ 409 إذا وُجدت طلبات بدلاء مرتبطة بمحاضرات الشعبة، لأن الحذف سيمحيها ضمنيًا عبر CASCADE)).
+  - زر «عرض الجداول» في «اقتراح تلقائي» صار ينتقل إلى «الجداول الدراسية».
+  - أُضيف `Timetable::scopeNotArchived` ← يستثني صفوف `archived` مع مؤرشفة الفصل؛ `LecturerController` و`OfficialTimetableController` يستثنيان المؤرشفة صراحةً؛ توكنات التواريخ.
+  - تحقق حي على 8765: مجلس ← 200 + الحمولة كاملة (2 شعب · 18+18 معتمدة · 36 صفًا بالخريطة)؛ المدير ← **403**.
 
 ## القاعدة التشغيلية
 

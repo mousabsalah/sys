@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Group;
-use App\Models\Timetable;
 use App\Services\Academic\ArabicDay;
 use App\Services\Engine\ConflictChecker;
 use App\Support\Defaults;
@@ -12,36 +10,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
+/**
+ * TimetableController — جدول المحاضرات عبر «اقتراح تلقائي» حصريًا.
+ * الإنشاء/التعديل اليدوي أُزيل من النظام؛ المسار الوحيد لدخول محاضرات جديدة هو:
+ * المجلس يقترح (ProposeController) → «اعتماد الكل» (bulkStore، معاملة واحدة) → الأدمن يعتمد.
+ * الحذف والأرشفة الجماعية في CouncilScheduleController.
+ */
 class TimetableController extends Controller
 {
     public function __construct(private ConflictChecker $checker) {}
-
-    // POST /api/timetables/check — تحقق فقط (لا كتابة)
-    public function check(Request $request): JsonResponse
-    {
-        $input = $this->validatePayload($request);
-
-        return response()->json($this->checker->checkTimetable($input));
-    }
-
-    // POST /api/timetables — حفظ بمعاملة وإعادة فحص تحت قفل
-    public function store(Request $request): JsonResponse
-    {
-        $input = $this->validatePayload($request);
-        $input['academic_term'] = $request->input('academic_term', Defaults::DEFAULT_TERM);
-
-        $result = $this->checker->commitTimetable($input);
-
-        if (! $result['ok']) {
-            return response()->json([
-                'ok' => false,
-                'message_ar' => $result['message_ar'] ?? 'تعارض هو تعذّر الحفظ',
-                'verdict' => $result['verdict'] ?? null,
-            ], 422);
-        }
-
-        return response()->json(['ok' => true, 'timetable' => $result['timetable']], 201);
-    }
 
     /**
      * POST /api/timetables/bulk — اعتماد مسودة كاملة بمعاملة واحدة.
@@ -112,71 +89,5 @@ class TimetableController extends Controller
         }
 
         return response()->json(['ok' => true, 'created' => $created], 201);
-    }
-
-    // GET /api/timetables?by=group&id=3  (يشمل شعب الدفعات — مجلس/مدير يريان الكل، بما فيه غير المعتمد)
-    public function index(Request $request): JsonResponse
-    {
-        $user = auth()->user();
-        $by = $request->query('by', 'group'); // group|faculty|hall|batch
-        $id = (int) $request->query('id', 0);
-        $term = $request->query('term');
-
-        $query = Timetable::query();
-
-        if ($term) {
-            $query->where('academic_term', $term);
-        }
-
-        $privileged = in_array($user?->role, ['council', 'admin'], true);
-
-        // ── دور الدفعة: شعبه المعتمدة + الملغية الموسومة فقط — لا تجاهل لبارامترات الطلب ──
-        if ($user?->role === 'batch') {
-            if (! $user->batch_id) {
-                abort(403, 'هذا الحساب غير مرتبط بدفعة — تواصل مع مجلس المدرسين.');
-            }
-            $groupIds = Group::where('batch_id', (int) $user->batch_id)->pluck('id')->all();
-            $query->whereIn('group_id', $groupIds)
-                ->where('status', '!=', 'pending'); // المعلّقة لا تراها الدفعة أبدًا
-            $rows = $query->orderBy('day_of_week')->orderBy('start_time')->get();
-
-            return response()->json($rows);
-        }
-
-        if (! $privileged) {
-            $query->where('status', 'approved');
-        }
-
-        // مجلس يرى الجامعة كلها — لا قيد نطاق
-        if ($by === 'batch') {
-            $groupIds = Group::where('batch_id', $id)->pluck('id')->all();
-            $query->whereIn('group_id', $groupIds);
-        } elseif ($by === 'hall') {
-            $query->where('hall_id', $id);
-        } elseif ($by === 'faculty') {
-            $query->where('faculty_id', $id);
-        } else {
-            $query->where('group_id', $id);
-        }
-
-        $rows = $query->orderBy('day_of_week')->orderBy('start_time')->get();
-
-        return response()->json($rows);
-    }
-
-    private function validatePayload(Request $request): array
-    {
-        $input = $request->validate([
-            'course_id' => ['required', 'integer', Rule::exists('courses', 'id')],
-            'faculty_id' => ['required', 'integer', Rule::exists('faculty', 'id')],
-            'group_id' => ['required', 'integer', Rule::exists('groups', 'id')],
-            'hall_id' => ['required', 'integer', Rule::exists('halls', 'id')],
-            'day_of_week' => ['required', 'string', 'in:'.implode(',', ArabicDay::orderedStudyDays())],
-            'start_time' => ['required', 'date_format:H:i:s'],
-            'end_time' => ['required', 'date_format:H:i:s', 'after:start_time'],
-            'academic_term' => ['sometimes', 'string', 'max:20'],
-        ]);
-
-        return $input;
     }
 }

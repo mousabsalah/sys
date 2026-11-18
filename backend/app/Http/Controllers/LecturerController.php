@@ -73,7 +73,7 @@ class LecturerController extends Controller
         $groupId = $request->query('group_id');
 
         $query = Timetable::whereIn('group_id', $groupIds)
-            ->where('timetables.status', '!=', 'pending'); // غير المعتمدة (pending) لا يراها المدرس
+            ->whereNotIn('timetables.status', ['pending', 'archived']); // المعلّقة (والمؤرشفة) لا يراها المدرس
         if ($groupId !== null && $groupId !== '') {
             $gid = (int) $groupId;
             if (! in_array($gid, $groupIds, true)) {

@@ -36,14 +36,14 @@ class Timetable extends Model
 
     /**
      * Scope: المحاضرات غير المرتبطة بفصل مؤرشف — الأرشفة تجمّد الفصل ولا يظل يحجب الجدولة.
-     */
-    /**
+     * وصفوف «مؤرشفة» صراحةً (status='archived') تُستبعد هي أيضًا من كل ما هو نشط.
+     *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeNotArchived(Builder $query): Builder
     {
-        return $query->where(function (Builder $q) {
+        return $query->where('timetables.status', '!=', 'archived')->where(function (Builder $q) {
             $q->whereNull('timetables.semester_id')
                 ->orWhereExists(function ($q) {
                     $q->select(DB::raw(1))

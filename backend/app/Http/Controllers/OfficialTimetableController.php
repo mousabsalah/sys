@@ -47,7 +47,7 @@ class OfficialTimetableController
             ->leftJoin('faculty', 'faculty.id', '=', 'timetables.faculty_id')
             ->leftJoin('halls', 'halls.id', '=', 'timetables.hall_id')
             ->where('timetables.group_id', $groupId)
-            ->where('timetables.status', '!=', 'pending')
+            ->whereNotIn('timetables.status', ['pending', 'archived'])
             ->where(function ($q) {
                 $q->whereNull('timetables.semester_id')
                     ->orWhereExists(fn ($sub) => $sub->select(DB::raw(1))

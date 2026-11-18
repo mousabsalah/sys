@@ -170,38 +170,28 @@ class AdminSecurityTest extends TestCase
         $this->assertSame(0, $target->fresh()->tokens()->count());
     }
 
-    public function test_admin_cannot_create_timetables_but_council_can(): void
+    public function test_admin_cannot_apply_proposal_but_council_can(): void
     {
-        [$faculty, $department, $batch, $group] = $this->makeAcademicChain();
-        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
-        $admin = $this->makeUser('admin');
         $councilUser = $this->makeUser('council');
-        $councilUser->forceFill(['faculty_id' => $faculty->id])->save();
-        $hall = $this->makeHall();
+        $admin = $this->makeUser('admin');
+        [, $department, , $group] = $this->makeAcademicChain();
+        [$course, $lecturer] = $this->makeCourseAndLecturer($department->id);
+        CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $lecturer->id]);
+        $hall = $this->makeHall('قاعة صلاحية الاعتماد');
+        $day = ArabicDay::of(Carbon::parse('2026-11-14'));
 
-        $payload = [
-            'course_id' => $course->id,
-            'faculty_id' => $lecturer->id,
-            'group_id' => $group->id,
-            'hall_id' => $hall->id,
-            'day_of_week' => 'السبت',
-            'start_time' => '08:00:00',
-            'end_time' => '09:30:00',
-            'academic_term' => '2026/1',
-        ];
+        $payload = ['assignments' => [
+            ['course_id' => $course->id, 'faculty_id' => $lecturer->id, 'group_id' => $group->id, 'hall_id' => $hall->id, 'day_of_week' => $day, 'start_time' => '07:00:00', 'end_time' => '09:00:00'],
+        ]];
 
         $this->authedAs($admin)
-            ->postJson('/api/timetables', $payload)
+            ->postJson('/api/timetables/bulk', $payload)
             ->assertStatus(403);
 
-        // council يمرر — نفكّك المحرك بالمحاكاة (لا نريد HTTP حقيقي إلى syst-engine)
-        $this->mock(ConflictChecker::class, function ($mock) {
-            $mock->shouldReceive('commitTimetable')->andReturn(['ok' => true, 'timetable' => null]);
-        });
-
         $this->authedAs($councilUser)
-            ->postJson('/api/timetables', $payload)
-            ->assertStatus(201);
+            ->postJson('/api/timetables/bulk', $payload)
+            ->assertCreated()
+            ->assertJsonPath('ok', true);
     }
 
     public function test_non_admin_cannot_reach_admin_routes(): void
@@ -781,35 +771,50 @@ class AdminSecurityTest extends TestCase
             'user_id' => $council->id, 'status' => 'confirmed', 'semester_id' => $otherSemester->id,
         ]);
 
-        // الفصلان مختلفان — القاعة مسموحة
-        $response = $this->authedAs($council)
-            ->postJson('/api/timetables/check', [
-                'course_id' => $course->id,
-                'faculty_id' => $lecturer->id,
-                'group_id' => $group->id,
-                'hall_id' => $hall->id,
-                'day_of_week' => 'الأحد',
-                'start_time' => '07:00:00',
-                'end_time' => '09:00:00',
-                'academic_term' => '2026/1',
-            ])
-            ->assertOk();
-        $this->assertTrue((bool) $response->json('ok'));
+        // فبكة واحدة: حمولة بلا صفوف موجودة ← ok:true؛ حمولة فيها صفوف ← ok:false (القاعة فعلاً مشغولة في نفس الفصل)
+        Http::fake(function ($request) {
+            $isEmpty = str_contains((string) $request->body(), '"existing":[]');
+            $response = $isEmpty
+                ? ['ok' => true, 'verdict' => ['conflict' => false, 'violations' => []]]
+                : ['ok' => false, 'verdict' => ['conflict' => true, 'violations' => [['code' => 'HALL', 'message_ar' => 'القاعة مشغولة', 'severity' => 'hard']]]];
 
-        // نفس الفصل — التعارض يظهر
-        $blocked = $this->authedAs($council)
-            ->postJson('/api/timetables/check', [
-                'course_id' => $course->id,
-                'faculty_id' => $lecturer->id,
-                'group_id' => $group->id,
-                'hall_id' => $hall->id,
-                'day_of_week' => 'الأحد',
-                'start_time' => '07:00:00',
-                'end_time' => '09:00:00',
-                'academic_term' => '2026/2',
-            ])
-            ->assertOk();
-        $this->assertFalse((bool) $blocked->json('ok'));
+            return Http::response($response);
+        });
+
+        // الفصلان مختلفان — صفوف الفصل الآخر لا تدخل الحمولة المرسلة للمحرك (نتحقق من الطلب المسجل)
+        $checker = app(ConflictChecker::class);
+        $verdict = $checker->checkTimetable([
+            'course_id' => $course->id,
+            'faculty_id' => $lecturer->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'day_of_week' => 'الأحد',
+            'start_time' => '07:00:00',
+            'end_time' => '09:00:00',
+            'academic_term' => '2026/1',
+        ]);
+        $this->assertTrue((bool) ($verdict['ok'] ?? false));
+        Http::assertSent(
+            fn ($request) => str_contains($request->url(), '/check')
+                && str_contains($request->body(), '"existing":[]')
+        );
+
+        // نفس الفصل — صفوف 2026/2 تدخل الحمولة (الامتحان يظهر كـ exam)
+        $blocked = $checker->checkTimetable([
+            'course_id' => $course->id,
+            'faculty_id' => $lecturer->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'day_of_week' => 'الأحد',
+            'start_time' => '07:00:00',
+            'end_time' => '09:00:00',
+            'academic_term' => '2026/2',
+        ]);
+        $this->assertFalse((bool) ($blocked['ok'] ?? true));
+        Http::assertSent(
+            fn ($request) => str_contains($request->url(), '/check')
+                && str_contains($request->body(), '"kind":"exam"')
+        );
     }
 
     public function test_bulk_store_creates_commits_atomically_and_rolls_back_on_conflict(): void
@@ -1128,21 +1133,12 @@ class AdminSecurityTest extends TestCase
 
         // الدفعة يرى المعتمد فقط
         $batchView = $this->authedAs($batchUser)
-            ->getJson('/api/timetables?by=group&id='.$group->id)
-            ->json();
+            ->getJson('/api/batch/timetables')
+            ->assertOk()
+            ->json('rows');
         $this->assertCount(1, $batchView);
 
-        // المجلس يرى الكل (معلّق + معتمد)
-        $councilView = $this->authedAs($council)
-            ->getJson('/api/timetables?by=group&id='.$group->id)
-            ->json();
-        $this->assertCount(2, $councilView);
-
-        // المدير يرى الكل + المعلّق في شاشة الاعتماد
-        $adminView = $this->authedAs($admin)
-            ->getJson('/api/timetables?by=group&id='.$group->id)
-            ->json();
-        $this->assertCount(2, $adminView);
+        // المدير يرى المعلّق في شاشة الاعتماد
         $pending = $this->authedAs($admin)->getJson('/api/admin/approvals')->json();
         $this->assertSame(1, $pending['pending_lectures_count']);
 
@@ -1153,8 +1149,9 @@ class AdminSecurityTest extends TestCase
             ->assertOk();
 
         $batchView2 = $this->authedAs($batchUser)
-            ->getJson('/api/timetables?by=group&id='.$group->id)
-            ->json();
+            ->getJson('/api/batch/timetables')
+            ->assertOk()
+            ->json('rows');
         $this->assertCount(2, $batchView2);
     }
 
@@ -1374,21 +1371,22 @@ class AdminSecurityTest extends TestCase
             ->assertOk();
         $this->assertSame('cancelled', (string) $own->fresh()->status);
 
-        // التعارض يسمح بالمحاضرة الملغية في نفس القاعة واليوم — نجرّب  slotًا فارغًا لا تتعارض فيه أي قاعدة
+        // التعارض يسمح بالمحاضرة الملغية في نفس القاعة واليوم — نتحقق خدمة ConflictChecker مباشرةً (لا HTTP محرك في الاختبار)
         CourseFaculty::firstOrCreate(['course_id' => $course->id, 'faculty_id' => $mine->id]);
-        $response = $this->authedAs($this->makeUser('council'))
-            ->postJson('/api/timetables/check', [
-                'course_id' => $course->id,
-                'faculty_id' => $mine->id,
-                'group_id' => $group->id,
-                'hall_id' => $hall->id,
-                'day_of_week' => 'الأحد',
-                'start_time' => '14:00:00',
-                'end_time' => '15:30:00',
-                'academic_term' => '2026/1',
-            ]);
-        $response->assertStatus(200);
-        $this->assertTrue((bool) $response->json('ok')); // لا تعارض — الشعبة والقاعة والمدرس فارغون يوم الأحد
+        Http::fake(['*://*/check' => Http::response(['ok' => true, 'verdict' => ['conflict' => false, 'violations' => []]])]);
+        $verdict = app(ConflictChecker::class)->checkTimetable([
+            'course_id' => $course->id,
+            'faculty_id' => $mine->id,
+            'group_id' => $group->id,
+            'hall_id' => $hall->id,
+            'day_of_week' => 'الأحد',
+            'start_time' => '14:00:00',
+            'end_time' => '15:30:00',
+            'academic_term' => '2026/1',
+        ]);
+        $this->assertTrue((bool) ($verdict['ok'] ?? false)); // لا تعارض — الشعبة والقاعة والمدرس فارغون يوم الأحد
+        // صف الملغية لم يدخل الحمولة المرسلة للمحرك
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/check') && ! str_contains($request->body(), '"id":'.$own->id));
 
         // التراجع عن الإلغاء
         $this->authedAs($myUser)
@@ -1807,21 +1805,9 @@ class AdminSecurityTest extends TestCase
         $rows = $this->authedAs($batchUser)->getJson('/api/batch/timetables')->assertOk()->json('rows');
         $this->assertEqualsCanonicalizing([$mine->id, $cancelledMine->id], collect($rows)->pluck('id')->all());
 
-        // 2) حتى مع بارامترات أجنبية — المعرف يُفرض من حسابه
-        $rowsForeign = $this->authedAs($batchUser)
-            ->getJson('/api/timetables?by=batch&id='.$batchB->id)
-            ->assertOk()
-            ->json();
-        $this->assertEqualsCanonicalizing([$mine->id, $cancelledMine->id], collect($rowsForeign)->pluck('id')->all());
-
-        // 3) امتحانات دفعته فقط
+        // 2) امتحانات دفعته فقط
         $exams = $this->authedAs($batchUser)->getJson('/api/batch/exams')->assertOk()->json('rows');
         $this->assertCount(1, $exams);
-        $examsForeign = $this->authedAs($batchUser)
-            ->getJson('/api/exams?by=batch&id='.$batchB->id)
-            ->assertOk()
-            ->json();
-        $this->assertCount(1, collect($examsForeign)->all());
     }
 
     public function test_council_creates_batch_with_tracks_and_splits_students(): void

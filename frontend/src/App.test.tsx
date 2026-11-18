@@ -70,12 +70,6 @@ function installFetchMock(options: { loginFails?: boolean } = {}) {
     if (url.startsWith(`${BASE}/api/admin/dashboard-stats`)) {
       return jsonResponse(adminStats)
     }
-    if (url.startsWith(`${BASE}/api/timetables`)) {
-      return jsonResponse([])
-    }
-    if (url.startsWith(`${BASE}/api/exams`)) {
-      return jsonResponse([])
-    }
     if (url.startsWith(`${BASE}/api/bookings`)) {
       return jsonResponse([])
     }

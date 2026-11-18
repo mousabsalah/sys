@@ -13,10 +13,10 @@ use App\Http\Controllers\CouncilBatchesController;
 use App\Http\Controllers\CouncilCoursesController;
 use App\Http\Controllers\CouncilLecturersController;
 use App\Http\Controllers\CouncilPlansController;
+use App\Http\Controllers\CouncilScheduleController;
 use App\Http\Controllers\CouncilSemestersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EnginePassthrough;
-use App\Http\Controllers\ExamController;
 use App\Http\Controllers\GuardController;
 use App\Http\Controllers\HallsController;
 use App\Http\Controllers\LecturerController;
@@ -50,16 +50,8 @@ Route::get('/login', function () {
 Route::get('/me', [AuthController::class, 'me'])->middleware(['auth:sanctum', 'active']);
 Route::post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum', 'active']);
 
-// ── الجداول ──
+// ── الجداول والامتحانات: لا إنشاء يدوي — المسار هو «اقتراح تلقائي» ثم اعتماد المدير ──
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
-    Route::get('/timetables', [TimetableController::class, 'index']);
-    Route::post('/timetables/check', [TimetableController::class, 'check'])->middleware('role:council');
-    Route::post('/timetables', [TimetableController::class, 'store'])->middleware('role:council');
-
-    // ── الامتحانات ──
-    Route::get('/exams', [ExamController::class, 'index']);
-    Route::post('/exams/check', [ExamController::class, 'check'])->middleware('role:council');
-    Route::post('/exams', [ExamController::class, 'store'])->middleware('role:council');
 
     // ── الحجوزات ──
     Route::get('/bookings', [BookingController::class, 'index']);
@@ -103,6 +95,14 @@ Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function ()
 // ── مجلس المدرسين: ورقة الجدول الرسمية للطباعة (Siegel AUST) ──
 Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
     Route::get('/council/timetables-official', [OfficialTimetableController::class, 'show']);
+});
+
+// ── مجلس المدرسين: «الجداول الدراسية» — عرض/أرشفة/حذف جداول الشعب (بلا إنشاء يدوي) ──
+Route::middleware(['auth:sanctum', 'active', 'role:council'])->group(function () {
+    Route::get('/council/schedules', [CouncilScheduleController::class, 'index']);
+    Route::post('/council/schedules/archive', [CouncilScheduleController::class, 'archive']);
+    Route::post('/council/schedules/unarchive', [CouncilScheduleController::class, 'unarchive']);
+    Route::delete('/council/schedules/{group}', [CouncilScheduleController::class, 'destroy']);
 });
 
 // ── مجلس المدرسين: بداية السنة الدراسية (فتحتها بويه — سمسترين متزامنين + إدارة الفصول) — المدير للقراءة فقط ──

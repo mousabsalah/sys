@@ -102,14 +102,14 @@ export default function CouncilSheetEditorView({ call }: { call: Call }) {
       <PageSection draft={draft} set={set} />
 
       <div className="alert alert-info">
-        <strong>تذكير مهم:</strong> كل تعديل هنا ينعكس فورًا على كل الورقات الرسمية المطبوعة في الكليات. المدير لا يمس أي خصايص — ولكي تنتقل التعديلات لغيرك، يجب أن ترى ورقتك الرسمية عبر «الجداول ← الورقة الرسمية» بعد الحفظ.
+        <strong>تذكير مهم:</strong> كل تعديل هنا ينعكس فورًا على كل الورقات الرسمية المطبوعة في الكليات. المدير لا يمس أي خصايص — ولكي تنتقل التعديلات لغيرك، يجب أن ترى ورقتك الرسمية عبر «الجداول الدراسية ← الورقة الرسمية» بعد الحفظ.
       </div>
 
       {/* ── معاينة حية ── */}
       <div className="aust-panel p-3 mb-3 d-flex align-items-center justify-content-between gap-2">
         <div>
           <h2 className="h6 fw-bold mb-1" style={{ color: '#0A1D3B' }}>المعاينة الحية</h2>
-          <div className="small text-muted">أدخل / افتح الجدول الرسمي: <strong>الجداول ← الشعبة ← 📄 الورقة الرسمية</strong></div>
+          <div className="small text-muted">أدخل / افتح الجدول الرسمي: <strong>«الجداول الدراسية» ← اختيار الشعبة ← «الورقة الرسمية»</strong></div>
         </div>
         <button className="aust-btn-outline" onClick={() => setPreviewOpen(true)}>معاينة الورقة</button>
       </div>
