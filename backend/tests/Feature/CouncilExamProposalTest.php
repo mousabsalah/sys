@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Models\Batch;
 use App\Models\Course;
 use App\Models\Department;
+use App\Models\Faculty;
 use App\Models\FacultyEntity;
 use App\Models\Group;
 use App\Models\GroupCourse;
 use App\Models\Hall;
 use App\Models\Program;
+use App\Models\Timetable;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -148,6 +150,43 @@ class CouncilExamProposalTest extends TestCase
 
         $this->assertSame(2, DB::table('exam_sessions')->where('group_id', $group->id)->where('status', 'pending')->count());
         $this->assertSame(2, DB::table('exam_updates')->count());
+    }
+
+    public function test_apply_allows_exam_overlapping_a_lecture_in_same_hall(): void
+    {
+        [$faculty, $department, $batch, $group] = $this->makeChain();
+        [$c1, $c2] = $this->seedPlan($group->id);
+        $hall = $this->makeHall(60);
+        $council = $this->makeUser('council');
+
+        // محاضرة معلّقة في نفس القاعة ونفس الوقت الأسبوعي (الأحد) — فيجب تجاوزها عند فحص الامتحان (أسبوع الامتحانات يعلو)
+        $lecturer = Faculty::create(['full_name' => 'د. التجاوز', 'department_id' => $department->id, 'email' => uniqid().'@exempt.local']);
+        Timetable::create([
+            'course_id' => $c1->id, 'faculty_id' => $lecturer->id,
+            'group_id' => $group->id, 'hall_id' => $hall->id,
+            'day_of_week' => 'الأحد', 'start_time' => '09:00:00', 'end_time' => '12:00:00',
+            'academic_term' => '2026/1', 'semester_id' => null, 'status' => 'approved',
+        ]);
+
+        Http::fake(['*/check' => Http::response(['ok' => true, 'conflict' => false, 'type' => 'exam', 'violations' => []])]);
+
+        // 2026-11-22 = الأحد
+        $examDate = '2026-11-22';
+        $payload = ['assignments' => [
+            ['course_id' => $c2->id, 'course_code' => 'DB101', 'group_id' => $group->id, 'hall_id' => $hall->id, 'exam_date' => $examDate, 'start_time' => '09:00:00', 'end_time' => '12:00:00', 'academic_term' => '2026/1'],
+        ]];
+
+        $this->withHeaders(['Accept' => 'application/json'])
+            ->actingAs($council, 'sanctum')
+            ->postJson('/api/council/propose-exams/apply', $payload)
+            ->assertCreated()
+            ->assertJsonPath('created', 1);
+
+        // الحمولة المُرسلة للمحرك لا تحمل المحاضرة الأرثوذكسية — استثناء الامتحانات من تعارض المحاضرات
+        Http::assertSent(fn ($request) => str_contains((string) $request->body(), '"existing":[]')
+            || ! str_contains((string) $request->body(), '"lecture"'));
+
+        $this->assertSame(1, DB::table('exam_sessions')->where('group_id', $group->id)->count());
     }
 
     public function test_apply_rolls_back_everything_on_conflict(): void

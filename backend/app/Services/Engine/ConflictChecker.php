@@ -147,7 +147,9 @@ class ConflictChecker
             Hall::where('id', $ctx['hall_id'])->lockForUpdate()->firstOrFail();
             Group::where('id', $groupId)->lockForUpdate()->firstOrFail();
 
-            $existing = $this->existingSlots(hallId: $ctx['hall_id'], dayOfWeek: $day, examDate: $examDate, term: $term);
+            // إعادة فحص داخل المعاملة — الامتحانات تتجاوز المحاضرات العادية (أسبوع الامتحانات يعلو على الجدول)،
+            // بينما تظل الحجوزات/امتحانات أخرى قيودًا صارمة (قيد القاعة + قيد الشعبة)
+            $existing = $this->existingSlots(hallId: $ctx['hall_id'], dayOfWeek: $day, examDate: $examDate, term: $term, includeLectures: false);
             $payload = $this->buildPayload('exam', $input, $day, $ctx, $existing);
             $payload['exam_date'] = $examDate;
             $verdict = $this->engine->check($payload);
@@ -314,7 +316,7 @@ class ConflictChecker
         return ArabicDay::of(Carbon::parse($date));
     }
 
-    private function existingSlots(int $hallId, string $dayOfWeek, ?string $examDate, ?string $term = null): array
+    private function existingSlots(int $hallId, string $dayOfWeek, ?string $examDate, ?string $term = null, bool $includeLectures = true): array
     {
         $slots = [];
 
@@ -324,19 +326,21 @@ class ConflictChecker
         if ($term !== null && $term !== '') {
             $lectureQuery->where('academic_term', $term);
         }
-        foreach ($lectureQuery->get() as $t) {
-            $slots[] = [
-                'id' => (int) $t->id,
-                'kind' => 'lecture',
-                'day_of_week' => (string) $t->day_of_week,
-                'exam_date' => '',
-                'start_time' => substr((string) $t->start_time, 0, 8),
-                'end_time' => substr((string) $t->end_time, 0, 8),
-                'hall_id' => (int) $t->hall_id,
-                'faculty_id' => (int) $t->faculty_id,
-                'group_id' => (int) $t->group_id,
-                'course_id' => (int) $t->course_id,
-            ];
+        if ($includeLectures) {
+            foreach ($lectureQuery->get() as $t) {
+                $slots[] = [
+                    'id' => (int) $t->id,
+                    'kind' => 'lecture',
+                    'day_of_week' => (string) $t->day_of_week,
+                    'exam_date' => '',
+                    'start_time' => substr((string) $t->start_time, 0, 8),
+                    'end_time' => substr((string) $t->end_time, 0, 8),
+                    'hall_id' => (int) $t->hall_id,
+                    'faculty_id' => (int) $t->faculty_id,
+                    'group_id' => (int) $t->group_id,
+                    'course_id' => (int) $t->course_id,
+                ];
+            }
         }
 
         // الحجوزات — مؤكدة وغير مؤرشفة فقط
