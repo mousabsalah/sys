@@ -76,7 +76,7 @@ export default function ProposeExamsView({ call }: { call: Call }) {
             academic_term: a.academic_term,
           })),
         })
-      if (r.ok) { setAdoptState('ok'); setAdoptMsg(`اعتمدت المسودة بالكامل — ${r.created ?? result.assignments.length} امتحانًا «فاينل» حُفظ بمعاملة واحدة كمعلّق (بانتظار اعتماد المدير).`) }
+      if (r.ok) { setAdoptState('ok'); setAdoptMsg(`اعتُمدت المسودة بالكامل — ${r.created ?? result.assignments.length} امتحان «فاينل» حُفظت بمعاملة واحدة كمعلّقة — تظهر الآن للمدير في «اعتماد الجداول والامتحانات» (امتحانات معلّقة) للاعتماد، ولا تظهر للدفعة أو المدرس قبل ذلك.`) }
       else { setAdoptState('conflict'); setAdoptMsg((r.conflicts ?? []).map((c) => `تعارض في ${c.course_code ?? ''} — ${c.exam_date}: ${c.violations?.[0]?.message_ar ?? ''}`).join(' · ') || (r.message_ar ?? 'تعارض — لم يُحفظ شيء')) }
     } catch (er) {
       setAdoptState('fail')
