@@ -248,3 +248,50 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .aust-skeleton::after { animation: none; transform: none; }
 }
+
+/* ── لوحة الجدولة — تبويبات موحدة بأسلوب AUST ── */
+.sched-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--aust-border);
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  scrollbar-width: thin;
+}
+.sched-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px 9px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--aust-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.sched-tab:hover { color: var(--aust-dark-brown); background: #fdf8ef; }
+.sched-tab[aria-selected="true"] { color: var(--aust-navy); border-bottom-color: var(--aust-primary); font-weight: 700; }
+.sched-tab:focus-visible { outline: 2px solid var(--aust-primary); outline-offset: 2px; border-radius: 4px 4px 0 0; }
+.sched-badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 26px;
+  justify-content: center;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+  border-radius: 6px;
+  background: #fdf1e3;
+  color: var(--aust-primary-dark);
+  border: 1px solid var(--aust-accent);
+}
+.sched-tab[aria-selected="true"] .sched-badge { background: var(--aust-accent); color: #fff; border-color: var(--aust-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .sched-tab { transition: none; }
+}

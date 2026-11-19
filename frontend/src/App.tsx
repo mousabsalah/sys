@@ -5,10 +5,7 @@ import type { AuthUser, ViewName } from './types'
 
 import AuthView from './views/Auth'
 const DashboardView = lazy(() => import('./views/Dashboard'))
-const ProposeView = lazy(() => import('./views/Propose'))
-const ProposeExamsView = lazy(() => import('./views/ProposeExams'))
-const CouncilSchedulesView = lazy(() => import('./views/CouncilSchedules'))
-const CouncilExamSchedulesView = lazy(() => import('./views/CouncilExamSchedules'))
+const SchedulingWorkspaceView = lazy(() => import('./views/SchedulingWorkspace'))
 const BookingsView = lazy(() => import('./views/Bookings'))
 const HallsAvailableView = lazy(() => import('./views/HallsAvailable'))
 const CreateBookingView = lazy(() => import('./views/CreateBooking'))
@@ -40,7 +37,7 @@ const fallback = (
 )
 
 // صفحات مخفية عن مدير النظام — حتى لو وصل إليها بأي طريق تعود إلى اللوحة
-const ADMIN_HIDDEN: ReadonlySet<ViewName> = new Set(['council-schedules', 'halls-available', 'create-booking', 'propose', 'propose-exams', 'exam-schedules'])
+const ADMIN_HIDDEN: ReadonlySet<ViewName> = new Set(['scheduling', 'halls-available', 'create-booking'])
 
 export default function App() {
   const [auth, setAuth] = useState<{ user: AuthUser; token: string } | null>(null)
@@ -68,10 +65,7 @@ export default function App() {
     <Shell user={auth.user} active={activeView} onNav={setView} onLogout={() => { sessionStorage.removeItem('aust_token'); setAuth(null); setView('login') }}>
       <Suspense fallback={fallback}>
         {activeView === 'dashboard' && <DashboardView call={call} role={auth.user.role} />}
-        {activeView === 'propose' && <ProposeView call={call} onAdopted={() => setView('council-schedules')} />}
-        {activeView === 'propose-exams' && <ProposeExamsView call={call} />}
-        {activeView === 'council-schedules' && <CouncilSchedulesView call={call} />}
-        {activeView === 'exam-schedules' && <CouncilExamSchedulesView call={call} />}
+        {activeView === 'scheduling' && <SchedulingWorkspaceView call={call} />}
         {activeView === 'bookings' && <BookingsView call={call} />}
         {activeView === 'halls-available' && <HallsAvailableView call={call} onBook={(id) => { setBookingHallId(id); setView('create-booking') }} canBook={auth.user.role !== 'guard'} />}
         {activeView === 'create-booking' && <CreateBookingView call={call} onDone={() => setView('bookings')} hallId={bookingHallId} />}

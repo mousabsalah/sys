@@ -10,10 +10,7 @@ export function Shell({ user, active, onNav, onLogout, children }: {
 }) {
   const items: { key: ViewName; label: string; roles: Role[] }[] = [
     { key: 'dashboard', label: 'لوحة التحكم', roles: ['admin', 'council'] },
-    { key: 'propose', label: 'اقتراح تلقائي', roles: ['council'] },
-    { key: 'propose-exams', label: 'اقتراح الامتحانات التلقائي', roles: ['council'] },
-    { key: 'council-schedules', label: 'الجداول الدراسية', roles: ['council'] },
-    { key: 'exam-schedules', label: 'جدول الامتحانات', roles: ['council'] },
+    { key: 'scheduling', label: 'لوحة الجدولة', roles: ['council'] },
     { key: 'bookings', label: 'الحجوزات', roles: ['admin', 'council', 'lecturer'] },
     { key: 'halls-available', label: 'القاعات المتاحة', roles: ['council', 'lecturer'] },
     { key: 'council-academic-year', label: 'بداية السنة الدراسية', roles: ['council'] },

@@ -18,7 +18,7 @@ type ExamSchedulesPayload = { academic_term: string; groups: GroupSummary[]; row
 const STATUS_AR: Record<string, string> = { approved: 'معتمدة', pending: 'معلّقة', cancelled: 'ملغية', archived: 'مؤرشفة' }
 const STATUS_COLOR: Record<string, string> = { approved: '#1f7a3d', pending: '#B26225', cancelled: '#B3261E', archived: '#6b6b6b' }
 
-export default function CouncilExamSchedulesView({ call }: { call: Call }) {
+export default function CouncilExamSchedulesView({ call, embedded }: { call: Call; embedded?: boolean }) {
   const [term, setTerm] = useState('2026/1')
   const [data, setData] = useState<ExamSchedulesPayload | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -80,14 +80,18 @@ export default function CouncilExamSchedulesView({ call }: { call: Call }) {
   return (
     <>
       <div className="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+      {embedded ? (
+        <h2 className="h5 fw-bold mb-2 aust-h2">جدول الامتحانات</h2>
+      ) : (
         <h1 className="h3 fw-bold mb-0 aust-h1">جدول الامتحانات</h1>
+      )}
         <div className="d-flex gap-2 align-items-center">
           <label className="small fw-bold mb-0" htmlFor="term-input-exams">الفصل:</label>
           <input id="term-input-exams" className="form-control form-control-sm" style={{ width: 110 }} value={term} onChange={(e) => setTerm(e.target.value)} />
           <label className="d-flex align-items-center gap-1 small"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> عرض المؤرشفة</label>
         </div>
       </div>
-      <p className="small text-muted mb-3">فاينل لكل مقرر في «الخطط الدراسية» — المصدر الوحيد هو «اقتراح الامتحانات التلقائي» ← «اعتماد الكل» ثم اعتماد المدير. من هنا العرض حسب التخصص والأرشفة والحذف الكامل — وألا توجد «ورقة رسمية» للامتحانات بعد.</p>
+      <p className="small text-muted mb-3">فاينل لكل مقرر في «الخطط الدراسية» — المصدر الوحيد هو «اقتراح الامتحانات التلقائي» ← «اعتماد الكل» ثم اعتماد المدير. من هنا العرض حسب التخصص، «الورقة الرسمية» للطباعة، الأرشفة والحذف الكامل.</p>
 
       {err && <ErrorRetry message={err} onRetry={() => setReloadKey((k) => k + 1)} />}
       {notice && <div className={`alert ${notice.kind === 'ok' ? 'alert-success' : 'alert-warning'}`} role="status">{notice.text}</div>}

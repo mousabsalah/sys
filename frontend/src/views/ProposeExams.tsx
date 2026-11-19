@@ -21,7 +21,7 @@ type ExamContext = {
   plans: Record<number, PlanItem[]>
 }
 
-export default function ProposeExamsView({ call }: { call: Call }) {
+export default function ProposeExamsView({ call, embedded }: { call: Call; embedded?: boolean }) {
   const [ctx, setCtx] = useState<ExamContext | null>(null)
   const [ctxErr, setCtxErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'single' | 'all'>('single')
@@ -95,8 +95,17 @@ export default function ProposeExamsView({ call }: { call: Call }) {
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1 aust-h1">اقتراح الامتحانات التلقائي (CP-SAT)</h1>
-      <p className="small text-muted mb-3">فاينل لكل مقرر في الخطة الدراسية على تواريخ حقيقية ضمن المدى — قاعة بامتحان واحد في نفس الوقت، الشعبة بامتحان واحد فقط في نفس الوقت، وسعة القاعة تكفي للطلبة. الملغية وكل ما قبله لا تُقتبس مرة ثانية. المسودة للمراجعة — الإنشاء الفعلي يمر بالكامل بعد «اعتماد الكل» وتظهر للأدمن «اعتماد الجداول والامتحانات» قبل أن تظهر للجميع.</p>
+      {embedded ? (
+        <div className="mb-2">
+          <h2 className="h5 fw-bold mb-1 aust-h2">اقتراح الامتحانات التلقائي <span className="text-muted fw-normal" style={{ fontSize: '.8em' }}>(فاينل · CP-SAT)</span></h2>
+          <p className="small text-muted mb-0">فاينل لكل مقرر في الخطة، على تواريخ حقيقية ضمن المدى — ثم «اعتمد الكل» بمعاملة واحدة.</p>
+        </div>
+      ) : (
+        <>
+          <h1 className="h3 fw-bold mb-1 aust-h1">اقتراح الامتحانات التلقائي (CP-SAT)</h1>
+          <p className="small text-muted mb-3">فاينل لكل مقرر في الخطة الدراسية على تواريخ حقيقية ضمن المدى — قاعة بامتحان واحد في نفس الوقت، الشعبة بامتحان واحد فقط في نفس الوقت، وسعة القاعة تكفي للطلبة. الملغية وكل ما قبله لا تُقتبس مرة ثانية. المسودة للمراجعة — الإنشاء الفعلي يمر بالكامل بعد «اعتماد الكل» وتظهر للأدمن «اعتماد الجداول والامتحانات» قبل أن تظهر للجميع.</p>
+        </>
+      )}
 
       <form className="aust-panel p-3 mb-3" onSubmit={propose}>
         <div className="d-flex flex-wrap gap-3 align-items-end mb-3">

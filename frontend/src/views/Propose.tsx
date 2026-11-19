@@ -22,7 +22,7 @@ type ProposeContext = {
   plans: Record<number, PlanItem[]>
 }
 
-export default function ProposeView({ call, onAdopted }: { call: Call; onAdopted: () => void }) {
+export default function ProposeView({ call, onAdopted, embedded }: { call: Call; onAdopted: () => void; embedded?: boolean }) {
   const [ctx, setCtx] = useState<ProposeContext | null>(null)
   const [ctxErr, setCtxErr] = useState<string | null>(null)
   const [mode, setMode] = useState<'single' | 'all'>('single')
@@ -105,8 +105,17 @@ export default function ProposeView({ call, onAdopted }: { call: Call; onAdopted
 
   return (
     <>
-      <h1 className="h3 fw-bold mb-1 aust-h1">اقتراح الجدول التلقائي (CP-SAT)</h1>
-      <p className="small text-muted mb-3">مقترح للمراجعة فقط — لا يُحفظ شيء تلقائيًا؛ الاعتماد يمر بمعاملة واحدة عبر مسار check→save المعتاد (الكل أو لا شيء).</p>
+      {embedded ? (
+        <div className="mb-2">
+          <h2 className="h5 fw-bold mb-1 aust-h2">اقتراح الجدول التلقائي <span className="text-muted fw-normal" style={{ fontSize: '.8em' }}>(CP-SAT)</span></h2>
+          <p className="small text-muted mb-0">قيود: قاعة + شعبة + سعة + مدرسون في course_faculty — ثم «اعتمد الكل» بمعاملة واحدة.</p>
+        </div>
+      ) : (
+        <>
+          <h1 className="h3 fw-bold mb-1 aust-h1">اقتراح الجدول التلقائي (CP-SAT)</h1>
+          <p className="small text-muted mb-3">مقترح للمراجعة فقط — لا يُحفظ شيء تلقائيًا؛ الاعتماد يمر بمعاملة واحدة عبر مسار check→save المعتاد (الكل أو لا شيء).</p>
+        </>
+      )}
 
       <form className="aust-panel p-3 mb-3" onSubmit={propose}>
         <div className="d-flex flex-wrap gap-3 align-items-center mb-3">
